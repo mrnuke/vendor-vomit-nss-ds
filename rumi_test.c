@@ -83,7 +83,7 @@
  */
 static inline void ppe_reg_read(u32 reg, u32 *val)
 {
-	*val = readl((void *)(ctx.ppe_base + reg));
+	*val = readl((void *)(dp_global_ctx.ppe_base + reg));
 }
 
 /*
@@ -91,7 +91,7 @@ static inline void ppe_reg_read(u32 reg, u32 *val)
  */
 static inline void ppe_reg_write(u32 reg, u32 val)
 {
-	writel(val, (void *)(ctx.ppe_base + reg));
+	writel(val, (void *)(dp_global_ctx.ppe_base + reg));
 }
 
 /*
@@ -195,8 +195,9 @@ void rumi_test_init(void)
 	/*
 	 * Get the PPE base address
 	 */
-	ctx.ppe_base = (u32)ioremap_nocache(PPE_BASE_ADDR, PPE_REG_SIZE);
-	if (!ctx.ppe_base) {
+	dp_global_ctx.ppe_base = (u32)ioremap_nocache(PPE_BASE_ADDR,
+						      PPE_REG_SIZE);
+	if (!dp_global_ctx.ppe_base) {
 		pr_info("NSS DP can't get PPE base address\n");
 		return -ENOMEM;
 	}

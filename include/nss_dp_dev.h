@@ -25,6 +25,7 @@
 #include <linux/platform_device.h>
 
 #include "nss_dp_api_if.h"
+#include "nss_dp_hal_if.h"
 
 #define NSS_DP_MAX_PHY_PORTS	6
 
@@ -52,20 +53,21 @@ struct nss_dp_dev {
 	struct nss_dp_data_plane_ops *data_plane_ops;
 					/* ops for each data plane*/
 	struct nss_dp_global_ctx *ctx;	/* Global NSS DP context */
+	struct nss_gmac_hal_dev *gmac_hal_ctx;	/* context of gmac hal */
+	struct nss_gmac_hal_ops *gmac_hal_ops;	/* GMAC HAL OPS*/
 };
 
 /*
  * nss data plane global context
  */
 struct nss_dp_global_ctx {
-	/* reg_base / clock ... etc */
 	struct nss_dp_dev *nss_dp[NSS_DP_MAX_PHY_PORTS];
 	u32 ppe_base;			/* PPE base address */
 	bool common_init_done;		/* Flag to hold common init state */
 };
 
 /* Global data */
-extern struct nss_dp_global_ctx ctx;
+extern struct nss_dp_global_ctx dp_global_ctx;
 
 /*
  * nss data plane status

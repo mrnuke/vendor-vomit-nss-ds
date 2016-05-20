@@ -147,7 +147,7 @@ EXPORT_SYMBOL(nss_dp_restore_data_plane);
  */
 struct net_device *nss_dp_get_netdev_by_macid(int macid)
 {
-	struct nss_dp_dev *dp_dev = ctx.nss_dp[macid];
+	struct nss_dp_dev *dp_dev = dp_global_ctx.nss_dp[macid];
 
 	if (!dp_dev)
 		return NULL;

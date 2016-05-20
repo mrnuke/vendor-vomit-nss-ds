@@ -11,7 +11,9 @@ qca-nss-dp-objs += edma_data_plane.o \
 		   nss_dp_main.o \
 		   rumi_test.o
 
-NSS_DP_INCLUDE = -I$(obj)/include -I$(obj)/exports
+qca-nss-dp-objs += gmac_hal_ops/qcom/qcom_if.o
+
+NSS_DP_INCLUDE = -I$(obj)/include -I$(obj)/exports -I$(obj)/gmac_hal_ops/include
 
 ccflags-y += $(NSS_DP_INCLUDE)
 #ccflags-y += -DRUMI_BRIDGED_FLOW

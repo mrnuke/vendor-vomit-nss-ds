@@ -28,7 +28,7 @@
 #include "nss_dp_dev.h"
 
 /* Global data */
-struct nss_dp_global_ctx ctx;
+struct nss_dp_global_ctx dp_global_ctx;
 
 /*
  * nss_dp_do_ioctl()
@@ -37,12 +37,12 @@ static int32_t nss_dp_do_ioctl(struct net_device *netdev, struct ifreq *ifr,
 						   int32_t cmd)
 {
 	int ret = -EINVAL;
-	struct nss_dp_dev *dp_dev;
+	struct nss_dp_dev *dp_priv;
 
 	if (!netdev || !ifr)
 		return ret;
 
-	dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
 	/* TODO: Perform private ioctl operations */
 
@@ -55,15 +55,15 @@ static int32_t nss_dp_do_ioctl(struct net_device *netdev, struct ifreq *ifr,
 static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
 {
 	int ret = -EINVAL;
-	struct nss_dp_dev *dp_dev;
+	struct nss_dp_dev *dp_priv;
 
 	if (!netdev)
 		return ret;
 
-	dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
 	/* Let the underlying data plane decide if the newmtu is applicable */
-	if (dp_dev->data_plane_ops->change_mtu(dp_dev->data_plane_ctx,
+	if (dp_priv->data_plane_ops->change_mtu(dp_priv->data_plane_ctx,
 								newmtu)) {
 		netdev_dbg(netdev, "Data plane change mtu failed\n");
 		return ret;
@@ -79,14 +79,14 @@ static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
  */
 static int32_t nss_dp_set_mac_address(struct net_device *netdev, void *macaddr)
 {
-	struct nss_dp_dev *dp_dev;
+	struct nss_dp_dev *dp_priv;
 	struct sockaddr *addr = (struct sockaddr *)macaddr;
-	int ret = -EINVAL;
+	int ret = 0;
 
 	if (!netdev)
-		return ret;
+		return -EINVAL;
 
-	dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
 	netdev_dbg(netdev, "AddrFamily: %d, %0x:%0x:%0x:%0x:%0x:%0x\n",
 			addr->sa_family, addr->sa_data[0], addr->sa_data[1],
@@ -97,12 +97,16 @@ static int32_t nss_dp_set_mac_address(struct net_device *netdev, void *macaddr)
 	if (ret)
 		return ret;
 
-	if (dp_dev->data_plane_ops->mac_addr(dp_dev->data_plane_ctx, macaddr)) {
+	if (dp_priv->data_plane_ops->mac_addr(dp_priv->data_plane_ctx,
+					      macaddr)) {
 		netdev_dbg(netdev, "Data plane set MAC address failed\n");
 		return -EAGAIN;
 	}
 
 	eth_commit_mac_addr_change(netdev, macaddr);
+
+	dp_priv->gmac_hal_ops->setmacaddr(dp_priv->gmac_hal_ctx,
+			(uint8_t *)addr->sa_data);
 
 	return 0;
 }
@@ -113,14 +117,14 @@ static int32_t nss_dp_set_mac_address(struct net_device *netdev, void *macaddr)
 static struct rtnl_link_stats64 *nss_dp_get_stats64(struct net_device *netdev,
 					     struct rtnl_link_stats64 *stats)
 {
-	struct nss_dp_dev *dp_dev;
+	struct nss_dp_dev *dp_priv;
 
 	if (!netdev)
 		return stats;
 
-	dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
-	/* TODO: Call data plane fill stats */
+	dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
 
 	return stats;
 }
@@ -130,7 +134,7 @@ static struct rtnl_link_stats64 *nss_dp_get_stats64(struct net_device *netdev,
  */
 static netdev_tx_t nss_dp_xmit(struct sk_buff *skb, struct net_device *netdev)
 {
-	struct nss_dp_dev *dp_dev;
+	struct nss_dp_dev *dp_priv;
 
 	if (!skb || !netdev)
 		return NETDEV_TX_OK;
@@ -140,11 +144,12 @@ static netdev_tx_t nss_dp_xmit(struct sk_buff *skb, struct net_device *netdev)
 		goto drop;
 	}
 
-	dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
 	netdev_dbg(netdev, "Tx packet, len %d\n", skb->len);
 
-	if (likely(!dp_dev->data_plane_ops->xmit(dp_dev->data_plane_ctx, skb)))
+	if (likely(!dp_priv->data_plane_ops->xmit(dp_priv->data_plane_ctx,
+						  skb)))
 		return NETDEV_TX_OK;
 
 drop:
@@ -160,18 +165,19 @@ drop:
  */
 static int nss_dp_close(struct net_device *netdev)
 {
-	struct nss_dp_dev *dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
-	if (!dp_dev)
+	if (!dp_priv)
 		return -EINVAL;
 
 	netif_stop_queue(netdev);
 	netif_carrier_off(netdev);
 
-	/* TODO: Call soc_hal_ops to stop GMAC tx/rx/intr */
+	/* Call soc_hal_ops to stop GMAC tx/rx/intr */
+	dp_priv->gmac_hal_ops->stop(dp_priv->gmac_hal_ctx);
 
 	/* Notify data plane link is going down */
-	if (dp_dev->data_plane_ops->link_state(dp_dev->data_plane_ctx, 0)) {
+	if (dp_priv->data_plane_ops->link_state(dp_priv->data_plane_ctx, 0)) {
 		netdev_dbg(netdev, "Data plane set link failed\n");
 		return -EAGAIN;
 	}
@@ -179,12 +185,12 @@ static int nss_dp_close(struct net_device *netdev)
 	/* TODO: Stop phy related stuff */
 
 	/* Notify data plane to close */
-	if (dp_dev->data_plane_ops->close(dp_dev->data_plane_ctx)) {
+	if (dp_priv->data_plane_ops->close(dp_priv->data_plane_ctx)) {
 		netdev_dbg(netdev, "Data plane close failed\n");
 		return -EAGAIN;
 	}
 
-	clear_bit(__NSS_DP_UP, &dp_dev->flags);
+	clear_bit(__NSS_DP_UP, &dp_priv->flags);
 
 	return 0;
 }
@@ -194,17 +200,23 @@ static int nss_dp_close(struct net_device *netdev)
  */
 static int nss_dp_open(struct net_device *netdev)
 {
-	struct nss_dp_dev *dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
-	if (!dp_dev)
+	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+	if (!dp_priv)
 		return -EINVAL;
 
 	netif_carrier_off(netdev);
 
+	/* Call soc_hal_ops to bring up GMAC */
+	if (dp_priv->gmac_hal_ops->start(dp_priv->gmac_hal_ctx)) {
+		netdev_dbg(netdev, "GMAC Start failed\n");
+		return -EINVAL;
+	}
+
 	/*
 	 * Call data plane init if it has not been done yet
 	 */
-	if (!(dp_dev->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE)))
-		if (dp_dev->data_plane_ops->init(dp_dev->data_plane_ctx)) {
+	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE)))
+		if (dp_priv->data_plane_ops->init(dp_priv->data_plane_ctx)) {
 			netdev_dbg(netdev, "Data plane init failed\n");
 			return -ENOMEM;
 		}
@@ -214,20 +226,20 @@ static int nss_dp_open(struct net_device *netdev)
 	 * checksum offloading and other features. Each data_plane is
 	 * responsible to maintain the feature set it supports
 	 */
-	dp_dev->data_plane_ops->set_features(dp_dev->data_plane_ctx);
+	dp_priv->data_plane_ops->set_features(dp_priv->data_plane_ctx);
 
-	set_bit(__NSS_DP_UP, &dp_dev->flags);
+	set_bit(__NSS_DP_UP, &dp_priv->flags);
 	netif_start_queue(netdev);
 
 	/* TODO: Call soc_hal_ops to bring up GMAC */
 
-	if (dp_dev->data_plane_ops->mac_addr(dp_dev->data_plane_ctx,
+	if (dp_priv->data_plane_ops->mac_addr(dp_priv->data_plane_ctx,
 							netdev->dev_addr)) {
 		netdev_dbg(netdev, "Data plane set MAC address failed\n");
 		return -EAGAIN;
 	}
 
-	if (dp_dev->data_plane_ops->open(dp_dev->data_plane_ctx, 0, 0, 0)) {
+	if (dp_priv->data_plane_ops->open(dp_priv->data_plane_ctx, 0, 0, 0)) {
 		netdev_dbg(netdev, "Data plane open failed\n");
 		return -EAGAIN;
 	}
@@ -255,28 +267,34 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 /*
  * nss_dp_get_ethtool_stats()
  */
-void nss_dp_get_ethtool_stats(struct net_device *netdev,
-			      struct ethtool_stats *stats, uint64_t *data)
+static void nss_dp_get_ethtool_stats(struct net_device *netdev,
+				struct ethtool_stats *stats, uint64_t *data)
 {
-	/* TODO: call gmac_hal_ops->get_ethtools_stats(); */
+	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+
+	dp_priv->gmac_hal_ops->getethtoolstats(dp_priv->gmac_hal_ctx, data);
 }
 
 /*
  * nss_dp_get_strset_count()
  */
-int32_t nss_dp_get_strset_count(struct net_device *netdev, int32_t sset)
+static int32_t nss_dp_get_strset_count(struct net_device *netdev, int32_t sset)
 {
-	/* TODO: call gmac_hal_ops->get_strset_count(); */
-	return 0;
+	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+
+	return dp_priv->gmac_hal_ops->getssetcount(dp_priv->gmac_hal_ctx, sset);
 }
 
 /*
  * nss_dp_get_strings()
  */
-void nss_dp_get_strings(struct net_device *netdev, uint32_t stringset,
+static void nss_dp_get_strings(struct net_device *netdev, uint32_t stringset,
 			uint8_t *data)
 {
-	/* TODO: call gmac_hal_ops->get_strings(); */
+	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+
+	dp_priv->gmac_hal_ops->getstrings(dp_priv->gmac_hal_ctx, stringset,
+					  data);
 }
 
 /*
@@ -292,20 +310,21 @@ struct ethtool_ops nss_dp_ethtool_ops = {
  * nss_dp_of_get_pdata()
  */
 static int32_t nss_dp_of_get_pdata(struct device_node *np,
-				   struct net_device *netdev)
+				   struct net_device *netdev,
+				   struct gmac_hal_platform_data *hal_pdata)
 {
 	uint8_t *maddr;
-	struct nss_dp_dev *dp_dev;
+	struct nss_dp_dev *dp_priv;
+	struct resource memres_devtree = {0};
 
-	dp_dev = netdev_priv(netdev);
+	dp_priv = netdev_priv(netdev);
 
-	if (of_property_read_u32(np, "qcom,id", &dp_dev->macid)) {
-		pr_err("%s: error reading critical device node properties\n",
-						np->name);
+	if (of_property_read_u32(np, "qcom,id", &dp_priv->macid)) {
+		pr_err("%s: error reading id\n", np->name);
 		return -EFAULT;
 	}
 
-	dp_dev->phy_mii_type = of_get_phy_mode(np);
+	dp_priv->phy_mii_type = of_get_phy_mode(np);
 
 	/* TODO: Read IRQ...etc in */
 
@@ -314,9 +333,21 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 		ether_addr_copy(netdev->dev_addr, maddr);
 	} else {
 		random_ether_addr(netdev->dev_addr);
-		pr_info("GMAC%d(%p) Invalid MAC@ - using %pM\n", dp_dev->macid,
-						dp_dev, netdev->dev_addr);
+		pr_info("GMAC%d(%p) Invalid MAC@ - using %pM\n", dp_priv->macid,
+						dp_priv, netdev->dev_addr);
 	}
+
+	if (of_property_read_u32(np, "qcom,mactype", &hal_pdata->mactype)) {
+		pr_err("%s: error reading mactype\n", np->name);
+		return -EFAULT;
+	}
+
+	if (of_address_to_resource(np, 0, &memres_devtree) != 0)
+		return -EFAULT;
+
+	netdev->base_addr = memres_devtree.start;
+	hal_pdata->reg_len = resource_size(&memres_devtree);
+	hal_pdata->netdev = netdev;
 
 	return 0;
 }
@@ -327,8 +358,9 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 static int32_t nss_dp_probe(struct platform_device *pdev)
 {
 	struct net_device *netdev;
-	struct nss_dp_dev *dp_dev;
+	struct nss_dp_dev *dp_priv;
 	struct device_node *np = pdev->dev.of_node;
+	struct gmac_hal_platform_data gmac_hal_pdata;
 	int32_t ret = 0;
 
 	/* TODO: See if we need to do some SoC level common init */
@@ -339,31 +371,53 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	dp_dev = netdev_priv(netdev);
-	memset((void *)dp_dev, 0, sizeof(struct nss_dp_dev));
+	dp_priv = netdev_priv(netdev);
+	memset((void *)dp_priv, 0, sizeof(struct nss_dp_dev));
 
-	dp_dev->pdev = pdev;
-	dp_dev->netdev = netdev;
+	dp_priv->pdev = pdev;
+	dp_priv->netdev = netdev;
 	netdev->watchdog_timeo = 5 * HZ;
 	netdev->netdev_ops = &nss_dp_netdev_ops;
 	netdev->ethtool_ops = &nss_dp_ethtool_ops;
 
 	/* Use EDMA data plane as default */
-	dp_dev->data_plane_ops = &nss_dp_edma_ops;
-	dp_dev->data_plane_ctx = (void *)netdev;
+	dp_priv->data_plane_ops = &nss_dp_edma_ops;
+	dp_priv->data_plane_ctx = (void *)netdev;
 
-	ret = nss_dp_of_get_pdata(np, netdev);
+	ret = nss_dp_of_get_pdata(np, netdev, &gmac_hal_pdata);
 	if (ret != 0) {
 		free_netdev(netdev);
 		return ret;
 	}
 
-	dp_dev->ctx = &ctx;
-	ctx.nss_dp[dp_dev->macid] = dp_dev;
+	dp_priv->ctx = &dp_global_ctx;
+	dp_global_ctx.nss_dp[dp_priv->macid] = dp_priv;
 
 	/* TODO:locks init */
 
-	/* TODO: Call soc_hal_ops->init() to init individual GMACs */
+	/*
+	 * HAL's init function will return the pointer to the HAL context
+	 * (private to hal), which dp will store in its data structures.
+	 * The subsequent hal_ops calls expect the DP to pass the HAL
+	 * context pointer as an argument
+	 */
+	if (gmac_hal_pdata.mactype == GMAC_HAL_TYPE_QCOM)
+		dp_priv->gmac_hal_ops = &qcom_hal_ops;
+
+	if (!dp_priv->gmac_hal_ops) {
+		netdev_dbg(netdev, "Unsupported Mac type:%d for %s\n",
+				gmac_hal_pdata.mactype, netdev->name);
+		dp_global_ctx.nss_dp[dp_priv->macid] = NULL;
+		free_netdev(netdev);
+		return -EFAULT;
+	}
+
+	dp_priv->gmac_hal_ctx = dp_priv->gmac_hal_ops->init(&gmac_hal_pdata);
+	if (!(dp_priv->gmac_hal_ctx)) {
+		dp_global_ctx.nss_dp[dp_priv->macid] = NULL;
+		free_netdev(netdev);
+		return -EFAULT;
+	}
 
 	/* TODO: PHY related work */
 
@@ -374,14 +428,16 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	if (ret) {
 		netdev_dbg(netdev, "Error registering netdevice %s\n",
 								netdev->name);
+		dp_global_ctx.nss_dp[dp_priv->macid] = NULL;
+		dp_priv->gmac_hal_ops->exit(dp_priv->gmac_hal_ctx);
 		free_netdev(netdev);
 		return ret;
 	}
 
-	/* TODO: set ethtools */
-
-	netdev_dbg(netdev, "Initialized NSS DP GMAC%d interface %s: (base = 0x%lx, irq = %d)\n",
-		   dp_dev->macid, netdev->name, netdev->base_addr, netdev->irq);
+	netdev_dbg(netdev, "Init NSS DP GMAC%d interface %s: (base = 0x%lx)\n",
+			dp_priv->macid,
+			netdev->name,
+			netdev->base_addr);
 
 	return 0;
 }
@@ -393,17 +449,20 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 static int nss_dp_remove(struct platform_device *pdev)
 {
 	uint32_t i;
-	struct nss_dp_dev *dp_dev;
+	struct nss_dp_dev *dp_priv;
+	struct nss_gmac_hal_ops *hal_ops;
 
 	for (i = 0; i < NSS_DP_MAX_PHY_PORTS; i++) {
-		dp_dev = ctx.nss_dp[i];
-		if (dp_dev) {
-			/* TODO: Remove PHY */
-			unregister_netdev(dp_dev->netdev);
-			free_netdev(dp_dev->netdev);
-			/* TODO: soc_hal_ops->remove() */
-			ctx.nss_dp[i] = NULL;
-		}
+		dp_priv = dp_global_ctx.nss_dp[i];
+		if (!dp_priv)
+			continue;
+
+		hal_ops = dp_priv->gmac_hal_ops;
+		/* TODO: Remove PHY */
+		unregister_netdev(dp_priv->netdev);
+		hal_ops->exit(dp_priv->gmac_hal_ctx);
+		free_netdev(dp_priv->netdev);
+		dp_global_ctx.nss_dp[i] = NULL;
 	}
 
 	return 0;
@@ -432,10 +491,6 @@ int __init nss_dp_init(void)
 {
 	int ret;
 
-	pr_info("**********************************************************\n");
-	pr_info("* NSS Data Plane driver\n");
-	pr_info("**********************************************************\n");
-
 	/*
 	 * Bail out on not supported platform
 	 * TODO: Handle this properly with SoC ops
@@ -447,11 +502,16 @@ int __init nss_dp_init(void)
 	 * Do the provisioning here, this is for bring up purpose, it should be
 	 * done by SSDK
 	 */
+	/* TODO: Remove the function in future */
 	rumi_test_init();
 
 	ret = platform_driver_register(&nss_dp_drv);
 	if (ret)
 		pr_info("NSS DP platform drv register failed\n");
+
+	pr_info("**********************************************************\n");
+	pr_info("* NSS Data Plane driver\n");
+	pr_info("**********************************************************\n");
 
 	return ret;
 }
