@@ -413,6 +413,8 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	 */
 	if (gmac_hal_pdata.mactype == GMAC_HAL_TYPE_QCOM)
 		dp_priv->gmac_hal_ops = &qcom_hal_ops;
+	else if (gmac_hal_pdata.mactype == GMAC_HAL_TYPE_10G)
+		dp_priv->gmac_hal_ops = &syn_hal_ops;
 
 	if (!dp_priv->gmac_hal_ops) {
 		netdev_dbg(netdev, "Unsupported Mac type:%d for %s\n",

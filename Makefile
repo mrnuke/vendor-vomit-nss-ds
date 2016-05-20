@@ -12,6 +12,7 @@ qca-nss-dp-objs += edma_data_plane.o \
 		   rumi_test.o
 
 qca-nss-dp-objs += gmac_hal_ops/qcom/qcom_if.o
+qca-nss-dp-objs += gmac_hal_ops/syn/syn_if.o
 
 NSS_DP_INCLUDE = -I$(obj)/include -I$(obj)/exports -I$(obj)/gmac_hal_ops/include
 

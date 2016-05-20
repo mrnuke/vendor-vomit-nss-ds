@@ -93,6 +93,7 @@ struct nss_gmac_hal_ops {
 };
 
 extern struct nss_gmac_hal_ops qcom_hal_ops;
+extern struct nss_gmac_hal_ops syn_hal_ops;
 
 /**********************************************************
  * Common functions
