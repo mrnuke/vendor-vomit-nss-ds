@@ -396,6 +396,12 @@ int __init nss_dp_init(void)
 	pr_info("* NSS Data Plane driver\n");
 	pr_info("**********************************************************\n");
 
+	/*
+	 * Do the provisioning here, this is for bring up purpose, it should be
+	 * done by SSDK
+	 */
+	rumi_test_init();
+
 	ret = platform_driver_register(&nss_dp_drv);
 	if (ret)
 		pr_info("NSS DP platform drv register failed\n");
