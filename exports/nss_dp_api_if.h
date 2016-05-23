@@ -46,4 +46,36 @@ struct nss_dp_data_plane_ops {
 	int (*pause_on_off)(void *ctx, uint32_t pause_on);
 };
 
+/*
+ * nss_dp_receive()
+ */
+void nss_dp_receive(struct net_device *netdev, struct sk_buff *skb,
+						struct napi_struct *napi);
+
+/*
+ * nss_dp_is_in_open_state()
+ */
+bool nss_dp_is_in_open_state(struct net_device *netdev);
+
+/*
+ * nss_dp_override_data_palne()
+ */
+int nss_dp_override_data_plane(struct net_device *netdev,
+			       struct nss_dp_data_plane_ops *dp_ops, void *ctx);
+
+/*
+ * nss_dp_start_data_plane()
+ */
+void nss_dp_start_data_plane(struct net_device *netdev, void *ctx);
+
+/*
+ * nss_dp_restore_data_plane()
+ */
+void nss_dp_restore_data_plane(struct net_device *netdev);
+
+/*
+ * nss_dp_get_netdev_by_macid()
+ */
+struct net_device *nss_dp_get_netdev_by_macid(int macid);
+
 #endif	/* __DP_API_IF_H */

@@ -35,7 +35,7 @@ struct nss_dp_global_ctx;
  */
 struct nss_dp_dev {
 	uint32_t macid;			/* Sequence# of Mac on the platform */
-	uint32_t flags;			/* status flags */
+	uint32_t flags;			/* Status flags */
 	uint32_t drv_flags;		/* Driver specific feature flags */
 
 	/* Phy related stuff */
@@ -64,7 +64,18 @@ struct nss_dp_global_ctx {
 	bool common_init_done;		/* Flag to hold common init state */
 };
 
+/* Global data */
 extern struct nss_dp_global_ctx ctx;
+
+/*
+ * nss data plane status
+ */
+enum nss_dp_state {
+	__NSS_DP_UP,		/* set to indicate the interface is UP	*/
+	__NSS_DP_RXCSUM,	/* Rx checksum enabled			*/
+	__NSS_DP_AUTONEG,	/* Autonegotiation Enabled		*/
+	__NSS_DP_LINKPOLL,	/* Poll link status			*/
+};
 
 /*
  * nss data plane private flags

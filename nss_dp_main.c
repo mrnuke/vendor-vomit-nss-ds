@@ -184,6 +184,8 @@ static int nss_dp_close(struct net_device *netdev)
 		return -EAGAIN;
 	}
 
+	clear_bit(__NSS_DP_UP, &dp_dev->flags);
+
 	return 0;
 }
 
@@ -214,6 +216,7 @@ static int nss_dp_open(struct net_device *netdev)
 	 */
 	dp_dev->data_plane_ops->set_features(dp_dev->data_plane_ctx);
 
+	set_bit(__NSS_DP_UP, &dp_dev->flags);
 	netif_start_queue(netdev);
 
 	/* TODO: Call soc_hal_ops to bring up GMAC */
