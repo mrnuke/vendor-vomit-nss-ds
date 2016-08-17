@@ -253,6 +253,42 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 };
 
 /*
+ * nss_dp_get_ethtool_stats()
+ */
+void nss_dp_get_ethtool_stats(struct net_device *netdev,
+			      struct ethtool_stats *stats, uint64_t *data)
+{
+	/* TODO: call gmac_hal_ops->get_ethtools_stats(); */
+}
+
+/*
+ * nss_dp_get_strset_count()
+ */
+int32_t nss_dp_get_strset_count(struct net_device *netdev, int32_t sset)
+{
+	/* TODO: call gmac_hal_ops->get_strset_count(); */
+	return 0;
+}
+
+/*
+ * nss_dp_get_strings()
+ */
+void nss_dp_get_strings(struct net_device *netdev, uint32_t stringset,
+			uint8_t *data)
+{
+	/* TODO: call gmac_hal_ops->get_strings(); */
+}
+
+/*
+ * Ethtool operations
+ */
+struct ethtool_ops nss_dp_ethtool_ops = {
+	.get_strings = &nss_dp_get_strings,
+	.get_sset_count = &nss_dp_get_strset_count,
+	.get_ethtool_stats = &nss_dp_get_ethtool_stats,
+};
+
+/*
  * nss_dp_of_get_pdata()
  */
 static int32_t nss_dp_of_get_pdata(struct device_node *np,
@@ -310,6 +346,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	dp_dev->netdev = netdev;
 	netdev->watchdog_timeo = 5 * HZ;
 	netdev->netdev_ops = &nss_dp_netdev_ops;
+	netdev->ethtool_ops = &nss_dp_ethtool_ops;
 
 	/* Use EDMA data plane as default */
 	dp_dev->data_plane_ops = &nss_dp_edma_ops;
