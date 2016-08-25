@@ -468,6 +468,5 @@ module_init(nss_dp_init);
 module_exit(nss_dp_exit);
 
 MODULE_AUTHOR("Qualcomm Atheros");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("Dual BSD/GPL");
 MODULE_DESCRIPTION("NSS Data Plane Network Driver");
-
