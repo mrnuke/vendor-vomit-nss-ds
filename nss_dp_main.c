@@ -239,6 +239,12 @@ static int nss_dp_open(struct net_device *netdev)
 		return -EAGAIN;
 	}
 
+	if (dp_priv->data_plane_ops->change_mtu(dp_priv->data_plane_ctx,
+							netdev->mtu)) {
+		netdev_dbg(netdev, "Data plane change mtu failed\n");
+		return -EAGAIN;
+	}
+
 	if (dp_priv->data_plane_ops->open(dp_priv->data_plane_ctx, 0, 0, 0)) {
 		netdev_dbg(netdev, "Data plane open failed\n");
 		return -EAGAIN;
@@ -527,6 +533,5 @@ void __exit nss_dp_exit(void)
 module_init(nss_dp_init);
 module_exit(nss_dp_exit);
 
-MODULE_AUTHOR("Qualcomm Atheros");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_DESCRIPTION("NSS Data Plane Network Driver");
