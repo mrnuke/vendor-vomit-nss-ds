@@ -147,8 +147,14 @@ EXPORT_SYMBOL(nss_dp_restore_data_plane);
  */
 struct net_device *nss_dp_get_netdev_by_macid(int macid)
 {
-	struct nss_dp_dev *dp_dev = dp_global_ctx.nss_dp[macid];
+	struct nss_dp_dev *dp_dev;
 
+	if (macid > NSS_DP_MAX_PHY_PORTS || macid <= 0) {
+		pr_err("%s: invalid macid %d\n", macid);
+		return NULL;
+	}
+
+	dp_dev = dp_global_ctx.nss_dp[macid - 1];
 	if (!dp_dev)
 		return NULL;
 	return dp_dev->netdev;

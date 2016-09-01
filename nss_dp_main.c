@@ -330,6 +330,11 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 		return -EFAULT;
 	}
 
+	if (dp_priv->macid > NSS_DP_MAX_PHY_PORTS || !dp_priv->macid) {
+		pr_err("%s: invalid macid %d\n", dp_priv->macid);
+		return -EFAULT;
+	}
+
 	dp_priv->phy_mii_type = of_get_phy_mode(np);
 
 	/* TODO: Read IRQ...etc in */
@@ -397,7 +402,6 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	}
 
 	dp_priv->ctx = &dp_global_ctx;
-	dp_global_ctx.nss_dp[dp_priv->macid] = dp_priv;
 
 	/* TODO:locks init */
 
@@ -413,14 +417,12 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	if (!dp_priv->gmac_hal_ops) {
 		netdev_dbg(netdev, "Unsupported Mac type:%d for %s\n",
 				gmac_hal_pdata.mactype, netdev->name);
-		dp_global_ctx.nss_dp[dp_priv->macid] = NULL;
 		free_netdev(netdev);
 		return -EFAULT;
 	}
 
 	dp_priv->gmac_hal_ctx = dp_priv->gmac_hal_ops->init(&gmac_hal_pdata);
 	if (!(dp_priv->gmac_hal_ctx)) {
-		dp_global_ctx.nss_dp[dp_priv->macid] = NULL;
 		free_netdev(netdev);
 		return -EFAULT;
 	}
@@ -434,11 +436,12 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	if (ret) {
 		netdev_dbg(netdev, "Error registering netdevice %s\n",
 								netdev->name);
-		dp_global_ctx.nss_dp[dp_priv->macid] = NULL;
 		dp_priv->gmac_hal_ops->exit(dp_priv->gmac_hal_ctx);
 		free_netdev(netdev);
 		return ret;
 	}
+
+	dp_global_ctx.nss_dp[dp_priv->macid - 1] = dp_priv;
 
 	netdev_dbg(netdev, "Init NSS DP GMAC%d interface %s: (base = 0x%lx)\n",
 			dp_priv->macid,
