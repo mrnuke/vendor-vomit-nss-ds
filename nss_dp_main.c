@@ -509,13 +509,6 @@ int __init nss_dp_init(void)
 	if (!of_machine_is_compatible("qcom,ipq807x"))
 		return 0;
 
-	/*
-	 * Do the provisioning here, this is for bring up purpose, it should be
-	 * done by SSDK
-	 */
-	/* TODO: Remove the function in future */
-	rumi_test_init();
-
 	ret = platform_driver_register(&nss_dp_drv);
 	if (ret)
 		pr_info("NSS DP platform drv register failed\n");

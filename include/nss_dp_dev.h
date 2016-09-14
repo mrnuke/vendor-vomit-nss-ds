@@ -90,6 +90,4 @@ enum nss_dp_priv_flags {
 #define NSS_DP_PRIV_FLAG(x)	(1 << __NSS_DP_PRIV_FLAG_ ## x)
 
 extern struct nss_dp_data_plane_ops nss_dp_edma_ops;
-
-void rumi_test_init(void);
 #endif	/* __NSS_DP_DEV_H__ */
