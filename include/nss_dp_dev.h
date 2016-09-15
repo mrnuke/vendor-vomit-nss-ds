@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -39,6 +39,7 @@ struct nss_dp_dev {
 	uint32_t macid;			/* Sequence# of Mac on the platform */
 	uint32_t flags;			/* Status flags */
 	uint32_t drv_flags;		/* Driver specific feature flags */
+	uint32_t vsi;			/* vsi number */
 
 	/* Phy related stuff */
 	struct phy_device *phydev;	/* Phy device */

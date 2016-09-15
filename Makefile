@@ -19,3 +19,7 @@ NSS_DP_INCLUDE = -I$(obj)/include -I$(obj)/exports -I$(obj)/gmac_hal_ops/include
 
 ccflags-y += $(NSS_DP_INCLUDE)
 #ccflags-y += -DRUMI_BRIDGED_FLOW
+
+ifeq ($(SoC), ipq807x)
+ccflags-y += -DNSS_DP_PPE_SUPPORT
+endif

@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -24,6 +24,9 @@
 #include <linux/of_platform.h>
 #include <linux/of_address.h>
 #include <linux/ethtool.h>
+#if defined(NSS_DP_PPE_SUPPORT)
+#include <ref/ref_vsi.h>
+#endif
 
 #include "nss_dp_dev.h"
 #include "edma.h"
@@ -182,6 +185,14 @@ static int nss_dp_close(struct net_device *netdev)
 
 	/* TODO: Stop phy related stuff */
 
+#if defined(NSS_DP_PPE_SUPPORT)
+	/* Notify data plane to unassign VSI */
+	if (dp_priv->data_plane_ops->vsi_unassign(dp_priv->dpc, dp_priv->vsi)) {
+		netdev_dbg(netdev, "Data plane vsi unassign failed\n");
+		return -EAGAIN;
+	}
+#endif
+
 	/* Notify data plane to close */
 	if (dp_priv->data_plane_ops->close(dp_priv->dpc)) {
 		netdev_dbg(netdev, "Data plane close failed\n");
@@ -229,7 +240,12 @@ static int nss_dp_open(struct net_device *netdev)
 	set_bit(__NSS_DP_UP, &dp_priv->flags);
 	netif_start_queue(netdev);
 
-	/* TODO: Call soc_hal_ops to bring up GMAC */
+#if defined(NSS_DP_PPE_SUPPORT)
+	if (dp_priv->data_plane_ops->vsi_assign(dp_priv->dpc, dp_priv->vsi)) {
+		netdev_dbg(netdev, "Data plane vsi assign failed\n");
+		return -EAGAIN;
+	}
+#endif
 
 	if (dp_priv->data_plane_ops->mac_addr(dp_priv->dpc, netdev->dev_addr)) {
 		netdev_dbg(netdev, "Data plane set MAC address failed\n");
@@ -369,6 +385,10 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct gmac_hal_platform_data gmac_hal_pdata;
 	int32_t ret = 0;
+#if defined(NSS_DP_PPE_SUPPORT)
+	uint32_t vsi_id;
+	fal_port_t port_id;
+#endif
 
 	/* TODO: See if we need to do some SoC level common init */
 
@@ -426,6 +446,18 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	}
 
 	/* TODO: PHY related work */
+
+#if defined(NSS_DP_PPE_SUPPORT)
+	/* Get port's default VSI */
+	port_id = dp_priv->macid;
+	if (ppe_port_vsi_get(0, port_id, &vsi_id)) {
+		netdev_dbg(netdev, "failed to get port's default VSI\n");
+		free_netdev(netdev);
+		return -EFAULT;
+	}
+
+	dp_priv->vsi = vsi_id;
+#endif
 
 	/* TODO: Features: CSUM, tx/rx offload... configure */
 
