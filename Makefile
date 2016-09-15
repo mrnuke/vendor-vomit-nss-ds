@@ -6,7 +6,9 @@ obj ?= .
 
 obj-m += qca-nss-dp.o
 
-qca-nss-dp-objs += edma_data_plane.o \
+qca-nss-dp-objs += edma/edma_cfg.o \
+		   edma/edma_data_plane.o \
+		   edma/edma_tx_rx.o \
 		   nss_dp_attach.o \
 		   nss_dp_main.o
 

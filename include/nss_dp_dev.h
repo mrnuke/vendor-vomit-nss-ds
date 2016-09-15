@@ -27,6 +27,7 @@
 #include "nss_dp_api_if.h"
 #include "nss_dp_hal_if.h"
 
+#define NSS_DP_START_PHY_PORT	1
 #define NSS_DP_MAX_PHY_PORTS	6
 
 struct nss_dp_global_ctx;

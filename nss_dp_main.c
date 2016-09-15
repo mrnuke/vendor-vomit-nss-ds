@@ -26,6 +26,7 @@
 #include <linux/ethtool.h>
 
 #include "nss_dp_dev.h"
+#include "edma.h"
 
 /* Global data */
 struct nss_dp_global_ctx dp_global_ctx;
@@ -453,7 +454,6 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	return 0;
 }
 
-
 /*
  * nss_dp_remove()
  */
@@ -508,6 +508,14 @@ int __init nss_dp_init(void)
 	 */
 	if (!of_machine_is_compatible("qcom,ipq807x"))
 		return 0;
+	/*
+	 * TODO Move this to soc_ops
+	 */
+	ret = edma_init();
+	if (ret) {
+		pr_info("EDMA init failed\n");
+		return -EFAULT;
+	}
 
 	ret = platform_driver_register(&nss_dp_drv);
 	if (ret)
@@ -525,6 +533,11 @@ int __init nss_dp_init(void)
  */
 void __exit nss_dp_exit(void)
 {
+
+	/*
+	 * TODO Move this to soc_ops
+	 */
+	edma_cleanup();
 	platform_driver_unregister(&nss_dp_drv);
 }
 
