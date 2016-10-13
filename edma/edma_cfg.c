@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -36,6 +36,7 @@ static void edma_cleanup_rxfill_ring_res(struct edma_hw *ehw,
 	struct edma_rxfill_desc *rxfill_desc;
 	uint32_t reg_data = 0;
 	struct edma_rx_preheader *rxph = NULL;
+	int store_idx;
 
 	/*
 	 * Read RXFILL ring producer index
@@ -68,9 +69,11 @@ static void edma_cleanup_rxfill_ring_res(struct edma_hw *ehw,
 					EDMA_RX_BUFF_SIZE, DMA_FROM_DEVICE);
 
 		/*
-		 * Get sk_buff from Rx preheader and free it
+		 * Get sk_buff and free it
 		 */
-		skb = (struct sk_buff *)rxph->opaque;
+		store_idx = rxph->opaque;
+		skb = ehw->rx_skb_store[store_idx];
+		ehw->rx_skb_store[store_idx] = NULL;
 		dev_kfree_skb_any(skb);
 		curr_idx++;
 	}
@@ -148,6 +151,7 @@ static void edma_cleanup_rxdesc_ring_res(struct edma_hw *ehw,
 	struct edma_rx_preheader *rxph = NULL;
 	uint16_t prod_idx = 0;
 	uint16_t cons_idx = 0;
+	int store_idx;
 
 	cons_idx = edma_reg_read(EDMA_REG_RXDESC_CONS_IDX(rxdesc_ring->id))
 					& EDMA_RXDESC_CONS_IDX_MASK;
@@ -166,8 +170,9 @@ static void edma_cleanup_rxdesc_ring_res(struct edma_hw *ehw,
 
 		dma_unmap_single(&pdev->dev, rxdesc_desc->buffer_addr,
 					EDMA_RX_BUFF_SIZE, DMA_FROM_DEVICE);
-
-		skb = (struct sk_buff *)rxph->opaque;
+		store_idx = rxph->opaque;
+		skb = ehw->rx_skb_store[store_idx];
+		ehw->rx_skb_store[store_idx] = NULL;
 		dev_kfree_skb_any(skb);
 
 		/*
@@ -246,8 +251,10 @@ static void edma_cleanup_txdesc_ring_res(struct edma_hw *ehw,
 	struct platform_device *pdev = ehw->pdev;
 	struct sk_buff *skb = NULL;
 	struct edma_txdesc_desc *txdesc = NULL;
-	uint16_t prod_idx, cons_idx, buf_len;
+	uint16_t prod_idx, cons_idx;
+	size_t buf_len;
 	uint32_t data;
+	int store_idx;
 
 	/*
 	 * Free any buffers assigned to any descriptors
@@ -260,12 +267,14 @@ static void edma_cleanup_txdesc_ring_res(struct edma_hw *ehw,
 
 	while (cons_idx != prod_idx) {
 		txdesc = EDMA_TXDESC_DESC(txdesc_ring, cons_idx);
-		skb = (struct sk_buff *)txdesc->buffer_addr;
+		store_idx = txdesc->buffer_addr;
+		skb = ehw->tx_skb_store[store_idx];
+		ehw->tx_skb_store[store_idx] = NULL;
 
 		buf_len = (txdesc->word1 & EDMA_TXDESC_DATA_LENGTH_MASK) >>
 				EDMA_TXDESC_DATA_LENGTH_SHIFT;
 
-		dma_unmap_single(&pdev->dev, skb->data,
+		dma_unmap_single(&pdev->dev, (dma_addr_t)skb->data,
 				buf_len + EDMA_TX_PREHDR_SIZE, DMA_TO_DEVICE);
 
 		dev_kfree_skb_any(skb);
@@ -739,6 +748,14 @@ static void edma_configure_rxfill_ring(struct edma_hw *ehw,
 static void edma_configure_rings(struct edma_hw *ehw)
 {
 	int i = 0;
+
+	/*
+	 * Initialize the store
+	 */
+	for (i = 0; i < EDMA_RING_SIZE; i++) {
+		ehw->tx_skb_store[i] = NULL;
+		ehw->rx_skb_store[i] = NULL;
+	}
 
 	/*
 	 * Configure TXDESC ring

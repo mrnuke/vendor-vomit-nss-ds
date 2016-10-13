@@ -150,12 +150,12 @@ static netdev_tx_t edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 	ntail = netdev->needed_tailroom;
 	if ((skb_headroom(skb) < nhead)
 		|| (skb_tailroom(skb) < ntail)) {
-		if (pskb_expand_head(skb, nhead, ntail, GFP_KERNEL)) {
+		if (pskb_expand_head(skb, nhead, ntail, GFP_ATOMIC)) {
 			netdev_dbg(netdev, "cannot expand skb:%p\n", skb);
-			return 0;
+			dev_kfree_skb_any(skb);
+			return NETDEV_TX_OK;
 		}
 	}
-
 	/*
 	 * Transmit the packet
 	 */
@@ -435,11 +435,10 @@ static int edma_register_netdevice(struct net_device *netdev, uint32_t macid)
 /*
  * edma_if_init()
  */
-static int edma_if_init(void *app_data)
+
+static int edma_if_init(struct nss_dp_data_plane_ctx *dpc)
 {
 
-	struct nss_dp_data_plane_ctx *dpc =
-		(struct nss_dp_data_plane_ctx *)app_data;
 	struct net_device *netdev = dpc->dev;
 	struct nss_dp_dev *dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
 	int ret = 0;
