@@ -30,20 +30,29 @@
 #define NSS_DP_FAILURE	-1
 
 /*
+ * data plane context base class
+ */
+struct nss_dp_data_plane_ctx {
+	struct net_device *dev;
+};
+
+/*
  * NSS data plane ops, default would be slowpath and can be overridden by
  * nss-drv
  */
 struct nss_dp_data_plane_ops {
-	int (*init)(void *ctx);
-	int (*open)(void *ctx, uint32_t tx_desc_ring, uint32_t rx_desc_ring,
-							uint32_t mode);
-	int (*close)(void *ctx);
-	int (*link_state)(void *ctx, uint32_t link_state);
-	int (*mac_addr)(void *ctx, uint8_t *addr);
-	int (*change_mtu)(void *ctx, uint32_t mtu);
-	int (*xmit)(void *ctx, struct sk_buff *os_buf);
-	void (*set_features)(void *ctx);
-	int (*pause_on_off)(void *ctx, uint32_t pause_on);
+	int (*init)(struct nss_dp_data_plane_ctx *dpc);
+	int (*open)(struct nss_dp_data_plane_ctx *dpc, uint32_t tx_desc_ring,
+		    uint32_t rx_desc_ring, uint32_t mode);
+	int (*close)(struct nss_dp_data_plane_ctx *dpc);
+	int (*link_state)(struct nss_dp_data_plane_ctx *dpc,
+			  uint32_t link_state);
+	int (*mac_addr)(struct nss_dp_data_plane_ctx *dpc, uint8_t *addr);
+	int (*change_mtu)(struct nss_dp_data_plane_ctx *dpc, uint32_t mtu);
+	int (*xmit)(struct nss_dp_data_plane_ctx *dpc, struct sk_buff *os_buf);
+	void (*set_features)(struct nss_dp_data_plane_ctx *dpc);
+	int (*pause_on_off)(struct nss_dp_data_plane_ctx *dpc,
+			    uint32_t pause_on);
 };
 
 /*
@@ -61,12 +70,14 @@ bool nss_dp_is_in_open_state(struct net_device *netdev);
  * nss_dp_override_data_palne()
  */
 int nss_dp_override_data_plane(struct net_device *netdev,
-			       struct nss_dp_data_plane_ops *dp_ops, void *ctx);
+			       struct nss_dp_data_plane_ops *dp_ops,
+			       struct nss_dp_data_plane_ctx *dpc);
 
 /*
  * nss_dp_start_data_plane()
  */
-void nss_dp_start_data_plane(struct net_device *netdev, void *ctx);
+void nss_dp_start_data_plane(struct net_device *netdev,
+			     struct nss_dp_data_plane_ctx *dpc);
 
 /*
  * nss_dp_restore_data_plane()

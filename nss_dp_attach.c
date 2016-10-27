@@ -69,7 +69,7 @@ EXPORT_SYMBOL(nss_dp_is_in_open_state);
  */
 int nss_dp_override_data_plane(struct net_device *netdev,
 				struct nss_dp_data_plane_ops *dp_ops,
-				void *ctx)
+				struct nss_dp_data_plane_ctx *dpc)
 {
 	struct nss_dp_dev *dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
 
@@ -90,7 +90,7 @@ int nss_dp_override_data_plane(struct net_device *netdev,
 	}
 
 	/* Recored the data_plane_ctx, data_plane_ops */
-	dp_dev->data_plane_ctx = ctx;
+	dp_dev->dpc = dpc;
 	dp_dev->data_plane_ops = dp_ops;
 
 	return NSS_DP_SUCCESS;
@@ -101,7 +101,8 @@ EXPORT_SYMBOL(nss_dp_override_data_plane);
  * nss_dp_start_data_plane()
  *	Data plane to inform netdev it is ready to start
  */
-void nss_dp_start_data_plane(struct net_device *netdev, void *ctx)
+void nss_dp_start_data_plane(struct net_device *netdev,
+			     struct nss_dp_data_plane_ctx *dpc)
 {
 	struct nss_dp_dev *dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
 
@@ -110,8 +111,8 @@ void nss_dp_start_data_plane(struct net_device *netdev, void *ctx)
 		return;
 	}
 
-	if (dp_dev->data_plane_ctx != ctx) {
-		netdev_dbg(netdev, "Cookie %p does not match, reject\n", ctx);
+	if (dp_dev->dpc != dpc) {
+		netdev_dbg(netdev, "Cookie %p does not match, reject\n", dpc);
 		return;
 	}
 
@@ -137,7 +138,7 @@ void nss_dp_restore_data_plane(struct net_device *netdev)
 	}
 
 	dp_dev->data_plane_ops = &nss_dp_edma_ops;
-	dp_dev->data_plane_ctx = (void *)netdev;
+	dp_dev->dpc = (struct nss_data_plane_ctx *)netdev;
 }
 EXPORT_SYMBOL(nss_dp_restore_data_plane);
 

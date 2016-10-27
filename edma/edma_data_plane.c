@@ -50,13 +50,11 @@ void edma_reg_write(uint32_t reg_off, uint32_t val)
  * nss_dp_edma_if_open()
  *	Do slow path data plane open
  */
-static int edma_if_open(void *app_data, uint32_t tx_desc_ring,
-					uint32_t rx_desc_ring,
-					uint32_t mode)
+static int edma_if_open(struct nss_dp_data_plane_ctx *dpc,
+			uint32_t tx_desc_ring, uint32_t rx_desc_ring,
+			uint32_t mode)
 {
-	struct net_device *netdev = (struct net_device *)app_data;
-
-	if (!netdev)
+	if (!dpc->dev)
 		return NSS_DP_FAILURE;
 
 	/*
@@ -73,10 +71,8 @@ static int edma_if_open(void *app_data, uint32_t tx_desc_ring,
  * edma_if_close()
  *	Do slow path data plane close
  */
-static int edma_if_close(void *app_data)
+static int edma_if_close(struct nss_dp_data_plane_ctx *dpc)
 {
-	struct net_device *netdev = (struct net_device *)app_data;
-
 	if (--edma_hw.active != 0)
 		return NSS_DP_SUCCESS;
 
@@ -90,7 +86,8 @@ static int edma_if_close(void *app_data)
 /*
  * edma_if_link_state()
  */
-static int edma_if_link_state(void *app_data, uint32_t link_state)
+static int edma_if_link_state(struct nss_dp_data_plane_ctx *dpc,
+			      uint32_t link_state)
 {
 	return NSS_DP_SUCCESS;
 }
@@ -98,7 +95,7 @@ static int edma_if_link_state(void *app_data, uint32_t link_state)
 /*
  * edma_if_mac_addr()
  */
-static int edma_if_mac_addr(void *app_data, uint8_t *addr)
+static int edma_if_mac_addr(struct nss_dp_data_plane_ctx *dpc, uint8_t *addr)
 {
 	return NSS_DP_SUCCESS;
 }
@@ -106,7 +103,7 @@ static int edma_if_mac_addr(void *app_data, uint8_t *addr)
 /*
  * edma_if_change_mtu()
  */
-static int edma_if_change_mtu(void *app_data, uint32_t mtu)
+static int edma_if_change_mtu(struct nss_dp_data_plane_ctx *dpc, uint32_t mtu)
 {
 	return NSS_DP_SUCCESS;
 }
@@ -115,9 +112,10 @@ static int edma_if_change_mtu(void *app_data, uint32_t mtu)
  * edma_if_xmit()
  *	Transmit a packet using EDMA
  */
-static netdev_tx_t edma_if_xmit(void *app_data, struct sk_buff *skb)
+static netdev_tx_t edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
+				struct sk_buff *skb)
 {
-	struct net_device *netdev = (struct net_device *)app_data;
+	struct net_device *netdev = dpc->dev;
 	int ret;
 	uint32_t tx_ring, skbq, nhead, ntail;
 
@@ -179,7 +177,7 @@ static netdev_tx_t edma_if_xmit(void *app_data, struct sk_buff *skb)
  * edma_if_set_features()
  *	Set the supported net_device features
  */
-static void edma_if_set_features(void *app_data)
+static void edma_if_set_features(struct nss_dp_data_plane_ctx *dpc)
 {
 	/*
 	 * TODO - add flags to support HIGHMEM/cksum offload VLAN
@@ -194,7 +192,8 @@ static void edma_if_set_features(void *app_data)
  *
  * No need to send a message if we defaulted to slow path.
  */
-static int edma_if_pause_on_off(void *app_data, uint32_t pause_on)
+static int edma_if_pause_on_off(struct nss_dp_data_plane_ctx *dpc,
+				uint32_t pause_on)
 {
 	return NSS_DP_SUCCESS;
 }

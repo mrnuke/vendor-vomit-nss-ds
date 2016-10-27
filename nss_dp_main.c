@@ -64,8 +64,7 @@ static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
 	/* Let the underlying data plane decide if the newmtu is applicable */
-	if (dp_priv->data_plane_ops->change_mtu(dp_priv->data_plane_ctx,
-								newmtu)) {
+	if (dp_priv->data_plane_ops->change_mtu(dp_priv->dpc, newmtu)) {
 		netdev_dbg(netdev, "Data plane change mtu failed\n");
 		return ret;
 	}
@@ -98,8 +97,7 @@ static int32_t nss_dp_set_mac_address(struct net_device *netdev, void *macaddr)
 	if (ret)
 		return ret;
 
-	if (dp_priv->data_plane_ops->mac_addr(dp_priv->data_plane_ctx,
-					      macaddr)) {
+	if (dp_priv->data_plane_ops->mac_addr(dp_priv->dpc, macaddr)) {
 		netdev_dbg(netdev, "Data plane set MAC address failed\n");
 		return -EAGAIN;
 	}
@@ -149,8 +147,7 @@ static netdev_tx_t nss_dp_xmit(struct sk_buff *skb, struct net_device *netdev)
 
 	netdev_dbg(netdev, "Tx packet, len %d\n", skb->len);
 
-	if (likely(!dp_priv->data_plane_ops->xmit(dp_priv->data_plane_ctx,
-						  skb)))
+	if (likely(!dp_priv->data_plane_ops->xmit(dp_priv->dpc, skb)))
 		return NETDEV_TX_OK;
 
 drop:
@@ -178,7 +175,7 @@ static int nss_dp_close(struct net_device *netdev)
 	dp_priv->gmac_hal_ops->stop(dp_priv->gmac_hal_ctx);
 
 	/* Notify data plane link is going down */
-	if (dp_priv->data_plane_ops->link_state(dp_priv->data_plane_ctx, 0)) {
+	if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 0)) {
 		netdev_dbg(netdev, "Data plane set link failed\n");
 		return -EAGAIN;
 	}
@@ -186,7 +183,7 @@ static int nss_dp_close(struct net_device *netdev)
 	/* TODO: Stop phy related stuff */
 
 	/* Notify data plane to close */
-	if (dp_priv->data_plane_ops->close(dp_priv->data_plane_ctx)) {
+	if (dp_priv->data_plane_ops->close(dp_priv->dpc)) {
 		netdev_dbg(netdev, "Data plane close failed\n");
 		return -EAGAIN;
 	}
@@ -217,7 +214,7 @@ static int nss_dp_open(struct net_device *netdev)
 	 * Call data plane init if it has not been done yet
 	 */
 	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE)))
-		if (dp_priv->data_plane_ops->init(dp_priv->data_plane_ctx)) {
+		if (dp_priv->data_plane_ops->init(dp_priv->dpc)) {
 			netdev_dbg(netdev, "Data plane init failed\n");
 			return -ENOMEM;
 		}
@@ -227,26 +224,24 @@ static int nss_dp_open(struct net_device *netdev)
 	 * checksum offloading and other features. Each data_plane is
 	 * responsible to maintain the feature set it supports
 	 */
-	dp_priv->data_plane_ops->set_features(dp_priv->data_plane_ctx);
+	dp_priv->data_plane_ops->set_features(dp_priv->dpc);
 
 	set_bit(__NSS_DP_UP, &dp_priv->flags);
 	netif_start_queue(netdev);
 
 	/* TODO: Call soc_hal_ops to bring up GMAC */
 
-	if (dp_priv->data_plane_ops->mac_addr(dp_priv->data_plane_ctx,
-							netdev->dev_addr)) {
+	if (dp_priv->data_plane_ops->mac_addr(dp_priv->dpc, netdev->dev_addr)) {
 		netdev_dbg(netdev, "Data plane set MAC address failed\n");
 		return -EAGAIN;
 	}
 
-	if (dp_priv->data_plane_ops->change_mtu(dp_priv->data_plane_ctx,
-							netdev->mtu)) {
+	if (dp_priv->data_plane_ops->change_mtu(dp_priv->dpc, netdev->mtu)) {
 		netdev_dbg(netdev, "Data plane change mtu failed\n");
 		return -EAGAIN;
 	}
 
-	if (dp_priv->data_plane_ops->open(dp_priv->data_plane_ctx, 0, 0, 0)) {
+	if (dp_priv->data_plane_ops->open(dp_priv->dpc, 0, 0, 0)) {
 		netdev_dbg(netdev, "Data plane open failed\n");
 		return -EAGAIN;
 	}
@@ -394,7 +389,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 
 	/* Use EDMA data plane as default */
 	dp_priv->data_plane_ops = &nss_dp_edma_ops;
-	dp_priv->data_plane_ctx = (void *)netdev;
+	dp_priv->dpc = (struct nss_data_plane_ctx *)netdev;
 
 	ret = nss_dp_of_get_pdata(np, netdev, &gmac_hal_pdata);
 	if (ret != 0) {

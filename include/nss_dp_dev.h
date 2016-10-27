@@ -50,7 +50,8 @@ struct nss_dp_dev {
 	struct napi_struct napi;
 	struct rtnl_link_stats64 stats;	/* statistics counters */
 
-	void *data_plane_ctx;		/* context when NSS owns GMACs */
+	struct nss_dp_data_plane_ctx *dpc;
+					/* context when NSS owns GMACs */
 	struct nss_dp_data_plane_ops *data_plane_ops;
 					/* ops for each data plane*/
 	struct nss_dp_global_ctx *ctx;	/* Global NSS DP context */
