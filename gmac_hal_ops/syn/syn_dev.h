@@ -141,8 +141,8 @@ static inline void syn_clear_mac_ctrl(
  */
 static inline void syn_rx_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, SYN_MAC_RX_CONFIG,
-			SYN_MAC_RX_ENABLE);
+	hal_set_reg_bits(nghd, SYN_MAC_RX_CONFIG, SYN_MAC_RX_ENABLE);
+	hal_set_reg_bits(nghd, SYN_MAC_PACKET_FILTER, SYN_MAC_RX_ENABLE);
 }
 
 /*
@@ -150,8 +150,7 @@ static inline void syn_rx_enable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_rx_disable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, SYN_MAC_RX_CONFIG,
-			SYN_MAC_RX_ENABLE);
+	hal_clear_reg_bits(nghd, SYN_MAC_RX_CONFIG, SYN_MAC_RX_ENABLE);
 }
 
 /*
@@ -159,8 +158,7 @@ static inline void syn_rx_disable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_tx_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, SYN_MAC_TX_CONFIG,
-			SYN_MAC_TX_ENABLE);
+	hal_set_reg_bits(nghd, SYN_MAC_TX_CONFIG, SYN_MAC_TX_ENABLE);
 }
 
 /*
