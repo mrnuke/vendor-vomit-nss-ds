@@ -200,89 +200,6 @@ static int edma_if_pause_on_off(void *app_data, uint32_t pause_on)
 }
 
 /*
- * edma_register_netdevice()
- *	Register netdevice with EDMA
- */
-static int edma_register_netdevice(struct net_device *netdev, uint32_t macid)
-{
-	if (!netdev) {
-		pr_info("nss_dp_edma: Invalid netdev pointer %p\n", netdev);
-		return -EINVAL;
-	}
-
-	if ((macid < EDMA_START_GMACS) || (macid > EDMA_MAX_GMACS)) {
-		netdev_dbg(netdev, "nss_dp_edma: Invalid macid(%d) for %s\n",
-			macid, netdev->name);
-		return -EINVAL;
-	}
-
-	netdev_info(netdev, "nss_dp_edma: Registering netdev %s(qcom-id:%d) with EDMA\n",
-		netdev->name, macid);
-
-	/*
-	 * We expect 'macid' to correspond to ports numbers on
-	 * IPQ807x. These begin from '1' and hence we subtract
-	 * one when using it as an array index.
-	 */
-	edma_hw.netdev_arr[macid - 1] = netdev;
-
-	/*
-	 * NAPI add
-	 */
-	if (!edma_hw.napi_added) {
-		netif_napi_add(netdev, &edma_hw.napi, edma_napi,
-				EDMA_NAPI_WORK);
-		edma_hw.napi_added = 1;
-	}
-
-	return 0;
-}
-
-/*
- * edma_if_init()
- */
-static int edma_if_init(void *app_data)
-{
-	struct net_device *netdev = (struct net_device *)app_data;
-	struct nss_dp_dev *dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
-	int ret = 0;
-
-	/*
-	 * Register the netdev
-	 */
-	ret = edma_register_netdevice(netdev, dp_dev->macid);
-	if (ret) {
-		netdev_dbg(netdev,
-				"Error registering netdevice with EDMA %s\n",
-				netdev->name);
-		return NSS_DP_FAILURE;
-	}
-
-	/*
-	 * Headroom needed for Tx preheader
-	 */
-	netdev->needed_headroom += EDMA_TX_PREHDR_SIZE;
-	dp_dev->drv_flags |= NSS_DP_PRIV_FLAG(INIT_DONE);
-
-	return NSS_DP_SUCCESS;
-}
-
-/*
- * nss_dp_edma_ops
- */
-struct nss_dp_data_plane_ops nss_dp_edma_ops = {
-	.init		= edma_if_init,
-	.open		= edma_if_open,
-	.close		= edma_if_close,
-	.link_state	= edma_if_link_state,
-	.mac_addr	= edma_if_mac_addr,
-	.change_mtu	= edma_if_change_mtu,
-	.xmit		= edma_if_xmit,
-	.set_features	= edma_if_set_features,
-	.pause_on_off	= edma_if_pause_on_off,
-};
-
-/*
  * edma_irq_init()
  *	Initialize interrupt handlers for the driver
  */
@@ -472,6 +389,95 @@ rx_fill_ring_intr_req_fail:
 }
 
 /*
+ * edma_register_netdevice()
+ *	Register netdevice with EDMA
+ */
+static int edma_register_netdevice(struct net_device *netdev, uint32_t macid)
+{
+	if (!netdev) {
+		pr_info("nss_dp_edma: Invalid netdev pointer %p\n", netdev);
+		return -EINVAL;
+	}
+
+	if ((macid < EDMA_START_GMACS) || (macid > EDMA_MAX_GMACS)) {
+		netdev_dbg(netdev, "nss_dp_edma: Invalid macid(%d) for %s\n",
+			macid, netdev->name);
+		return -EINVAL;
+	}
+
+	netdev_info(netdev, "nss_dp_edma: Registering netdev %s(qcom-id:%d) with EDMA\n",
+		netdev->name, macid);
+
+	/*
+	 * We expect 'macid' to correspond to ports numbers on
+	 * IPQ807x. These begin from '1' and hence we subtract
+	 * one when using it as an array index.
+	 */
+	edma_hw.netdev_arr[macid - 1] = netdev;
+
+	/*
+	 * NAPI add
+	 */
+	if (!edma_hw.napi_added) {
+		netif_napi_add(netdev, &edma_hw.napi, edma_napi,
+				EDMA_NAPI_WORK);
+		/*
+		 * Register the interrupt handlers and enable interrupts
+		 */
+		if (edma_irq_init() < 0)
+			return -EINVAL;
+
+		edma_hw.napi_added = 1;
+	}
+
+	return 0;
+}
+
+/*
+ * edma_if_init()
+ */
+static int edma_if_init(void *app_data)
+{
+	struct net_device *netdev = (struct net_device *)app_data;
+	struct nss_dp_dev *dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+	int ret = 0;
+
+	/*
+	 * Register the netdev
+	 */
+	ret = edma_register_netdevice(netdev, dp_dev->macid);
+	if (ret) {
+		netdev_dbg(netdev,
+				"Error registering netdevice with EDMA %s\n",
+				netdev->name);
+		return NSS_DP_FAILURE;
+	}
+
+	/*
+	 * Headroom needed for Tx preheader
+	 */
+	netdev->needed_headroom += EDMA_TX_PREHDR_SIZE;
+	dp_dev->drv_flags |= NSS_DP_PRIV_FLAG(INIT_DONE);
+
+	return NSS_DP_SUCCESS;
+}
+
+/*
+ * nss_dp_edma_ops
+ */
+struct nss_dp_data_plane_ops nss_dp_edma_ops = {
+	.init		= edma_if_init,
+	.open		= edma_if_open,
+	.close		= edma_if_close,
+	.link_state	= edma_if_link_state,
+	.mac_addr	= edma_if_mac_addr,
+	.change_mtu	= edma_if_change_mtu,
+	.xmit		= edma_if_xmit,
+	.set_features	= edma_if_set_features,
+	.pause_on_off	= edma_if_pause_on_off,
+};
+
+/*
  * edma_of_get_pdata()
  *	Read the device tree details for EDMA
  */
@@ -638,12 +644,6 @@ int edma_init(void)
 
 	platform_set_drvdata(edma_hw.pdev, (void *)&edma_hw);
 
-	if (edma_irq_init() < 0) {
-
-		ret = -EFAULT;
-		goto edma_init_hw_init_fail;
-	}
-
 	edma_hw.napi_added = 0;
 
 	return 0;
@@ -704,36 +704,46 @@ void edma_cleanup(void)
 	}
 
 	edma_reg_write(EDMA_REG_MISC_INT_MASK, EDMA_MASK_INT_CLEAR);
-
 	/*
-	 * Free IRQ for TXCMPL rings
+	 * Remove interrupt handlers and NAPI
 	 */
-	for (i = 0; i < edma_hw.txcmpl_rings; i++) {
-		synchronize_irq(edma_hw.txcmpl_intr[i]);
-		free_irq(edma_hw.txcmpl_intr[i], (void *)&(edma_hw.pdev)->dev);
+	if (edma_hw.napi_added) {
+
+		/*
+		 * Free IRQ for TXCMPL rings
+		 */
+		for (i = 0; i < edma_hw.txcmpl_rings; i++) {
+			synchronize_irq(edma_hw.txcmpl_intr[i]);
+			free_irq(edma_hw.txcmpl_intr[i],
+					(void *)&(edma_hw.pdev)->dev);
+		}
+
+		/*
+		 * Free IRQ for RXFILL rings
+		 */
+		for (i = 0; i < edma_hw.rxfill_rings; i++) {
+			synchronize_irq(edma_hw.rxfill_intr[i]);
+			free_irq(edma_hw.rxfill_intr[i],
+					(void *)&(edma_hw.pdev)->dev);
+		}
+
+		/*
+		 * Free IRQ for RXDESC rings
+		 */
+		for (i = 0; i < edma_hw.rxdesc_rings; i++) {
+			synchronize_irq(edma_hw.rxdesc_intr[i]);
+			free_irq(edma_hw.rxdesc_intr[i],
+					(void *)&(edma_hw.pdev)->dev);
+		}
+
+		/*
+		 * Free Misc IRQ
+		 */
+		synchronize_irq(edma_hw.misc_intr);
+		free_irq(edma_hw.misc_intr, (void *)&(edma_hw.pdev)->dev);
+
+		netif_napi_del(&edma_hw.napi);
 	}
-
-	/*
-	 * Free IRQ for RXFILL rings
-	 */
-	for (i = 0; i < edma_hw.rxfill_rings; i++) {
-		synchronize_irq(edma_hw.rxfill_intr[i]);
-		free_irq(edma_hw.rxfill_intr[i], (void *)&(edma_hw.pdev)->dev);
-	}
-
-	/*
-	 * Free IRQ for RXDESC rings
-	 */
-	for (i = 0; i < edma_hw.rxdesc_rings; i++) {
-		synchronize_irq(edma_hw.rxdesc_intr[i]);
-		free_irq(edma_hw.rxdesc_intr[i], (void *)&(edma_hw.pdev)->dev);
-	}
-
-	/*
-	 * Free Misc IRQ
-	 */
-	synchronize_irq(edma_hw.misc_intr);
-	free_irq(edma_hw.misc_intr, (void *)&(edma_hw.pdev)->dev);
 
 	/*
 	 * Disable EDMA
