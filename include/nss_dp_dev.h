@@ -67,6 +67,10 @@ struct nss_dp_dev {
 	struct nss_dp_global_ctx *ctx;	/* Global NSS DP context */
 	struct nss_gmac_hal_dev *gmac_hal_ctx;	/* context of gmac hal */
 	struct nss_gmac_hal_ops *gmac_hal_ops;	/* GMAC HAL OPS*/
+
+	/* switchdev related attributes */
+	u8 stp_state;			/* STP state of this physical port */
+	unsigned long brport_flags;	/* bridge port flags */
 };
 
 /*
@@ -74,7 +78,6 @@ struct nss_dp_dev {
  */
 struct nss_dp_global_ctx {
 	struct nss_dp_dev *nss_dp[NSS_DP_MAX_PHY_PORTS];
-	u32 ppe_base;			/* PPE base address */
 	bool common_init_done;		/* Flag to hold common init state */
 };
 
@@ -116,4 +119,10 @@ extern struct nss_dp_data_plane_ops nss_dp_edma_ops;
  * nss_dp_set_ethtool_ops()
  */
 void nss_dp_set_ethtool_ops(struct net_device *netdev);
+
+/*
+ * nss data plane switchdev helpers
+ */
+void nss_dp_switchdev_setup(struct net_device *dev);
+
 #endif	/* __NSS_DP_DEV_H__ */

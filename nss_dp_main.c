@@ -26,6 +26,7 @@
 #if defined(NSS_DP_PPE_SUPPORT)
 #include <ref/ref_vsi.h>
 #endif
+#include <net/switchdev.h>
 
 #include "nss_dp_dev.h"
 #include "edma.h"
@@ -288,14 +289,17 @@ static int nss_dp_open(struct net_device *netdev)
  * Netdevice operations
  */
 static const struct net_device_ops nss_dp_netdev_ops = {
-	.ndo_open = &nss_dp_open,
-	.ndo_stop = &nss_dp_close,
-	.ndo_start_xmit = &nss_dp_xmit,
-	.ndo_get_stats64 = &nss_dp_get_stats64,
-	.ndo_set_mac_address = &nss_dp_set_mac_address,
-	.ndo_validate_addr = &eth_validate_addr,
-	.ndo_change_mtu = &nss_dp_change_mtu,
-	.ndo_do_ioctl = &nss_dp_do_ioctl,
+	.ndo_open = nss_dp_open,
+	.ndo_stop = nss_dp_close,
+	.ndo_start_xmit = nss_dp_xmit,
+	.ndo_get_stats64 = nss_dp_get_stats64,
+	.ndo_set_mac_address = nss_dp_set_mac_address,
+	.ndo_validate_addr = eth_validate_addr,
+	.ndo_change_mtu = nss_dp_change_mtu,
+	.ndo_do_ioctl = nss_dp_do_ioctl,
+	.ndo_bridge_setlink = switchdev_port_bridge_setlink,
+	.ndo_bridge_getlink = switchdev_port_bridge_getlink,
+	.ndo_bridge_dellink = switchdev_port_bridge_dellink,
 };
 
 /*
@@ -459,6 +463,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	netdev->watchdog_timeo = 5 * HZ;
 	netdev->netdev_ops = &nss_dp_netdev_ops;
 	nss_dp_set_ethtool_ops(netdev);
+	nss_dp_switchdev_setup(netdev);
 
 	ret = nss_dp_of_get_pdata(np, netdev, &gmac_hal_pdata);
 	if (ret != 0) {
@@ -605,6 +610,7 @@ int __init nss_dp_init(void)
 	 */
 	if (!of_machine_is_compatible("qcom,ipq807x"))
 		return 0;
+
 	/*
 	 * TODO Move this to soc_ops
 	 */
