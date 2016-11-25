@@ -303,6 +303,27 @@ static void nss_dp_get_strings(struct net_device *netdev, uint32_t stringset,
 					  data);
 }
 
+/**
+ * nss_dp_get_settings()
+ */
+static int32_t nss_dp_get_settings(struct net_device *netdev,
+			      struct ethtool_cmd *ecmd)
+{
+	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+	uint32_t speed;
+
+	ecmd->mdio_support = 0;
+	ecmd->lp_advertising = 0;
+	ecmd->autoneg = AUTONEG_DISABLE;
+	speed = dp_priv->gmac_hal_ops->getspeed(dp_priv->gmac_hal_ctx);
+	ethtool_cmd_speed_set(ecmd, speed);
+	ecmd->duplex = dp_priv->gmac_hal_ops->getduplex(dp_priv->gmac_hal_ctx);
+	ecmd->port = PORT_TP;
+	ecmd->transceiver = XCVR_EXTERNAL;
+
+	return 0;
+}
+
 /*
  * Ethtool operations
  */
@@ -310,6 +331,8 @@ struct ethtool_ops nss_dp_ethtool_ops = {
 	.get_strings = &nss_dp_get_strings,
 	.get_sset_count = &nss_dp_get_strset_count,
 	.get_ethtool_stats = &nss_dp_get_ethtool_stats,
+	.get_link = &ethtool_op_get_link,
+	.get_settings = &nss_dp_get_settings,
 };
 
 /*

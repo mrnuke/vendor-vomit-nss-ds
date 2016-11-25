@@ -161,15 +161,31 @@ static void syn_set_max_frame_size(struct nss_gmac_hal_dev *nghd,
 				data);
 	}
 }
+
 /*
  * syn_set_mac_speed()
  */
-static void syn_set_mac_speed(struct nss_gmac_hal_dev *nghd,
+static int32_t syn_set_mac_speed(struct nss_gmac_hal_dev *nghd,
 				   uint32_t mac_speed)
 {
 	uint32_t val;
+	uint32_t speed;
 
 	BUG_ON(nghd == NULL);
+
+	switch (mac_speed) {
+	case SPEED_10000:
+		speed = SYN_MAC_SPEED_10G;
+		break;
+	case SPEED_2500:
+		speed = SYN_MAC_SPEED_2_5G;
+		break;
+	case SPEED_1000:
+		speed = SYN_MAC_SPEED_1G;
+		break;
+	default:
+		return -1;
+	}
 
 	/* TODO: Disable GMACn Tx/Rx clk */
 	/* TODO: set clock divider */
@@ -179,10 +195,59 @@ static void syn_set_mac_speed(struct nss_gmac_hal_dev *nghd,
 	val = hal_read_reg(nghd->mac_base, SYN_MAC_TX_CONFIG);
 	val = val &
 		(~(SYN_MAC_SPEED_BITMASK << SYN_MAC_SPEED_BITPOS));
-	val |= mac_speed;
+	val |= (speed << SYN_MAC_SPEED_BITPOS);
 	hal_write_reg(nghd->mac_base, SYN_MAC_TX_CONFIG, val);
+
+	return 0;
 }
 
+/*
+ * syn_get_mac_speed()
+ */
+static uint32_t syn_get_mac_speed(struct nss_gmac_hal_dev *nghd)
+{
+	uint32_t val;
+	uint32_t speed;
+
+	BUG_ON(nghd == NULL);
+
+	/* get speed */
+	val = hal_read_reg(nghd->mac_base, SYN_MAC_TX_CONFIG);
+	speed = val & (SYN_MAC_SPEED_BITMASK << SYN_MAC_SPEED_BITPOS);
+	speed = speed >> SYN_MAC_SPEED_BITPOS;
+
+	switch (speed) {
+	case SYN_MAC_SPEED_10G:
+		return SPEED_10000;
+	case SYN_MAC_SPEED_2_5G:
+		return SPEED_2500;
+	}
+
+	return SPEED_1000;
+}
+
+/*
+ * syn_set_duplex_mode()
+ */
+static void syn_set_duplex_mode(struct nss_gmac_hal_dev *nghd,
+				uint8_t duplex_mode)
+{
+	struct net_device *netdev = nghd->netdev;
+
+	if (duplex_mode == DUPLEX_HALF)
+		netdev_dbg(netdev, "Synopsis GMAC works in Full Duplex mode only.\n");
+}
+
+/*
+ * syn_get_duplex_mode()
+ */
+static uint8_t syn_get_duplex_mode(struct nss_gmac_hal_dev *nghd)
+{
+	/*
+	 * Synopsis GMAC works in Full Duplex mode only.
+	 */
+	return DUPLEX_FULL;
+}
 
 /*
  * syn_get_netdev_stats()
@@ -328,7 +393,9 @@ static int32_t syn_start(struct nss_gmac_hal_dev *nghd)
 	syn_tx_enable(nghd);
 	syn_rx_enable(nghd);
 	syn_set_full_duplex(nghd);
-	syn_set_mac_speed(nghd, SYN_MAC_SPEED_1G);
+	if (syn_set_mac_speed(nghd, SPEED_10000))
+		return -1;
+
 	syn_set_mmc_stats(nghd);
 
 	netdev_dbg(nghd->netdev,
@@ -461,6 +528,9 @@ struct nss_gmac_hal_ops syn_hal_ops = {
 	.rxflowcontrol = &syn_rx_flow_control,
 	.txflowcontrol = &syn_tx_flow_control,
 	.setspeed = &syn_set_mac_speed,
+	.getspeed = &syn_get_mac_speed,
+	.setduplex = &syn_set_duplex_mode,
+	.getduplex = &syn_get_duplex_mode,
 	.getstats = &syn_get_mmc_stats,
 	.setmaxframe = &syn_set_max_frame_size,
 	.getmaxframe = &syn_get_max_frame_size,

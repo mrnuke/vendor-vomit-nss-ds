@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -78,8 +78,10 @@ struct nss_gmac_hal_ops {
 	void (*txcsumoffload)(struct nss_gmac_hal_dev *, bool enabled);
 	void (*rxflowcontrol)(struct nss_gmac_hal_dev *, bool enabled);
 	void (*txflowcontrol)(struct nss_gmac_hal_dev *, bool enabled);
-	void (*setspeed)(struct nss_gmac_hal_dev *, uint32_t);
+	int32_t (*setspeed)(struct nss_gmac_hal_dev *, uint32_t);
+	uint32_t (*getspeed)(struct nss_gmac_hal_dev *);
 	void (*setduplex)(struct nss_gmac_hal_dev *, uint8_t);
+	uint8_t (*getduplex)(struct nss_gmac_hal_dev *);
 	void (*getstats)(struct nss_gmac_hal_dev *);
 	void (*setmaxframe)(struct nss_gmac_hal_dev *, uint32_t);
 	uint32_t (*getmaxframe)(struct nss_gmac_hal_dev *);

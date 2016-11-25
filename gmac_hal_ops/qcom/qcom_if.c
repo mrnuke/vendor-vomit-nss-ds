@@ -99,15 +99,51 @@ static const char * const qcom_strings_priv_flags[] = {
 /*
  * qcom_set_mac_speed()
  */
-static void qcom_set_mac_speed(struct nss_gmac_hal_dev *nghd,
+static int32_t qcom_set_mac_speed(struct nss_gmac_hal_dev *nghd,
 				uint32_t mac_speed)
 {
 	/* TODO: Disable GMACn Tx/Rx clk */
 	/* TODO: set clock divider */
 	/* TODO: Enable GMACn Tx/Rx clk */
 
+	uint32_t speed;
+
+	switch (mac_speed) {
+	case SPEED_1000:
+		speed = QCOM_MAC_SPEED_1000;
+		break;
+	case SPEED_100:
+		speed = QCOM_MAC_SPEED_100;
+		break;
+	case SPEED_10:
+		speed = QCOM_MAC_SPEED_10;
+		break;
+	default:
+		return -1;
+	}
+
 	/* Set speed */
-	hal_write_reg(nghd->mac_base, QCOM_MAC_SPEED, mac_speed);
+	hal_write_reg(nghd->mac_base, QCOM_MAC_SPEED, speed);
+
+	return 0;
+}
+
+/*
+ * qcom_get_mac_speed()
+ */
+static uint32_t qcom_get_mac_speed(struct nss_gmac_hal_dev *nghd)
+{
+	uint32_t speed;
+
+	/* Get speed */
+	speed = hal_read_reg(nghd->mac_base, QCOM_MAC_SPEED);
+
+	if (speed == QCOM_MAC_SPEED_100)
+		return SPEED_100;
+	else if (speed == QCOM_MAC_SPEED_10)
+		return SPEED_10;
+
+	return SPEED_1000;
 }
 
 /*
@@ -131,6 +167,17 @@ static void qcom_set_duplex_mode(struct nss_gmac_hal_dev *nghd,
 		netdev_dbg(netdev, "%s: Invalid duplex mode %d\n", __func__,
 								duplex_mode);
 	}
+}
+
+/*
+ * qcom_get_duplex_mode()
+ */
+static uint8_t qcom_get_duplex_mode(struct nss_gmac_hal_dev *nghd)
+{
+	if (hal_check_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_DUPLEX))
+		return DUPLEX_FULL;
+
+	return DUPLEX_HALF;
 }
 
 /*
@@ -330,7 +377,10 @@ static int32_t qcom_start(struct nss_gmac_hal_dev *nghd)
 	qcom_set_full_duplex(nghd);
 
 	/* TODO: Read speed from dts */
-	qcom_set_mac_speed(nghd, QCOM_MAC_SPEED_1000);
+
+	if (qcom_set_mac_speed(nghd, SPEED_1000))
+		return -1;
+
 	qcom_set_mib_ctrl(nghd, QCOM_MIB_ENABLE | QCOM_MIB_RD_CLR);
 
 	qcom_tx_enable(nghd);
@@ -456,7 +506,9 @@ struct nss_gmac_hal_ops qcom_hal_ops = {
 	.rxflowcontrol = &qcom_rx_flow_control,
 	.txflowcontrol = &qcom_tx_flow_control,
 	.setspeed = &qcom_set_mac_speed,
+	.getspeed = &qcom_get_mac_speed,
 	.setduplex = &qcom_set_duplex_mode,
+	.getduplex = &qcom_get_duplex_mode,
 	.getstats = &qcom_get_mib_stats,
 	.setmaxframe = &qcom_set_maxframe,
 	.getmaxframe = &qcom_get_maxframe,
