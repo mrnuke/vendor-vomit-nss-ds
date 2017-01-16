@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -213,11 +213,14 @@ static int nss_dp_open(struct net_device *netdev)
 	/*
 	 * Call data plane init if it has not been done yet
 	 */
-	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE)))
+	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE))) {
 		if (dp_priv->data_plane_ops->init(dp_priv->dpc)) {
 			netdev_dbg(netdev, "Data plane init failed\n");
 			return -ENOMEM;
 		}
+
+		dp_priv->drv_flags |= NSS_DP_PRIV_FLAG(INIT_DONE);
+	}
 
 	/*
 	 * Inform the Linux Networking stack about the hardwar capability of
