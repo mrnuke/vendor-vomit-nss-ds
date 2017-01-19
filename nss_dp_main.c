@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -30,6 +30,7 @@
 
 /* Global data */
 struct nss_dp_global_ctx dp_global_ctx;
+struct nss_dp_data_plane_ctx dp_global_data_plane_ctx[NSS_DP_MAX_PHY_PORTS];
 
 /*
  * nss_dp_do_ioctl()
@@ -439,6 +440,8 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	dp_priv->dpc = &dp_global_data_plane_ctx[dp_priv->macid-1];
+	dp_priv->dpc->dev = netdev;
 	dp_global_ctx.nss_dp[dp_priv->macid - 1] = dp_priv;
 
 	netdev_dbg(netdev, "Init NSS DP GMAC%d interface %s: (base = 0x%lx)\n",
