@@ -613,7 +613,7 @@ int edma_init(void)
 	 */
 	if (edma_of_get_pdata(&res_edma) < 0) {
 		pr_warn("Unable to get EDMA DTS data.\n");
-		return -EINVAL;
+		return 0;
 	}
 
 	/*
