@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -745,7 +745,7 @@ static void qcom_get_rx_stats(struct nss_gmac_hal_dev *nghd)
 	struct qcom_hal_dev *qhd = (struct qcom_hal_dev *)nghd;
 	struct qcom_stats *stats = &(qhd->stats);
 
-	qcom_get_stat(nghd, &stats->rx_broadcast, QCOM_TXBROAD);
+	qcom_get_stat(nghd, &stats->rx_broadcast, QCOM_RXBROAD);
 	qcom_get_stat(nghd, &stats->rx_multicast, QCOM_RXMULTI);
 	qcom_get_stat(nghd, &stats->rx_unicast, QCOM_RXUNI);
 	qcom_get_stat(nghd, &stats->rx_pause, QCOM_RXPAUSE);

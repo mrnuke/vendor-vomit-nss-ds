@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -202,9 +202,9 @@ static void syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
 	syn_get_tx_stats(nghd);
 
 	stats->rx_packets = hal_stats->rx_unicast_ctr
-		+ hal_stats->rx_broadcast_ctr;
+		+ hal_stats->rx_broadcast_ctr + hal_stats->rx_multicast_ctr;
 	stats->tx_packets = hal_stats->tx_unicast_ctr
-		+ hal_stats->tx_broadcast_ctr;
+		+ hal_stats->tx_broadcast_ctr + hal_stats->tx_multicast_ctr;
 	stats->rx_bytes = hal_stats->rx_bytes_ctr;
 	stats->tx_bytes = hal_stats->tx_bytes_ctr;
 	stats->multicast =

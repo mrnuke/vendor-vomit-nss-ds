@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -208,8 +208,10 @@ static void qcom_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
 
 	qcom_get_mib_stats(nghd);
 
-	stats->rx_packets = hal_stats->rx_unicast + hal_stats->rx_broadcast;
-	stats->tx_packets = hal_stats->tx_unicast + hal_stats->tx_broadcast;
+	stats->rx_packets = hal_stats->rx_unicast + hal_stats->rx_broadcast
+				+ hal_stats->rx_multicast;
+	stats->tx_packets = hal_stats->tx_unicast + hal_stats->tx_broadcast
+				+ hal_stats->tx_multicast;
 	stats->rx_bytes = (hal_stats->rx_pktgoodbyte_h << 32) |
 			   hal_stats->rx_pktgoodbyte_l;
 	stats->tx_bytes = (hal_stats->tx_pktbyte_h << 32) |
