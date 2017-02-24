@@ -37,9 +37,9 @@ struct nss_dp_global_ctx;
  */
 struct nss_dp_dev {
 	uint32_t macid;			/* Sequence# of Mac on the platform */
-	uint32_t flags;			/* Status flags */
-	uint32_t drv_flags;		/* Driver specific feature flags */
 	uint32_t vsi;			/* vsi number */
+	unsigned long flags;		/* Status flags */
+	unsigned long drv_flags;	/* Driver specific feature flags */
 
 	/* Phy related stuff */
 	struct phy_device *phydev;	/* Phy device */
@@ -71,6 +71,7 @@ struct nss_dp_global_ctx {
 
 /* Global data */
 extern struct nss_dp_global_ctx dp_global_ctx;
+extern struct nss_dp_data_plane_ctx dp_global_data_plane_ctx[NSS_DP_MAX_PHY_PORTS];
 
 /*
  * nss data plane status

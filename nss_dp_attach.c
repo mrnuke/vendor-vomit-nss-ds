@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -138,7 +138,7 @@ void nss_dp_restore_data_plane(struct net_device *netdev)
 	}
 
 	dp_dev->data_plane_ops = &nss_dp_edma_ops;
-	dp_dev->dpc = (struct nss_data_plane_ctx *)netdev;
+	dp_dev->dpc = &dp_global_data_plane_ctx[dp_dev->macid-1];
 }
 EXPORT_SYMBOL(nss_dp_restore_data_plane);
 
@@ -151,7 +151,7 @@ struct net_device *nss_dp_get_netdev_by_macid(int macid)
 	struct nss_dp_dev *dp_dev;
 
 	if (macid > NSS_DP_MAX_PHY_PORTS || macid <= 0) {
-		pr_err("%s: invalid macid %d\n", macid);
+		pr_err("Invalid macid %d\n", macid);
 		return NULL;
 	}
 

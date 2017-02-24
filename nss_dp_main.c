@@ -370,7 +370,7 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 	}
 
 	if (dp_priv->macid > NSS_DP_MAX_PHY_PORTS || !dp_priv->macid) {
-		pr_err("%s: invalid macid %d\n", dp_priv->macid);
+		pr_err("%s: invalid macid %d\n", np->name, dp_priv->macid);
 		return -EFAULT;
 	}
 
@@ -434,16 +434,16 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	netdev->netdev_ops = &nss_dp_netdev_ops;
 	netdev->ethtool_ops = &nss_dp_ethtool_ops;
 
-	/* Use EDMA data plane as default */
-	dp_priv->data_plane_ops = &nss_dp_edma_ops;
-	dp_priv->dpc = (struct nss_data_plane_ctx *)netdev;
-
 	ret = nss_dp_of_get_pdata(np, netdev, &gmac_hal_pdata);
 	if (ret != 0) {
 		free_netdev(netdev);
 		return ret;
 	}
 
+	/* Use EDMA data plane as default */
+	dp_priv->data_plane_ops = &nss_dp_edma_ops;
+	dp_priv->dpc = &dp_global_data_plane_ctx[dp_priv->macid-1];
+	dp_priv->dpc->dev = netdev;
 	dp_priv->ctx = &dp_global_ctx;
 
 	/* TODO:locks init */
@@ -498,8 +498,6 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	dp_priv->dpc = &dp_global_data_plane_ctx[dp_priv->macid-1];
-	dp_priv->dpc->dev = netdev;
 	dp_global_ctx.nss_dp[dp_priv->macid - 1] = dp_priv;
 
 	netdev_dbg(netdev, "Init NSS DP GMAC%d interface %s: (base = 0x%lx)\n",
