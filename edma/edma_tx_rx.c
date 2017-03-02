@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -35,8 +35,8 @@ int edma_alloc_rx_buffer(struct edma_hw *ehw,
 	uint16_t cons, next, counter;
 	struct edma_rxfill_desc *rxfill_desc;
 	uint32_t reg_data = 0;
+	uint32_t store_index = 0;
 	struct edma_rx_preheader *rxph = NULL;
-	uint32_t opaque_val;
 
 	/*
 	 * Read RXFILL ring producer index
@@ -77,15 +77,15 @@ int edma_alloc_rx_buffer(struct edma_hw *ehw,
 			skb_push(skb, EDMA_RX_PREHDR_SIZE);
 
 		/*
-		 * Save skb address in Rx preheader
+		 * Store the skb in the rx store
 		 */
-
-		/*
-		 * TODO 64 bit OS compatibility
-		 */
-		opaque_val = cpu_to_le32(skb);
-		memcpy((uint8_t *)&rxph->opaque, (uint8_t *)&opaque_val, 4);
-
+		store_index = next;
+		if (ehw->rx_skb_store[store_index] != NULL) {
+			dev_kfree_skb_any(skb);
+			break;
+		}
+		ehw->rx_skb_store[store_index] = skb;
+		memcpy((uint8_t *)&rxph->opaque, (uint8_t *)&store_index, 4);
 		/*
 		 * Save buffer size in RXFILL descriptor
 		 */
@@ -103,6 +103,7 @@ int edma_alloc_rx_buffer(struct edma_hw *ehw,
 
 		if (!rxfill_desc->buffer_addr) {
 			dev_kfree_skb_any(skb);
+			ehw->rx_skb_store[store_index] = NULL;
 			break;
 		}
 
@@ -144,6 +145,8 @@ uint32_t edma_clean_tx(struct edma_hw *ehw,
 	uint32_t txcmpl_consumed = 0;
 	struct sk_buff *skb;
 	uint32_t len;
+	int store_index;
+	dma_addr_t daddr;
 
 	/*
 	 * Get TXCMPL ring producer index
@@ -160,7 +163,16 @@ uint32_t edma_clean_tx(struct edma_hw *ehw,
 	while (cons_idx != prod_idx) {
 		txcmpl = &(((struct edma_txcmpl_desc *)
 					(txcmpl_ring->desc))[cons_idx]);
-		skb = (struct sk_buff *)txcmpl->buffer_addr;
+
+		/*
+		 * skb for this is stored in tx store and
+		 * tx header contains the index in the field
+		 * buffer address (opaque) of txcmpl
+		 */
+		store_index = txcmpl->buffer_addr;
+		skb = ehw->tx_skb_store[store_index];
+		ehw->tx_skb_store[store_index] = NULL;
+
 		if (unlikely(!skb)) {
 			pr_warn("Invalid skb: cons_idx:%u prod_idx:%u status %x\n",
 				  cons_idx, prod_idx, txcmpl->status);
@@ -168,7 +180,7 @@ uint32_t edma_clean_tx(struct edma_hw *ehw,
 		}
 
 		len = skb_headlen(skb);
-		dma_addr_t daddr = (dma_addr_t)virt_to_phys(skb->data);
+		daddr = (dma_addr_t)virt_to_phys(skb->data);
 
 		pr_debug("skb:%p cons_idx:%d prod_idx:%d word1:0x%x\n",
 			   skb, cons_idx, prod_idx, txcmpl->status);
@@ -217,6 +229,7 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 	int pkt_length = 0;
 	uint16_t cons_idx = 0;
 	uint32_t work_done = 0;
+	int store_index;
 
 	/*
 	 * Read Rx ring consumer index
@@ -253,11 +266,14 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 				 rxdesc_desc->buffer_addr,
 				 EDMA_RX_BUFF_SIZE,
 				 DMA_FROM_DEVICE);
-		/*
-		 * TODO 64 bit enablement
-		 * Get sk_buff from Rx preheader
-		 */
-		skb = (struct sk_buff *)rxph->opaque;
+		store_index = rxph->opaque;
+		skb = ehw->rx_skb_store[store_index];
+		ehw->rx_skb_store[store_index] = NULL;
+		if (unlikely(!skb)) {
+			pr_warn("WARN: empty skb reference in rx_store:%d\n",
+					cons_idx);
+			goto next_rx_desc;
+		}
 
 		/*
 		 * Check src_info from Rx preheader
@@ -449,6 +465,7 @@ enum edma_tx edma_ring_xmit(struct edma_hw *ehw,
 	uint16_t buf_len = skb_headlen(skb);
 	uint16_t hw_next_to_use, hw_next_to_clean, chk_idx;
 	uint32_t data;
+	uint32_t store_index = 0;
 	struct edma_tx_preheader *txph = NULL;
 
 	/*
@@ -495,12 +512,16 @@ enum edma_tx edma_ring_xmit(struct edma_hw *ehw,
 			(dp_dev->macid & 0x0fff);
 
 	/*
-	 * Set opaque field in preheader
+	 * Store the skb in tx_store
 	 */
-	/*
-	 * TODO - 64 bit support
-	 */
-	memcpy(skb->data, (uint8_t *)&skb, 4);
+	store_index = hw_next_to_use;
+	if (unlikely(ehw->tx_skb_store[store_index] != NULL)) {
+		spin_unlock_bh(&txdesc_ring->tx_lock);
+		return EDMA_TX_DESC;
+	}
+
+	ehw->tx_skb_store[store_index] = skb;
+	memcpy(skb->data, &store_index, 4);
 
 	/*
 	 * Get Tx descriptor
@@ -522,6 +543,7 @@ enum edma_tx edma_ring_xmit(struct edma_hw *ehw,
 		 */
 		dev_kfree_skb_any(skb);
 
+		ehw->tx_skb_store[store_index] = NULL;
 		spin_unlock_bh(&txdesc_ring->tx_lock);
 		return EDMA_TX_OK;
 	}

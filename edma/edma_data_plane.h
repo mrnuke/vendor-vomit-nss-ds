@@ -30,6 +30,7 @@
 #define EDMA_NAPI_WORK			100
 #define EDMA_START_GMACS		NSS_DP_START_PHY_PORT
 #define EDMA_MAX_GMACS			NSS_DP_MAX_PHY_PORTS
+#define EDMA_TX_PKT_MIN_SIZE		33
 
 #define EDMA_MAX_TXCMPL_RINGS		8	/* Max TxCmpl rings */
 #define EDMA_MAX_RXDESC_RINGS		16	/* Max RxDesc rings */
@@ -195,6 +196,12 @@ struct edma_hw {
 	struct dentry *txdesc_dentry;
 	struct dentry *txcmpl_dentry;
 	struct dentry *rxdesc_dentry;
+
+	/*
+	 * Store for tx and rx skbs
+	 */
+	struct sk_buff *rx_skb_store[EDMA_RING_SIZE];
+	struct sk_buff *tx_skb_store[EDMA_RING_SIZE];
 
 	struct edma_rxfill_ring *rxfill_ring;
 			/* Rx Fill Ring, SW is producer */
