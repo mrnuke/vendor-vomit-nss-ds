@@ -184,7 +184,9 @@ static int nss_dp_close(struct net_device *netdev)
 		return -EAGAIN;
 	}
 
-	/* TODO: Stop phy related stuff */
+	if (!IS_ERR(dp_priv->phydev))
+		phy_stop(dp_priv->phydev);
+	dp_priv->link_state = __NSS_DP_LINK_DOWN;
 
 #if defined(NSS_DP_PPE_SUPPORT)
 	/* Notify data plane to unassign VSI */
@@ -242,7 +244,6 @@ static int nss_dp_open(struct net_device *netdev)
 	dp_priv->data_plane_ops->set_features(dp_priv->dpc);
 
 	set_bit(__NSS_DP_UP, &dp_priv->flags);
-	netif_start_queue(netdev);
 
 #if defined(NSS_DP_PPE_SUPPORT)
 	if (dp_priv->data_plane_ops->vsi_assign(dp_priv->dpc, dp_priv->vsi)) {
@@ -266,14 +267,21 @@ static int nss_dp_open(struct net_device *netdev)
 		return -EAGAIN;
 	}
 
-	/* Notify data plane link is up */
-	if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 1)) {
-		netdev_dbg(netdev, "Data plane set link failed\n");
-		return -EAGAIN;
-	}
-
 	netif_start_queue(netdev);
-	netif_carrier_on(netdev);
+
+	if (!dp_priv->link_poll) {
+		/* Notify data plane link is up */
+		if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 1)) {
+			netdev_dbg(netdev, "Data plane set link failed\n");
+			return -EAGAIN;
+		}
+		dp_priv->link_state = __NSS_DP_LINK_UP;
+		netif_carrier_on(netdev);
+	} else {
+		dp_priv->link_state = __NSS_DP_LINK_DOWN;
+		phy_start(dp_priv->phydev);
+		phy_start_aneg(dp_priv->phydev);
+	}
 
 	return 0;
 }
@@ -325,7 +333,7 @@ static void nss_dp_get_strings(struct net_device *netdev, uint32_t stringset,
 					  data);
 }
 
-/**
+/*
  * nss_dp_get_settings()
  */
 static int32_t nss_dp_get_settings(struct net_device *netdev,
@@ -380,19 +388,6 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 		return -EFAULT;
 	}
 
-	dp_priv->phy_mii_type = of_get_phy_mode(np);
-
-	/* TODO: Read IRQ...etc in */
-
-	maddr = (uint8_t *)of_get_mac_address(np);
-	if (maddr && is_valid_ether_addr(maddr)) {
-		ether_addr_copy(netdev->dev_addr, maddr);
-	} else {
-		random_ether_addr(netdev->dev_addr);
-		pr_info("GMAC%d(%p) Invalid MAC@ - using %pM\n", dp_priv->macid,
-						dp_priv, netdev->dev_addr);
-	}
-
 	if (of_property_read_u32(np, "qcom,mactype", &hal_pdata->mactype)) {
 		pr_err("%s: error reading mactype\n", np->name);
 		return -EFAULT;
@@ -405,7 +400,97 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 	hal_pdata->reg_len = resource_size(&memres_devtree);
 	hal_pdata->netdev = netdev;
 
+	dp_priv->phy_mii_type = of_get_phy_mode(np);
+	dp_priv->link_poll = of_property_read_bool(np, "qcom,link-poll");
+	if (of_property_read_u32(np, "qcom,phy-mdio-addr",
+		&dp_priv->phy_mdio_addr) && dp_priv->link_poll) {
+		pr_err("%s: mdio addr required if link polling is enabled\n",
+				np->name);
+		return -EFAULT;
+	}
+
+	of_property_read_u32(np, "qcom,forced-speed", &dp_priv->forced_speed);
+	of_property_read_u32(np, "qcom,forced-duplex", &dp_priv->forced_duplex);
+
+	maddr = (uint8_t *)of_get_mac_address(np);
+	if (maddr && is_valid_ether_addr(maddr)) {
+		ether_addr_copy(netdev->dev_addr, maddr);
+	} else {
+		random_ether_addr(netdev->dev_addr);
+		pr_info("GMAC%d(%p) Invalid MAC@ - using %pM\n", dp_priv->macid,
+						dp_priv, netdev->dev_addr);
+	}
+
 	return 0;
+}
+
+/*
+ * nss_dp_mdio_attach()
+ */
+static struct mii_bus *nss_dp_mdio_attach(struct platform_device *pdev)
+{
+	struct device_node *mdio_node;
+	struct platform_device *mdio_plat;
+	struct mii_bus *miibus;
+
+	mdio_node = of_find_compatible_node(NULL, NULL, "qcom,ipq807x-mdio");
+	if (!mdio_node) {
+		dev_err(&pdev->dev, "cannot find mdio node by phandle\n");
+		return NULL;
+	}
+
+	mdio_plat = of_find_device_by_node(mdio_node);
+	if (!mdio_plat) {
+		dev_err(&pdev->dev, "cannot find platform device from mdio node\n");
+		of_node_put(mdio_node);
+		return NULL;
+	}
+
+	miibus = dev_get_drvdata(&mdio_plat->dev);
+	if (!miibus) {
+		dev_err(&pdev->dev, "cannot get mii bus reference from device data\n");
+		of_node_put(mdio_node);
+		return NULL;
+	}
+
+	return miibus;
+}
+
+/*
+ * nss_dp_adjust_link()
+ */
+void nss_dp_adjust_link(struct net_device *netdev)
+{
+	struct nss_dp_dev *dp_priv = netdev_priv(netdev);
+	int current_state = dp_priv->link_state;
+
+	if (!test_bit(__NSS_DP_UP, &dp_priv->flags))
+		return;
+
+	if (dp_priv->phydev->link && (current_state == __NSS_DP_LINK_UP))
+		return;
+
+	if (!dp_priv->phydev->link && (current_state == __NSS_DP_LINK_DOWN))
+		return;
+
+	if (current_state == __NSS_DP_LINK_DOWN) {
+		netdev_dbg(netdev, "PHY Link up speed: %d\n",
+						dp_priv->phydev->speed);
+		if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 1)) {
+			netdev_dbg(netdev, "Data plane set link up failed\n");
+			return;
+		}
+		dp_priv->link_state = __NSS_DP_LINK_UP;
+		netif_carrier_on(netdev);
+	} else {
+		netdev_dbg(netdev, "PHY Link is down\n");
+		if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 0)) {
+			netdev_dbg(netdev, "Data plane set link down failed\n");
+			return;
+		}
+		dp_priv->link_state = __NSS_DP_LINK_DOWN;
+		netif_carrier_off(netdev);
+	}
 }
 
 /*
@@ -418,6 +503,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct gmac_hal_platform_data gmac_hal_pdata;
 	int32_t ret = 0;
+	uint8_t phy_id[MII_BUS_ID_SIZE + 3];
 #if defined(NSS_DP_PPE_SUPPORT)
 	uint32_t vsi_id;
 	fal_port_t port_id;
@@ -442,8 +528,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 
 	ret = nss_dp_of_get_pdata(np, netdev, &gmac_hal_pdata);
 	if (ret != 0) {
-		free_netdev(netdev);
-		return ret;
+		goto fail;
 	}
 
 	/* Use EDMA data plane as default */
@@ -466,27 +551,40 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		dp_priv->gmac_hal_ops = &syn_hal_ops;
 
 	if (!dp_priv->gmac_hal_ops) {
-		netdev_dbg(netdev, "Unsupported Mac type:%d for %s\n",
-				gmac_hal_pdata.mactype, netdev->name);
-		free_netdev(netdev);
-		return -EFAULT;
+		netdev_dbg(netdev, "Unsupported Mac type: %d\n",
+					gmac_hal_pdata.mactype);
+		goto fail;
 	}
 
 	dp_priv->gmac_hal_ctx = dp_priv->gmac_hal_ops->init(&gmac_hal_pdata);
 	if (!(dp_priv->gmac_hal_ctx)) {
-		free_netdev(netdev);
-		return -EFAULT;
+		netdev_dbg(netdev, "gmac hal init failed\n");
+		goto fail;
 	}
 
-	/* TODO: PHY related work */
+	if (dp_priv->link_poll) {
+		dp_priv->miibus = nss_dp_mdio_attach(pdev);
+		if (!dp_priv->miibus) {
+			netdev_dbg(netdev, "failed to find miibus\n");
+			goto fail;
+		}
+		snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT,
+			 dp_priv->miibus->id, dp_priv->phy_mdio_addr);
+		dp_priv->phydev = phy_connect(netdev, phy_id,
+					      &nss_dp_adjust_link,
+					      dp_priv->phy_mii_type);
+		if (!dp_priv->phydev) {
+			netdev_dbg(netdev, "failed to connect to phy device\n");
+			goto fail;
+		}
+	}
 
 #if defined(NSS_DP_PPE_SUPPORT)
 	/* Get port's default VSI */
 	port_id = dp_priv->macid;
 	if (ppe_port_vsi_get(0, port_id, &vsi_id)) {
 		netdev_dbg(netdev, "failed to get port's default VSI\n");
-		free_netdev(netdev);
-		return -EFAULT;
+		goto fail;
 	}
 
 	dp_priv->vsi = vsi_id;
@@ -500,18 +598,19 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		netdev_dbg(netdev, "Error registering netdevice %s\n",
 								netdev->name);
 		dp_priv->gmac_hal_ops->exit(dp_priv->gmac_hal_ctx);
-		free_netdev(netdev);
-		return ret;
+		goto fail;
 	}
 
 	dp_global_ctx.nss_dp[dp_priv->macid - 1] = dp_priv;
 
-	netdev_dbg(netdev, "Init NSS DP GMAC%d interface %s: (base = 0x%lx)\n",
-			dp_priv->macid,
-			netdev->name,
-			netdev->base_addr);
+	netdev_dbg(netdev, "Init NSS DP GMAC%d (base = 0x%lx)\n",
+				dp_priv->macid, netdev->base_addr);
 
 	return 0;
+
+fail:
+	free_netdev(netdev);
+	return -EFAULT;
 }
 
 /*
@@ -529,7 +628,8 @@ static int nss_dp_remove(struct platform_device *pdev)
 			continue;
 
 		hal_ops = dp_priv->gmac_hal_ops;
-		/* TODO: Remove PHY */
+		if (dp_priv->phydev)
+			phy_disconnect(dp_priv->phydev);
 		unregister_netdev(dp_priv->netdev);
 		hal_ops->exit(dp_priv->gmac_hal_ctx);
 		free_netdev(dp_priv->netdev);

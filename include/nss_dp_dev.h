@@ -43,7 +43,13 @@ struct nss_dp_dev {
 
 	/* Phy related stuff */
 	struct phy_device *phydev;	/* Phy device */
+	struct mii_bus *miibus;		/* MII bus */
 	uint32_t phy_mii_type;		/* RGMII/SGMII/QSGMII */
+	uint32_t phy_mdio_addr;		/* Mdio address */
+	bool link_poll;			/* Link polling enable? */
+	uint32_t forced_speed;		/* Forced speed? */
+	uint32_t forced_duplex;		/* Forced duplex? */
+	uint32_t link_state;		/* Current link state */
 
 	struct net_device *netdev;
 	struct platform_device *pdev;
@@ -72,6 +78,14 @@ struct nss_dp_global_ctx {
 /* Global data */
 extern struct nss_dp_global_ctx dp_global_ctx;
 extern struct nss_dp_data_plane_ctx dp_global_data_plane_ctx[NSS_DP_MAX_PHY_PORTS];
+
+/*
+ * nss data plane link state
+ */
+enum nss_dp_link_state {
+	__NSS_DP_LINK_UP,	/* Indicate link is UP */
+	__NSS_DP_LINK_DOWN	/* Indicate link is down */
+};
 
 /*
  * nss data plane status
