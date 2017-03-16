@@ -23,7 +23,6 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/of_address.h>
-#include <linux/ethtool.h>
 #if defined(NSS_DP_PPE_SUPPORT)
 #include <ref/ref_vsi.h>
 #endif
@@ -301,71 +300,6 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 };
 
 /*
- * nss_dp_get_ethtool_stats()
- */
-static void nss_dp_get_ethtool_stats(struct net_device *netdev,
-				struct ethtool_stats *stats, uint64_t *data)
-{
-	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-
-	dp_priv->gmac_hal_ops->getethtoolstats(dp_priv->gmac_hal_ctx, data);
-}
-
-/*
- * nss_dp_get_strset_count()
- */
-static int32_t nss_dp_get_strset_count(struct net_device *netdev, int32_t sset)
-{
-	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-
-	return dp_priv->gmac_hal_ops->getssetcount(dp_priv->gmac_hal_ctx, sset);
-}
-
-/*
- * nss_dp_get_strings()
- */
-static void nss_dp_get_strings(struct net_device *netdev, uint32_t stringset,
-			uint8_t *data)
-{
-	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-
-	dp_priv->gmac_hal_ops->getstrings(dp_priv->gmac_hal_ctx, stringset,
-					  data);
-}
-
-/*
- * nss_dp_get_settings()
- */
-static int32_t nss_dp_get_settings(struct net_device *netdev,
-			      struct ethtool_cmd *ecmd)
-{
-	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-	uint32_t speed;
-
-	ecmd->mdio_support = 0;
-	ecmd->lp_advertising = 0;
-	ecmd->autoneg = AUTONEG_DISABLE;
-	speed = dp_priv->gmac_hal_ops->getspeed(dp_priv->gmac_hal_ctx);
-	ethtool_cmd_speed_set(ecmd, speed);
-	ecmd->duplex = dp_priv->gmac_hal_ops->getduplex(dp_priv->gmac_hal_ctx);
-	ecmd->port = PORT_TP;
-	ecmd->transceiver = XCVR_EXTERNAL;
-
-	return 0;
-}
-
-/*
- * Ethtool operations
- */
-struct ethtool_ops nss_dp_ethtool_ops = {
-	.get_strings = &nss_dp_get_strings,
-	.get_sset_count = &nss_dp_get_strset_count,
-	.get_ethtool_stats = &nss_dp_get_ethtool_stats,
-	.get_link = &ethtool_op_get_link,
-	.get_settings = &nss_dp_get_settings,
-};
-
-/*
  * nss_dp_of_get_pdata()
  */
 static int32_t nss_dp_of_get_pdata(struct device_node *np,
@@ -457,6 +391,46 @@ static struct mii_bus *nss_dp_mdio_attach(struct platform_device *pdev)
 }
 
 /*
+ * nss_dp_config_flow_control()
+ */
+void nss_dp_config_flow_control(struct net_device *netdev)
+{
+	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+	struct nss_gmac_hal_dev *ghd = dp_priv->gmac_hal_ctx;
+
+	/* Disable TX/RX flow control */
+	dp_priv->gmac_hal_ops->rxflowcontrol(ghd, false);
+	dp_priv->gmac_hal_ops->txflowcontrol(ghd, false);
+
+	if (!dp_priv->pause)
+		return;
+
+	if (dp_priv->phydev->lp_advertising & LPA_PAUSE_CAP) {
+		netdev_dbg(netdev, "Link partner supports Tx/Rx flow control\n");
+
+		if (dp_priv->pause & FLOW_CTRL_RX)
+			dp_priv->gmac_hal_ops->rxflowcontrol(ghd, true);
+
+		if (dp_priv->pause & FLOW_CTRL_TX)
+			dp_priv->gmac_hal_ops->txflowcontrol(ghd, true);
+
+		return;
+	}
+
+	if (dp_priv->phydev->lp_advertising & LPA_PAUSE_ASYM) {
+		netdev_dbg(netdev, "Link partner supports Tx flow control\n");
+
+		if (dp_priv->pause & FLOW_CTRL_TX)
+			dp_priv->gmac_hal_ops->txflowcontrol(ghd, true);
+
+		return;
+	}
+
+	/* link partner does not support Tx/Rx flow control */
+	netdev_dbg(netdev, "Link partner does not support Tx/Rx flow control\n");
+}
+
+/*
  * nss_dp_adjust_link()
  */
 void nss_dp_adjust_link(struct net_device *netdev)
@@ -482,6 +456,7 @@ void nss_dp_adjust_link(struct net_device *netdev)
 		}
 		dp_priv->link_state = __NSS_DP_LINK_UP;
 		netif_carrier_on(netdev);
+		nss_dp_config_flow_control(netdev);
 	} else {
 		netdev_dbg(netdev, "PHY Link is down\n");
 		if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 0)) {
@@ -524,7 +499,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	dp_priv->netdev = netdev;
 	netdev->watchdog_timeo = 5 * HZ;
 	netdev->netdev_ops = &nss_dp_netdev_ops;
-	netdev->ethtool_ops = &nss_dp_ethtool_ops;
+	nss_dp_set_ethtool_ops(netdev);
 
 	ret = nss_dp_of_get_pdata(np, netdev, &gmac_hal_pdata);
 	if (ret != 0) {

@@ -50,6 +50,7 @@ struct nss_dp_dev {
 	uint32_t forced_speed;		/* Forced speed? */
 	uint32_t forced_duplex;		/* Forced duplex? */
 	uint32_t link_state;		/* Current link state */
+	uint32_t pause;			/* Current flow control settings */
 
 	struct net_device *netdev;
 	struct platform_device *pdev;
@@ -108,4 +109,9 @@ enum nss_dp_priv_flags {
 #define NSS_DP_PRIV_FLAG(x)	(1 << __NSS_DP_PRIV_FLAG_ ## x)
 
 extern struct nss_dp_data_plane_ops nss_dp_edma_ops;
+
+/*
+ * nss_dp_set_ethtool_ops()
+ */
+void nss_dp_set_ethtool_ops(struct net_device *netdev);
 #endif	/* __NSS_DP_DEV_H__ */
