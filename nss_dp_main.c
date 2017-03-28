@@ -266,6 +266,12 @@ static int nss_dp_open(struct net_device *netdev)
 		return -EAGAIN;
 	}
 
+	/* Notify data plane link is up */
+	if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 1)) {
+		netdev_dbg(netdev, "Data plane set link failed\n");
+		return -EAGAIN;
+	}
+
 	netif_start_queue(netdev);
 	netif_carrier_on(netdev);
 
