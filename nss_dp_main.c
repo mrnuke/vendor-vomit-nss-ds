@@ -183,7 +183,7 @@ static int nss_dp_close(struct net_device *netdev)
 		return -EAGAIN;
 	}
 
-	if (!IS_ERR(dp_priv->phydev))
+	if (dp_priv->phydev)
 		phy_stop(dp_priv->phydev);
 	dp_priv->link_state = __NSS_DP_LINK_DOWN;
 
@@ -548,7 +548,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		dp_priv->phydev = phy_connect(netdev, phy_id,
 					      &nss_dp_adjust_link,
 					      dp_priv->phy_mii_type);
-		if (!dp_priv->phydev) {
+		if (IS_ERR(dp_priv->phydev)) {
 			netdev_dbg(netdev, "failed to connect to phy device\n");
 			goto fail;
 		}
