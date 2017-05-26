@@ -30,6 +30,13 @@
 #include "nss_dp_dev.h"
 #include "edma.h"
 
+/* ipq40xx_mdio_data */
+struct ipq40xx_mdio_data {
+	struct mii_bus *mii_bus;
+	void __iomem *membase;
+	int phy_irq[PHY_MAX_ADDR];
+};
+
 /* Global data */
 struct nss_dp_global_ctx dp_global_ctx;
 struct nss_dp_data_plane_ctx dp_global_data_plane_ctx[NSS_DP_MAX_PHY_PORTS];
@@ -269,6 +276,12 @@ static int nss_dp_open(struct net_device *netdev)
 	netif_start_queue(netdev);
 
 	if (!dp_priv->link_poll) {
+		if (dp_priv->gmac_hal_ops->setspeed(dp_priv->gmac_hal_ctx,
+						    dp_priv->forced_speed)) {
+			netdev_dbg(netdev, "GMAC set speed failed\n");
+			return -EAGAIN;
+		}
+
 		/* Notify data plane link is up */
 		if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 1)) {
 			netdev_dbg(netdev, "Data plane set link failed\n");
@@ -365,9 +378,9 @@ static struct mii_bus *nss_dp_mdio_attach(struct platform_device *pdev)
 {
 	struct device_node *mdio_node;
 	struct platform_device *mdio_plat;
-	struct mii_bus *miibus;
+	struct ipq40xx_mdio_data *mdio_data;
 
-	mdio_node = of_find_compatible_node(NULL, NULL, "qcom,ipq807x-mdio");
+	mdio_node = of_find_compatible_node(NULL, NULL, "qcom,ipq40xx-mdio");
 	if (!mdio_node) {
 		dev_err(&pdev->dev, "cannot find mdio node by phandle\n");
 		return NULL;
@@ -380,14 +393,14 @@ static struct mii_bus *nss_dp_mdio_attach(struct platform_device *pdev)
 		return NULL;
 	}
 
-	miibus = dev_get_drvdata(&mdio_plat->dev);
-	if (!miibus) {
+	mdio_data = dev_get_drvdata(&mdio_plat->dev);
+	if (!mdio_data) {
 		dev_err(&pdev->dev, "cannot get mii bus reference from device data\n");
 		of_node_put(mdio_node);
 		return NULL;
 	}
 
-	return miibus;
+	return mdio_data->mii_bus;
 }
 
 /*
@@ -450,6 +463,11 @@ void nss_dp_adjust_link(struct net_device *netdev)
 	if (current_state == __NSS_DP_LINK_DOWN) {
 		netdev_dbg(netdev, "PHY Link up speed: %d\n",
 						dp_priv->phydev->speed);
+		if (dp_priv->gmac_hal_ops->setspeed(dp_priv->gmac_hal_ctx,
+						dp_priv->phydev->speed)) {
+			netdev_dbg(netdev, "GMAC set speed failed\n");
+			return;
+		}
 		if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 1)) {
 			netdev_dbg(netdev, "Data plane set link up failed\n");
 			return;
