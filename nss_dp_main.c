@@ -181,9 +181,6 @@ static int nss_dp_close(struct net_device *netdev)
 	netif_stop_queue(netdev);
 	netif_carrier_off(netdev);
 
-	/* Call soc_hal_ops to stop GMAC tx/rx/intr */
-	dp_priv->gmac_hal_ops->stop(dp_priv->gmac_hal_ctx);
-
 	/* Notify data plane link is going down */
 	if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 0)) {
 		netdev_dbg(netdev, "Data plane set link failed\n");
@@ -223,12 +220,6 @@ static int nss_dp_open(struct net_device *netdev)
 		return -EINVAL;
 
 	netif_carrier_off(netdev);
-
-	/* Call soc_hal_ops to bring up GMAC */
-	if (dp_priv->gmac_hal_ops->start(dp_priv->gmac_hal_ctx)) {
-		netdev_dbg(netdev, "GMAC Start failed\n");
-		return -EINVAL;
-	}
 
 	/*
 	 * Call data plane init if it has not been done yet
@@ -276,12 +267,6 @@ static int nss_dp_open(struct net_device *netdev)
 	netif_start_queue(netdev);
 
 	if (!dp_priv->link_poll) {
-		if (dp_priv->gmac_hal_ops->setspeed(dp_priv->gmac_hal_ctx,
-						    dp_priv->forced_speed)) {
-			netdev_dbg(netdev, "GMAC set speed failed\n");
-			return -EAGAIN;
-		}
-
 		/* Notify data plane link is up */
 		if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 1)) {
 			netdev_dbg(netdev, "Data plane set link failed\n");
@@ -463,11 +448,6 @@ void nss_dp_adjust_link(struct net_device *netdev)
 	if (current_state == __NSS_DP_LINK_DOWN) {
 		netdev_dbg(netdev, "PHY Link up speed: %d\n",
 						dp_priv->phydev->speed);
-		if (dp_priv->gmac_hal_ops->setspeed(dp_priv->gmac_hal_ctx,
-						dp_priv->phydev->speed)) {
-			netdev_dbg(netdev, "GMAC set speed failed\n");
-			return;
-		}
 		if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 1)) {
 			netdev_dbg(netdev, "Data plane set link up failed\n");
 			return;
