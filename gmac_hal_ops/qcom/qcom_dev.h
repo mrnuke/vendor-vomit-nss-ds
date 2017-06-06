@@ -21,62 +21,14 @@
 
 #include <nss_dp_hal_if.h>
 #include "qcom_reg.h"
-
-/*
- * HAL stats for Qcom MAC chips
- */
-struct qcom_stats {
-	uint64_t rx_broadcast; /* Rx broadcast frames counter */
-	uint64_t rx_pause; /* Rx pause frames counter */
-	uint64_t rx_multicast; /* Rx multicast frames counter */
-	uint64_t rx_fcserr; /* Rx frame checksum error counter */
-	uint64_t rx_alignerr; /* Rx alignment error counter */
-	uint64_t rx_runt; /* Rx runt error counter */
-	uint64_t rx_frag; /* Rx fragmented packet counter */
-	uint64_t rx_jmbfcserr; /* Rx jumbo frame checksum error counter */
-	uint64_t rx_jmbalignerr; /* Rx jumbo align error counter */
-	uint64_t rx_pkt64; /* Rx 64 byte counter */
-	uint64_t rx_pkt65to127; /* Rx 65 to 127 byte counter */
-	uint64_t rx_pkt128to255; /* Rx 128 to 255 byte counter */
-	uint64_t rx_pkt256to511; /* Rx 256 to 511 byte counter */
-	uint64_t rx_pkt512to1023; /* Rx 512 to 1023 byte counter */
-	uint64_t rx_pkt1024to1518; /* Rx 1024 to 1518 byte counter */
-	uint64_t rx_pkt1519tox; /* Rx > 1519 bytes counter */
-	uint64_t rx_toolong; /* Rx long bytes counter */
-	uint64_t rx_pktgoodbyte_l; /* Rx low good bytes counter */
-	uint64_t rx_pktgoodbyte_h; /* Rx high good bytes counter */
-	uint64_t rx_pktbadbyte_l; /* Rx low bad bytes counter */
-	uint64_t rx_pktbadbyte_h; /* Rx high good bytes counter */
-	uint64_t rx_unicast; /* Rx unicast frames counter */
-	uint64_t tx_broadcast; /* Rx broadcast frame counter */
-	uint64_t tx_pause; /* Tx pause frames counter */
-	uint64_t tx_multicast; /* Tx multicast frames counter */
-	uint64_t tx_underrun; /* Tx underrun frame counter */
-	uint64_t tx_pkt64;  /* Rx long bytes counter */
-	uint64_t tx_pkt65to127; /* Tx 64 byte counter */
-	uint64_t tx_pkt128to255; /* Tx 128 to 255 byte counter */
-	uint64_t tx_pkt256to511; /* Tx 256 to 511 byte counter */
-	uint64_t tx_pkt512to1023; /* Tx 512 to 1023 byte counter */
-	uint64_t tx_pkt1024to1518; /* Tx 1024 to 1518 byte counter */
-	uint64_t tx_pkt1519tox; /* Tx > 1519 byte counter */
-	uint64_t tx_pktbyte_l; /* Tx low bytes counter */
-	uint64_t tx_pktbyte_h; /* Tx high bytes counter */
-	uint64_t tx_collisions; /* Tx collisions counter */
-	uint64_t tx_abortcol; /* Tx abort collison counter */
-	uint64_t tx_multicol; /* Tx multi collision counter */
-	uint64_t tx_singlecol; /* Tx single collision counter */
-	uint64_t tx_exesdeffer; /* Tx exesdeffer counter */
-	uint64_t tx_deffer; /* Tx deffer counter */
-	uint64_t tx_latecol; /* Tx late collision counter */
-	uint64_t tx_unicast; /* Tx unicast counter */
-};
+#include <fal/fal_mib.h>
 
 /*
  * Subclass for base nss_gmac_haldev
  */
 struct qcom_hal_dev {
 	struct nss_gmac_hal_dev nghd;	/* Base class */
-	struct qcom_stats stats;		/* Stats structure */
+	fal_mib_counter_t stats;	/* Stats structure */
 };
 /*
  * qcom_set_rx_flow_ctrl()
@@ -729,75 +681,16 @@ static inline void qcom_set_mib_ctrl(struct nss_gmac_hal_dev *nghd,
 }
 
 /*
- * qcom_get_stat()
+ * qcom_get_stats()
  */
-static inline void qcom_get_stat(struct nss_gmac_hal_dev *nghd, uint64_t *stat,
-						uint32_t regoffset)
-{
-	*(stat) += (uint64_t)hal_read_reg(nghd->mac_base, regoffset);
-}
-
-/*
- * qcom_get_rx_stats()
- */
-static void qcom_get_rx_stats(struct nss_gmac_hal_dev *nghd)
+static int qcom_get_stats(struct nss_gmac_hal_dev *nghd)
 {
 	struct qcom_hal_dev *qhd = (struct qcom_hal_dev *)nghd;
-	struct qcom_stats *stats = &(qhd->stats);
+	fal_mib_counter_t *stats = &(qhd->stats);
 
-	qcom_get_stat(nghd, &stats->rx_broadcast, QCOM_RXBROAD);
-	qcom_get_stat(nghd, &stats->rx_multicast, QCOM_RXMULTI);
-	qcom_get_stat(nghd, &stats->rx_unicast, QCOM_RXUNI);
-	qcom_get_stat(nghd, &stats->rx_pause, QCOM_RXPAUSE);
-	qcom_get_stat(nghd, &stats->rx_fcserr, QCOM_RXFCSERR);
-	qcom_get_stat(nghd, &stats->rx_alignerr, QCOM_RXALIGNERR);
-	qcom_get_stat(nghd, &stats->rx_runt, QCOM_RXRUNT);
-	qcom_get_stat(nghd, &stats->rx_frag, QCOM_RXFRAG);
-	qcom_get_stat(nghd, &stats->rx_jmbfcserr, QCOM_RXJMBFCSERR);
-	qcom_get_stat(nghd, &stats->rx_jmbalignerr, QCOM_RXJMBALIGNERR);
-	qcom_get_stat(nghd, &stats->rx_pkt64, QCOM_RXPKT64);
-	qcom_get_stat(nghd, &stats->rx_pkt65to127, QCOM_RXPKT65TO127);
-	qcom_get_stat(nghd, &stats->rx_pkt128to255, QCOM_RXPKT128TO255);
-	qcom_get_stat(nghd, &stats->rx_pkt256to511, QCOM_RXPKT256TO511);
-	qcom_get_stat(nghd, &stats->rx_pkt512to1023, QCOM_RXPKT512TO1023);
-	qcom_get_stat(nghd, &stats->rx_pkt1024to1518, QCOM_RXPKT1024TO1518);
-	qcom_get_stat(nghd, &stats->rx_pkt1519tox, QCOM_RXPKT1519TOX);
-	qcom_get_stat(nghd, &stats->rx_toolong, QCOM_RXPKTTOOLONG);
-	qcom_get_stat(nghd, &stats->rx_pktgoodbyte_l, QCOM_RXPKTGOODBYTE_L);
-	qcom_get_stat(nghd, &stats->rx_pktgoodbyte_h, QCOM_RXPKTGOODBYTE_H);
-	qcom_get_stat(nghd, &stats->rx_pktbadbyte_l, QCOM_RXPKTBADBYTE_L);
-	qcom_get_stat(nghd, &stats->rx_pktbadbyte_h, QCOM_RXPKTBADBYTE_H);
+	if (fal_mib_counter_get(0, nghd->mac_id, stats) < 0)
+		return -1;
+
+	return 0;
 }
-
-/*
- * qcom_get_tx_stats()
- */
-static void qcom_get_tx_stats(struct nss_gmac_hal_dev *nghd)
-{
-	struct qcom_hal_dev *qhd = (struct qcom_hal_dev *)nghd;
-	struct qcom_stats *stats = &(qhd->stats);
-
-	qcom_get_stat(nghd, &stats->tx_broadcast, QCOM_TXBROAD);
-	qcom_get_stat(nghd, &stats->tx_multicast, QCOM_TXMULTI);
-	qcom_get_stat(nghd, &stats->tx_unicast, QCOM_TXUNI);
-	qcom_get_stat(nghd, &stats->tx_pause, QCOM_TXPAUSE);
-	qcom_get_stat(nghd, &stats->tx_underrun, QCOM_TXUNDERUN);
-	qcom_get_stat(nghd, &stats->tx_pkt64, QCOM_TXPKT64);
-	qcom_get_stat(nghd, &stats->tx_pkt65to127, QCOM_TXPKT65TO127);
-	qcom_get_stat(nghd, &stats->tx_pkt128to255, QCOM_TXPKT128TO255);
-	qcom_get_stat(nghd, &stats->tx_pkt256to511, QCOM_TXPKT256TO511);
-	qcom_get_stat(nghd, &stats->tx_pkt512to1023, QCOM_TXPKT512TO1023);
-	qcom_get_stat(nghd, &stats->tx_pkt1024to1518, QCOM_TXPKT1024TO1518);
-	qcom_get_stat(nghd, &stats->tx_pkt1519tox, QCOM_TXPKT1519TOX);
-	qcom_get_stat(nghd, &stats->tx_pktbyte_l, QCOM_TXPKTBYTE_L);
-	qcom_get_stat(nghd, &stats->tx_pktbyte_h, QCOM_TXPKTBYTE_H);
-	qcom_get_stat(nghd, &stats->tx_collisions, QCOM_TXCOLLISIONS);
-	qcom_get_stat(nghd, &stats->tx_abortcol, QCOM_TXABORTCOL);
-	qcom_get_stat(nghd, &stats->tx_multicol, QCOM_TXMULTICOL);
-	qcom_get_stat(nghd, &stats->tx_singlecol, QCOM_TXSINGLECOL);
-	qcom_get_stat(nghd, &stats->tx_exesdeffer, QCOM_TXEXCESSIVEDEFER);
-	qcom_get_stat(nghd, &stats->tx_deffer, QCOM_TXDEFER);
-	qcom_get_stat(nghd, &stats->tx_latecol, QCOM_TXLATECOL);
-}
-
 #endif /* __QCOM_DEV_H__ */

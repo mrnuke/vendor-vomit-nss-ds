@@ -24,7 +24,7 @@
 #include <nss_dp_dev.h>
 #include "syn_dev.h"
 
-#define SYN_STAT(m)	offsetof(struct syn_stats, m)
+#define SYN_STAT(m)	offsetof(fal_xgmib_info_t, m)
 
 struct syn_ethtool_stats {
 	uint8_t stat_string[ETH_GSTRING_LEN];
@@ -35,43 +35,53 @@ struct syn_ethtool_stats {
  * Array of strings describing statistics
  */
 static const struct syn_ethtool_stats syn_gstrings_stats[] = {
-	{"rx_frame", SYN_STAT(rx_frame_ctr)},
-	{"rx_pause", SYN_STAT(rx_pause_ctr)},
-	{"rx_broadcast", SYN_STAT(rx_broadcast_ctr)},
-	{"rx_multicast", SYN_STAT(rx_multicast_ctr)},
-	{"rx_unicast", SYN_STAT(rx_unicast_ctr)},
-	{"rx_fifo_overflow", SYN_STAT(rx_fifo_overflow_ctr)},
-	{"rx_undersize", SYN_STAT(rx_undersize_ctr)},
-	{"rx_oversize", SYN_STAT(rx_oversize_ctr)},
-	{"rx_vlan", SYN_STAT(rx_vlan_ctr)},
-	{"rx_lpi_usec_ctr", SYN_STAT(rx_lpi_usec_ctr)},
-	{"rx_discard_frame_ctr", SYN_STAT(rx_discard_frame_ctr)},
-	{"rx_pkt64", SYN_STAT(rx_pkt64_ctr)},
-	{"rx_pkt65to127", SYN_STAT(rx_pkt65to127_ctr)},
-	{"rx_pkt128to255", SYN_STAT(rx_pkt128to255_ctr)},
-	{"rx_pkt256to511", SYN_STAT(rx_pkt256to511_ctr)},
-	{"rx_pkt512to1023", SYN_STAT(rx_pkt512to1023_ctr)},
-	{"rx_pkt1024tomax", SYN_STAT(rx_pkt1024tomax_ctr)},
-	{"rx_crc_err", SYN_STAT(rx_crc_err_ctr)},
-	{"rx_runt_err", SYN_STAT(rx_runt_err_ctr)},
-	{"rx_jabber_err", SYN_STAT(rx_jabber_err_ctr)},
-	{"rx_len_err", SYN_STAT(rx_len_err_ctr)},
-	{"tx_frame", SYN_STAT(tx_frame_ctr)},
-	{"tx_pause", SYN_STAT(tx_pause_ctr)},
-	{"tx_broadcast", SYN_STAT(tx_broadcast_ctr)},
-	{"tx_broadcast_gb", SYN_STAT(tx_broadcast_gb_ctr)},
-	{"tx_multicast", SYN_STAT(tx_multicast_ctr)},
-	{"tx_multicast_gb", SYN_STAT(tx_multicast_gb_ctr)},
-	{"tx_underflow_err", SYN_STAT(tx_underflow_err_ctr)},
-	{"tx_vlan", SYN_STAT(tx_vlan_ctr)},
-	{"tx_unicast", SYN_STAT(tx_unicast_ctr)},
-	{"tx_pkt64", SYN_STAT(tx_pkt64_ctr)},
-	{"tx_pkt65to127", SYN_STAT(tx_pkt65to127_ctr)},
-	{"tx_pkt128to255", SYN_STAT(tx_pkt128to255_ctr)},
-	{"tx_pkt256to511", SYN_STAT(tx_pkt256to511_ctr)},
-	{"tx_pkt512to1023", SYN_STAT(tx_pkt512to1023_ctr)},
-	{"tx_pkt1024tomax", SYN_STAT(tx_pkt1024tomax_ctr)},
-	{"tx_lpi_usec_ctr", SYN_STAT(tx_lpi_usec_ctr)},
+	{"rx_frame", SYN_STAT(RxFrame)},
+	{"rx_bytes", SYN_STAT(RxByte)},
+	{"rx_bytes_g", SYN_STAT(RxByteGood)},
+	{"rx_broadcast", SYN_STAT(RxBroadGood)},
+	{"rx_multicast", SYN_STAT(RxMultiGood)},
+	{"rx_crc_err", SYN_STAT(RxFcsErr)},
+	{"rx_runt_err", SYN_STAT(RxRunt)},
+	{"rx_jabber_err", SYN_STAT(RxJabberError)},
+	{"rx_undersize", SYN_STAT(RxUndersizeGood)},
+	{"rx_oversize", SYN_STAT(RxOversizeGood)},
+	{"rx_pkt64", SYN_STAT(Rx64Byte)},
+	{"rx_pkt65to127", SYN_STAT(Rx128Byte)},
+	{"rx_pkt128to255", SYN_STAT(Rx256Byte)},
+	{"rx_pkt256to511", SYN_STAT(Rx512Byte)},
+	{"rx_pkt512to1023", SYN_STAT(Rx1024Byte)},
+	{"rx_pkt1024tomax", SYN_STAT(RxMaxByte)},
+	{"rx_unicast", SYN_STAT(RxUnicastGood)},
+	{"rx_len_err", SYN_STAT(RxLengthError)},
+	{"rx_outofrange_err_ctr", SYN_STAT(RxOutOfRangeError)},
+	{"rx_pause", SYN_STAT(RxPause)},
+	{"rx_fifo_overflow", SYN_STAT(RxOverFlow)},
+	{"rx_vlan", SYN_STAT(RxVLANFrameGoodBad)},
+	{"rx_wdog", SYN_STAT(RxWatchDogError)},
+	{"rx_lpi_usec_ctr", SYN_STAT(RxLPIUsec)},
+	{"rx_lpi_tran_ctr", SYN_STAT(RxLPITran)},
+	{"rx_drop_frame_ctr", SYN_STAT(RxDropFrameGoodBad)},
+	{"rx_drop_byte_ctr", SYN_STAT(RxDropByteGoodBad)},
+	{"tx_bytes", SYN_STAT(TxByte)},
+	{"tx_frame", SYN_STAT(TxFrame)},
+	{"tx_broadcast", SYN_STAT(TxBroadGood)},
+	{"tx_broadcast_gb", SYN_STAT(TxBroad)},
+	{"tx_multicast", SYN_STAT(TxMultiGood)},
+	{"tx_multicast_gb", SYN_STAT(TxMulti)},
+	{"tx_pkt64", SYN_STAT(Tx64Byte)},
+	{"tx_pkt65to127", SYN_STAT(Tx128Byte)},
+	{"tx_pkt128to255", SYN_STAT(Tx256Byte)},
+	{"tx_pkt256to511", SYN_STAT(Tx512Byte)},
+	{"tx_pkt512to1023", SYN_STAT(Tx1024Byte)},
+	{"tx_pkt1024tomax", SYN_STAT(TxMaxByte)},
+	{"tx_unicast", SYN_STAT(TxUnicast)},
+	{"tx_underflow_err", SYN_STAT(TxUnderFlowError)},
+	{"tx_bytes_g", SYN_STAT(TxByteGood)},
+	{"tx_frame_g", SYN_STAT(TxFrameGood)},
+	{"tx_pause", SYN_STAT(TxPause)},
+	{"tx_vlan", SYN_STAT(TxVLANFrameGood)},
+	{"tx_lpi_usec_ctr", SYN_STAT(TxLPIUsec)},
+	{"tx_lpi_tran_ctr", SYN_STAT(TxLPITran)},
 };
 
 /*
@@ -116,13 +126,14 @@ static void syn_tx_flow_control(struct nss_gmac_hal_dev *nghd,
 /*
  * syn_get_mmc_stats()
  */
-static void syn_get_mmc_stats(struct nss_gmac_hal_dev *nghd)
+static int32_t syn_get_mmc_stats(struct nss_gmac_hal_dev *nghd)
 {
 	BUG_ON(nghd == NULL);
 
-	syn_get_rx_stats(nghd);
-	syn_get_tx_stats(nghd);
-	return;
+	if (syn_get_stats(nghd))
+		return -1;
+
+	return 0;
 }
 
 /*
@@ -252,46 +263,48 @@ static uint8_t syn_get_duplex_mode(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_get_netdev_stats()
  */
-static void syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
+static int syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
 		struct rtnl_link_stats64 *stats)
 {
 	struct syn_hal_dev *shd;
-	struct syn_stats *hal_stats;
+	fal_xgmib_info_t *hal_stats;
 
 	BUG_ON(nghd == NULL);
 
 	shd = (struct syn_hal_dev *)nghd;
 	hal_stats = &(shd->stats);
 
-	syn_get_rx_stats(nghd);
-	syn_get_tx_stats(nghd);
+	if (syn_get_stats(nghd))
+		return -1;
 
-	stats->rx_packets = hal_stats->rx_unicast_ctr
-		+ hal_stats->rx_broadcast_ctr + hal_stats->rx_multicast_ctr;
-	stats->tx_packets = hal_stats->tx_unicast_ctr
-		+ hal_stats->tx_broadcast_ctr + hal_stats->tx_multicast_ctr;
-	stats->rx_bytes = hal_stats->rx_bytes_ctr;
-	stats->tx_bytes = hal_stats->tx_bytes_ctr;
+	stats->rx_packets = hal_stats->RxUnicastGood
+		+ hal_stats->RxBroadGood + hal_stats->RxMultiGood;
+	stats->tx_packets = hal_stats->TxUnicast
+		+ hal_stats->TxBroadGood + hal_stats->TxMultiGood;
+	stats->rx_bytes = hal_stats->RxByte;
+	stats->tx_bytes = hal_stats->TxByte;
 	stats->multicast =
-		hal_stats->rx_multicast_ctr;
+		hal_stats->RxMultiGood;
 	stats->rx_dropped =
-		hal_stats->rx_discard_frame_ctr;
+		hal_stats->RxDropFrameGoodBad;
 	stats->rx_length_errors =
-		hal_stats->rx_len_err_ctr;
+		hal_stats->RxLengthError;
 	stats->rx_crc_errors =
-		hal_stats->rx_crc_err_ctr;
+		hal_stats->RxFcsErr;
 	stats->rx_fifo_errors =
-		hal_stats->rx_fifo_overflow_ctr;
+		hal_stats->RxOverFlow;
+
+	return 0;
 }
 
 /*
  * syn_get_eth_stats()
  */
-static void syn_get_eth_stats(struct nss_gmac_hal_dev *nghd,
+static int32_t syn_get_eth_stats(struct nss_gmac_hal_dev *nghd,
 				   uint64_t *data)
 {
 	struct syn_hal_dev *shd;
-	struct syn_stats *stats;
+	fal_xgmib_info_t *stats;
 	uint8_t *p = NULL;
 	int i;
 
@@ -300,15 +313,16 @@ static void syn_get_eth_stats(struct nss_gmac_hal_dev *nghd,
 	shd = (struct syn_hal_dev *)nghd;
 	stats = &(shd->stats);
 
-
-	syn_get_rx_stats(nghd);
-	syn_get_tx_stats(nghd);
+	if (syn_get_stats(nghd))
+		return -1;
 
 	for (i = 0; i < SYN_STATS_LEN; i++) {
 		p = ((uint8_t *)(stats) +
 				syn_gstrings_stats[i].stat_offset);
 		data[i] = *(uint32_t *)p;
 	}
+
+	return 0;
 }
 
 /*
@@ -396,8 +410,6 @@ static int32_t syn_start(struct nss_gmac_hal_dev *nghd)
 	if (syn_set_mac_speed(nghd, SPEED_10000))
 		return -1;
 
-	syn_set_mmc_stats(nghd);
-
 	netdev_dbg(nghd->netdev,
 			"%s: mac_base:0x%p tx_enable:0x%x rx_enable:0x%x\n",
 			__func__,
@@ -461,6 +473,7 @@ static void *syn_init(struct gmac_hal_platform_data *gmacpdata)
 
 	/* Save netdev context in syn HAL context */
 	shd->nghd.netdev = gmacpdata->netdev;
+	shd->nghd.mac_id = gmacpdata->macid;
 
 	/* Populate the mac base addresses */
 	shd->nghd.mac_base =

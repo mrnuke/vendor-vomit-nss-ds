@@ -36,6 +36,7 @@ struct gmac_hal_platform_data {
 	struct net_device *netdev; /* Net device */
 	uint32_t reg_len;	/* Register space length */
 	uint32_t mactype;	/* Mac chip type */
+	uint32_t macid;		/* MAC sequence id on the Chip */
 };
 
 /*
@@ -58,6 +59,7 @@ struct nss_gmac_hal_dev {
 	struct net_device *netdev;
 	struct resource *memres;
 	uint32_t mac_reg_len; /* Mac Register block length		*/
+	uint32_t mac_id;	/* MAC sequence id on the Chip */
 	spinlock_t slock;	/* lock to protect concurrent reg access */
 };
 
@@ -82,16 +84,16 @@ struct nss_gmac_hal_ops {
 	uint32_t (*getspeed)(struct nss_gmac_hal_dev *);
 	void (*setduplex)(struct nss_gmac_hal_dev *, uint8_t);
 	uint8_t (*getduplex)(struct nss_gmac_hal_dev *);
-	void (*getstats)(struct nss_gmac_hal_dev *);
+	int32_t (*getstats)(struct nss_gmac_hal_dev *);
 	void (*setmaxframe)(struct nss_gmac_hal_dev *, uint32_t);
 	uint32_t (*getmaxframe)(struct nss_gmac_hal_dev *);
-	void (*getndostats)(struct nss_gmac_hal_dev *,
+	int32_t (*getndostats)(struct nss_gmac_hal_dev *,
 			    struct rtnl_link_stats64 *);
 	void (*sendpause)(struct nss_gmac_hal_dev *);
 	void (*stoppause)(struct nss_gmac_hal_dev *);
 	int32_t (*getssetcount)(struct nss_gmac_hal_dev *, int32_t);
 	int32_t (*getstrings)(struct nss_gmac_hal_dev *, int32_t, uint8_t *);
-	void (*getethtoolstats)(struct nss_gmac_hal_dev *, uint64_t *);
+	int32_t (*getethtoolstats)(struct nss_gmac_hal_dev *, uint64_t *);
 };
 
 extern struct nss_gmac_hal_ops qcom_hal_ops;

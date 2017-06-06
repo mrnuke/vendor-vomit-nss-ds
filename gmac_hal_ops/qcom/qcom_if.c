@@ -25,7 +25,7 @@
 #include <nss_dp_dev.h>
 #include "qcom_dev.h"
 
-#define QCOM_STAT(m) offsetof(struct qcom_stats, m)
+#define QCOM_STAT(m) offsetof(fal_mib_counter_t, m)
 
 /*
  * Ethtool stats pointer structure
@@ -39,49 +39,48 @@ struct qcom_ethtool_stats {
  * Array of strings describing statistics
  */
 static const struct qcom_ethtool_stats qcom_gstrings_stats[] = {
-	{"rx_broadcast", QCOM_STAT(rx_broadcast)},
-	{"rx_pause", QCOM_STAT(rx_pause)},
-	{"rx_multicast", QCOM_STAT(rx_multicast)},
-	{"rx_fcserr", QCOM_STAT(rx_fcserr)},
-	{"rx_alignerr", QCOM_STAT(rx_alignerr)},
-	{"rx_runt", QCOM_STAT(rx_runt)},
-	{"rx_frag", QCOM_STAT(rx_frag)},
-	{"rx_jmbfcserr", QCOM_STAT(rx_jmbfcserr)},
-	{"rx_jmbalignerr", QCOM_STAT(rx_jmbalignerr)},
-	{"rx_pkt64", QCOM_STAT(rx_pkt64)},
-	{"rx_pkt65to127", QCOM_STAT(rx_pkt65to127)},
-	{"rx_pkt128to255", QCOM_STAT(rx_pkt128to255)},
-	{"rx_pkt256to511", QCOM_STAT(rx_pkt256to511)},
-	{"rx_pkt512to1023", QCOM_STAT(rx_pkt512to1023)},
-	{"rx_pkt1024to1518", QCOM_STAT(rx_pkt1024to1518)},
-	{"rx_pkt1519tox", QCOM_STAT(rx_pkt1519tox)},
-	{"rx_toolong", QCOM_STAT(rx_toolong)},
-	{"rx_pktgoodbyte_l", QCOM_STAT(rx_pktgoodbyte_l)},
-	{"rx_pktgoodbyte_h", QCOM_STAT(rx_pktgoodbyte_h)},
-	{"rx_pktbadbyte_l", QCOM_STAT(rx_pktbadbyte_l)},
-	{"rx_pktbadbyte_h", QCOM_STAT(rx_pktbadbyte_h)},
-	{"rx_unicast", QCOM_STAT(rx_unicast)},
-	{"tx_broadcast", QCOM_STAT(tx_broadcast)},
-	{"tx_pause", QCOM_STAT(tx_pause)},
-	{"tx_multicast", QCOM_STAT(tx_multicast)},
-	{"tx_underrun", QCOM_STAT(tx_underrun)},
-	{"tx_pkt64", QCOM_STAT(tx_pkt64)},
-	{"tx_pkt65to127", QCOM_STAT(tx_pkt65to127)},
-	{"tx_pkt128to255", QCOM_STAT(tx_pkt128to255)},
-	{"tx_pkt256to511", QCOM_STAT(tx_pkt256to511)},
-	{"tx_pkt512to1023", QCOM_STAT(tx_pkt512to1023)},
-	{"tx_pkt1024to1518", QCOM_STAT(tx_pkt1024to1518)},
-	{"tx_pkt1519tox", QCOM_STAT(tx_pkt1519tox)},
-	{"tx_pktbyte_l", QCOM_STAT(tx_pktbyte_l)},
-	{"tx_pktbyte_h", QCOM_STAT(tx_pktbyte_h)},
-	{"tx_collisions", QCOM_STAT(tx_collisions)},
-	{"tx_abortcol", QCOM_STAT(tx_abortcol)},
-	{"tx_multicol", QCOM_STAT(tx_multicol)},
-	{"tx_singlecol", QCOM_STAT(tx_singlecol)},
-	{"tx_exesdeffer", QCOM_STAT(tx_exesdeffer)},
-	{"tx_deffer", QCOM_STAT(tx_deffer)},
-	{"tx_latecol", QCOM_STAT(tx_latecol)},
-	{"tx_unicast", QCOM_STAT(tx_unicast)},
+	{"rx_broadcast", QCOM_STAT(RxBroad)},
+	{"rx_pause", QCOM_STAT(RxPause)},
+	{"rx_unicast", QCOM_STAT(RxUniCast)},
+	{"rx_multicast", QCOM_STAT(RxMulti)},
+	{"rx_fcserr", QCOM_STAT(RxFcsErr)},
+	{"rx_alignerr", QCOM_STAT(RxAllignErr)},
+	{"rx_runt", QCOM_STAT(RxRunt)},
+	{"rx_frag", QCOM_STAT(RxFragment)},
+	{"rx_jmbfcserr", QCOM_STAT(RxJumboFcsErr)},
+	{"rx_jmbalignerr", QCOM_STAT(RxJumboAligenErr)},
+	{"rx_pkt64", QCOM_STAT(Rx64Byte)},
+	{"rx_pkt65to127", QCOM_STAT(Rx128Byte)},
+	{"rx_pkt128to255", QCOM_STAT(Rx256Byte)},
+	{"rx_pkt256to511", QCOM_STAT(Rx512Byte)},
+	{"rx_pkt512to1023", QCOM_STAT(Rx1024Byte)},
+	{"rx_pkt1024to1518", QCOM_STAT(Rx1518Byte)},
+	{"rx_pkt1519tox", QCOM_STAT(RxMaxByte)},
+	{"rx_toolong", QCOM_STAT(RxTooLong)},
+	{"rx_pktgoodbyte", QCOM_STAT(RxGoodByte)},
+	{"rx_pktbadbyte", QCOM_STAT(RxBadByte)},
+	{"rx_overflow", QCOM_STAT(RxOverFlow)},
+	{"tx_broadcast", QCOM_STAT(TxBroad)},
+	{"tx_pause", QCOM_STAT(TxPause)},
+	{"tx_multicast", QCOM_STAT(TxMulti)},
+	{"tx_underrun", QCOM_STAT(TxUnderRun)},
+	{"tx_pkt64", QCOM_STAT(Tx64Byte)},
+	{"tx_pkt65to127", QCOM_STAT(Tx128Byte)},
+	{"tx_pkt128to255", QCOM_STAT(Tx256Byte)},
+	{"tx_pkt256to511", QCOM_STAT(Tx512Byte)},
+	{"tx_pkt512to1023", QCOM_STAT(Tx1024Byte)},
+	{"tx_pkt1024to1518", QCOM_STAT(Tx1518Byte)},
+	{"tx_pkt1519tox", QCOM_STAT(TxMaxByte)},
+	{"tx_oversize", QCOM_STAT(TxOverSize)},
+	{"tx_pktbyte_h", QCOM_STAT(TxByte)},
+	{"tx_collisions", QCOM_STAT(TxCollision)},
+	{"tx_abortcol", QCOM_STAT(TxAbortCol)},
+	{"tx_multicol", QCOM_STAT(TxMultiCol)},
+	{"tx_singlecol", QCOM_STAT(TxSingalCol)},
+	{"tx_exesdeffer", QCOM_STAT(TxExcDefer)},
+	{"tx_deffer", QCOM_STAT(TxDefer)},
+	{"tx_latecol", QCOM_STAT(TxLateCol)},
+	{"tx_unicast", QCOM_STAT(TxUniCast)},
 };
 
 /*
@@ -206,10 +205,12 @@ static void qcom_tx_flow_control(struct nss_gmac_hal_dev *nghd, bool enabled)
 /*
  * qcom_get_mib_stats()
  */
-static void qcom_get_mib_stats(struct nss_gmac_hal_dev *nghd)
+static int32_t qcom_get_mib_stats(struct nss_gmac_hal_dev *nghd)
 {
-	qcom_get_rx_stats(nghd);
-	qcom_get_tx_stats(nghd);
+	if (qcom_get_stats(nghd))
+		return -1;
+
+	return 0;
 }
 
 /*
@@ -247,40 +248,41 @@ static uint32_t qcom_get_maxframe(struct nss_gmac_hal_dev *nghd)
 /*
  * qcom_get_netdev_stats()
  */
-static void qcom_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
+static int32_t qcom_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
 		struct rtnl_link_stats64 *stats)
 {
 	struct qcom_hal_dev *qhd = (struct qcom_hal_dev *)nghd;
-	struct qcom_stats *hal_stats = &(qhd->stats);
+	fal_mib_counter_t *hal_stats = &(qhd->stats);
 
-	qcom_get_mib_stats(nghd);
+	if (qcom_get_mib_stats(nghd))
+		return -1;
 
-	stats->rx_packets = hal_stats->rx_unicast + hal_stats->rx_broadcast
-				+ hal_stats->rx_multicast;
-	stats->tx_packets = hal_stats->tx_unicast + hal_stats->tx_broadcast
-				+ hal_stats->tx_multicast;
-	stats->rx_bytes = (hal_stats->rx_pktgoodbyte_h << 32) |
-			   hal_stats->rx_pktgoodbyte_l;
-	stats->tx_bytes = (hal_stats->tx_pktbyte_h << 32) |
-			   hal_stats->tx_pktbyte_l;
+	stats->rx_packets = hal_stats->RxUniCast + hal_stats->RxBroad
+				+ hal_stats->RxMulti;
+	stats->tx_packets = hal_stats->TxUniCast + hal_stats->TxBroad
+				+ hal_stats->TxMulti;
+	stats->rx_bytes = hal_stats->RxGoodByte;
+	stats->tx_bytes = hal_stats->TxByte;
 
 	/* RX errors */
-	stats->rx_crc_errors = hal_stats->rx_fcserr + hal_stats->rx_jmbfcserr;
-	stats->rx_frame_errors = hal_stats->rx_alignerr +
-				 hal_stats->rx_jmbalignerr;
-	stats->rx_fifo_errors = hal_stats->rx_runt;
+	stats->rx_crc_errors = hal_stats->RxFcsErr + hal_stats->RxJumboFcsErr;
+	stats->rx_frame_errors = hal_stats->RxAllignErr +
+				 hal_stats->RxJumboAligenErr;
+	stats->rx_fifo_errors = hal_stats->RxRunt;
 	stats->rx_errors = stats->rx_crc_errors + stats->rx_frame_errors +
 			   stats->rx_fifo_errors;
 
-	stats->rx_dropped = hal_stats->rx_toolong + stats->rx_errors;
+	stats->rx_dropped = hal_stats->RxTooLong + stats->rx_errors;
 
 	/* TX errors */
-	stats->tx_fifo_errors = hal_stats->tx_underrun;
-	stats->tx_aborted_errors = hal_stats->tx_abortcol;
+	stats->tx_fifo_errors = hal_stats->TxUnderRun;
+	stats->tx_aborted_errors = hal_stats->TxAbortCol;
 	stats->tx_errors = stats->tx_fifo_errors + stats->tx_aborted_errors;
 
-	stats->collisions = hal_stats->tx_collisions;
-	stats->multicast = hal_stats->rx_multicast;
+	stats->collisions = hal_stats->TxCollision;
+	stats->multicast = hal_stats->RxMulti;
+
+	return 0;
 }
 
 /*
@@ -338,19 +340,22 @@ int32_t qcom_get_strings(struct nss_gmac_hal_dev *nghd, int32_t sset,
 /*
  * qcom_get_eth_stats()
  */
-static void qcom_get_eth_stats(struct nss_gmac_hal_dev *nghd, uint64_t *data)
+static int32_t qcom_get_eth_stats(struct nss_gmac_hal_dev *nghd, uint64_t *data)
 {
 	struct qcom_hal_dev *qhd = (struct qcom_hal_dev *)nghd;
-	struct qcom_stats *stats = &(qhd->stats);
+	fal_mib_counter_t *stats = &(qhd->stats);
 	uint8_t *p;
 	int i;
 
-	qcom_get_mib_stats(nghd);
+	if (qcom_get_mib_stats(nghd))
+		return -1;
 
 	for (i = 0; i < QCOM_STATS_LEN; i++) {
 		p = (uint8_t *)stats + qcom_gstrings_stats[i].stat_offset;
 		data[i] = *(uint32_t *)p;
 	}
+
+	return 0;
 }
 
 /*
@@ -381,17 +386,13 @@ static int32_t qcom_start(struct nss_gmac_hal_dev *nghd)
 	if (qcom_set_mac_speed(nghd, SPEED_1000))
 		return -1;
 
-	qcom_set_mib_ctrl(nghd, QCOM_MIB_ENABLE | QCOM_MIB_RD_CLR);
-
 	qcom_tx_enable(nghd);
 	qcom_rx_enable(nghd);
 
-	netdev_dbg(nghd->netdev,
-			"%s: mac_base:0x%p mac_enable:0x%x mib_ctrl:0x%x\n",
-			__func__,
-			nghd->mac_base,
-			hal_read_reg(nghd->mac_base, QCOM_MAC_ENABLE),
-			hal_read_reg(nghd->mac_base, QCOM_MAC_MIB_CTRL));
+	netdev_dbg(nghd->netdev, "%s: mac_base:0x%p mac_enable:0x%x\n",
+			__func__, nghd->mac_base,
+			hal_read_reg(nghd->mac_base, QCOM_MAC_ENABLE));
+
 	return 0;
 }
 
@@ -402,12 +403,10 @@ static int32_t qcom_stop(struct nss_gmac_hal_dev *nghd)
 {
 	qcom_tx_disable(nghd);
 	qcom_rx_disable(nghd);
-	qcom_clear_mib_ctrl(nghd);
 
-	pr_info("%s: mac_base:0x%p mac_enable:0x%x mib_ctrl:0x%x\n",
+	netdev_dbg(nghd->netdev, "%s: mac_base:0x%p mac_enable:0x%x\n",
 			__func__, nghd->mac_base,
-			hal_read_reg(nghd->mac_base, QCOM_MAC_ENABLE),
-			hal_read_reg(nghd->mac_base, QCOM_MAC_MIB_CTRL));
+			hal_read_reg(nghd->mac_base, QCOM_MAC_ENABLE));
 	return 0;
 }
 
@@ -445,6 +444,7 @@ static void *qcom_init(struct gmac_hal_platform_data *gmacpdata)
 
 	/* Save netdev context in QCOM HAL context */
 	qhd->nghd.netdev = gmacpdata->netdev;
+	qhd->nghd.mac_id = gmacpdata->macid;
 
 	/* Populate the mac base addresses */
 	qhd->nghd.mac_base = devm_ioremap_nocache(&dp_priv->pdev->dev,

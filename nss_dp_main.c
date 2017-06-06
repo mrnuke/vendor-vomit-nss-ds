@@ -331,6 +331,7 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 	netdev->base_addr = memres_devtree.start;
 	hal_pdata->reg_len = resource_size(&memres_devtree);
 	hal_pdata->netdev = netdev;
+	hal_pdata->macid = dp_priv->macid;
 
 	dp_priv->phy_mii_type = of_get_phy_mode(np);
 	dp_priv->link_poll = of_property_read_bool(np, "qcom,link-poll");
