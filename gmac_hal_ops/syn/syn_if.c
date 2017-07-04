@@ -41,7 +41,7 @@ static const struct syn_ethtool_stats syn_gstrings_stats[] = {
 	{"rx_broadcast", SYN_STAT(RxBroadGood)},
 	{"rx_multicast", SYN_STAT(RxMultiGood)},
 	{"rx_crc_err", SYN_STAT(RxFcsErr)},
-	{"rx_runt_err", SYN_STAT(RxRunt)},
+	{"rx_runt_err", SYN_STAT(RxRuntErr)},
 	{"rx_jabber_err", SYN_STAT(RxJabberError)},
 	{"rx_undersize", SYN_STAT(RxUndersizeGood)},
 	{"rx_oversize", SYN_STAT(RxOversizeGood)},
