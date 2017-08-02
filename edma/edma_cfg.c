@@ -18,10 +18,13 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/debugfs.h>
+#include <linux/reset.h>
 
 #include "nss_dp_dev.h"
 #include "edma_regs.h"
 #include "edma_data_plane.h"
+
+#define EDMA_HW_RESET_ID "edma_rst"
 
 /*
  * edma_cleanup_rxfill_ring_res()
@@ -783,6 +786,32 @@ static void edma_configure_rings(struct edma_hw *ehw)
 }
 
 /*
+ * edma_hw_reset()
+ *	Reset EDMA Hardware during initialization
+ */
+int edma_hw_reset(struct edma_hw *ehw)
+{
+	struct reset_control *rst;
+	struct platform_device *pdev = ehw->pdev;
+
+	rst = devm_reset_control_get(&pdev->dev, EDMA_HW_RESET_ID);
+	if (IS_ERR(rst)) {
+		pr_warn("DTS Node: %s does not exist\n", EDMA_HW_RESET_ID);
+		return -EINVAL;
+	}
+
+	reset_control_assert(rst);
+	udelay(100);
+
+	reset_control_deassert(rst);
+	udelay(100);
+
+	pr_info("EDMA HW Reset completed succesfully\n");
+
+	return 0;
+}
+
+/*
  * edma_hw_init()
  *	EDMA hw init
  */
@@ -883,6 +912,11 @@ int edma_hw_init(struct edma_hw *ehw)
 		if (desc_index == ehw->txcmpl_ring_end)
 				desc_index = ehw->txcmpl_ring_start;
 	}
+
+	/* Reset EDMA */
+	ret = edma_hw_reset(ehw);
+	if (ret)
+		return ret;
 
 	/*
 	 * Set PPE QID to EDMA Rx ring mapping.
