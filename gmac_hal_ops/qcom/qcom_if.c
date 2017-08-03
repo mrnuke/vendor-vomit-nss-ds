@@ -461,6 +461,11 @@ static void *qcom_init(struct gmac_hal_platform_data *gmacpdata)
 			ndev->base_addr,
 			qhd->nghd.mac_base);
 
+	/* Reset MIB Stats */
+	if (fal_mib_port_flush_counters(0, qhd->nghd.mac_id)) {
+		netdev_dbg(ndev, "Qcom MIB stats Reset fail.\n");
+	}
+
 	return (struct nss_gmac_hal_dev *)qhd;
 }
 
