@@ -198,7 +198,7 @@ static void qcom_tx_flow_control(struct nss_gmac_hal_dev *nghd, bool enabled)
 	if (enabled)
 		qcom_set_tx_flow_ctrl(nghd);
 	else
-		qcom_clear_rx_flow_ctrl(nghd);
+		qcom_clear_tx_flow_ctrl(nghd);
 }
 
 
