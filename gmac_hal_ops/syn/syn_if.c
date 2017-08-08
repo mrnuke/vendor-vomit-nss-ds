@@ -493,7 +493,7 @@ static void *syn_init(struct gmac_hal_platform_data *gmacpdata)
 
 	/* Reset MIB Stats */
 	if (fal_mib_port_flush_counters(0, shd->nghd.mac_id)) {
-		netdev_dbg(ndev, "Syn MIB stats Reset fail.\n");
+		netdev_dbg(ndev, "MIB stats Reset fail.\n");
 	}
 
 	return (struct nss_gmac_hal_dev *)shd;
