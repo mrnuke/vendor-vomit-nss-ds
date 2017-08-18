@@ -216,33 +216,26 @@ static int32_t qcom_get_mib_stats(struct nss_gmac_hal_dev *nghd)
 /*
  * qcom_set_maxframe()
  */
-static void qcom_set_maxframe(struct nss_gmac_hal_dev *nghd, uint32_t maxframe)
+static int32_t qcom_set_maxframe(struct nss_gmac_hal_dev *nghd,
+				 uint32_t maxframe)
 {
-	uint32_t data;
-
-	/* Set JUMBO size to update MIB counter rx_toolong */
-	qcom_set_mac_jumbosize(nghd, maxframe);
-
-	/* Set MAX FRAME size */
-	data = hal_read_reg(nghd->mac_base, QCOM_MAC_CTRL2);
-	data &= ~QCOM_MAXFR_POS;
-	maxframe = maxframe << QCOM_MAXFR_LSB;
-	data |= maxframe;
-	hal_write_reg(nghd->mac_base, QCOM_MAC_CTRL2, data);
+	return fal_port_max_frame_size_set(0, nghd->mac_id, maxframe);
 }
 
 /*
  * qcom_get_maxframe()
  */
-static uint32_t qcom_get_maxframe(struct nss_gmac_hal_dev *nghd)
+static int32_t qcom_get_maxframe(struct nss_gmac_hal_dev *nghd)
 {
-	int32_t maxframe = 0;
+	int ret;
+	uint32_t mtu;
 
-	maxframe = hal_read_reg(nghd->mac_base, QCOM_MAC_CTRL2);
-	maxframe &= QCOM_MAXFR_POS;
-	maxframe = maxframe >> QCOM_MAXFR_LSB;
+	ret = fal_port_max_frame_size_get(0, nghd->mac_id, &mtu);
 
-	return maxframe;
+	if (!ret)
+		return mtu;
+
+	return ret;
 }
 
 /*

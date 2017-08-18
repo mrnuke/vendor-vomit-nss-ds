@@ -67,14 +67,26 @@ static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
 {
 	int ret = -EINVAL;
 	struct nss_dp_dev *dp_priv;
+	struct nss_gmac_hal_dev *ghd;
 
 	if (!netdev)
 		return ret;
 
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+	ghd = dp_priv->gmac_hal_ctx;
+
+	/* Set mtu of GMAC through HAL Layer */
+	if (dp_priv->gmac_hal_ops->setmaxframe(ghd, newmtu)) {
+		netdev_dbg(netdev, "GMAC HAL set mtu failed\n");
+		return ret;
+	}
 
 	/* Let the underlying data plane decide if the newmtu is applicable */
 	if (dp_priv->data_plane_ops->change_mtu(dp_priv->dpc, newmtu)) {
+		/* In case of failure, we set HW MTU to the previous value */
+		if (dp_priv->gmac_hal_ops->setmaxframe(ghd, netdev->mtu))
+			netdev_dbg(netdev, "GMAC HAL re-set mtu failed\n");
+
 		netdev_dbg(netdev, "Data plane change mtu failed\n");
 		return ret;
 	}
@@ -216,7 +228,13 @@ static int nss_dp_close(struct net_device *netdev)
 static int nss_dp_open(struct net_device *netdev)
 {
 	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+	struct nss_gmac_hal_dev *ghd;
+
 	if (!dp_priv)
+		return -EINVAL;
+
+	ghd = dp_priv->gmac_hal_ctx;
+	if (!ghd)
 		return -EINVAL;
 
 	netif_carrier_off(netdev);
@@ -251,6 +269,12 @@ static int nss_dp_open(struct net_device *netdev)
 
 	if (dp_priv->data_plane_ops->mac_addr(dp_priv->dpc, netdev->dev_addr)) {
 		netdev_dbg(netdev, "Data plane set MAC address failed\n");
+		return -EAGAIN;
+	}
+
+	/* Set mtu of GMAC through HAL Layer */
+	if (dp_priv->gmac_hal_ops->setmaxframe(ghd, netdev->mtu)) {
+		netdev_dbg(netdev, "GMAC HAL set mtu failed\n");
 		return -EAGAIN;
 	}
 

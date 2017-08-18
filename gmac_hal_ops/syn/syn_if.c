@@ -141,36 +141,24 @@ static int32_t syn_get_mmc_stats(struct nss_gmac_hal_dev *nghd)
  */
 static uint32_t syn_get_max_frame_size(struct nss_gmac_hal_dev *nghd)
 {
-	uint32_t data;
+	int ret;
+	uint32_t mtu;
 
-	BUG_ON(nghd == NULL);
+	ret = fal_port_max_frame_size_get(0, nghd->mac_id, &mtu);
 
-	data = hal_read_reg(nghd->mac_base, SYN_MAC_RX_CONFIG);
-	data &= SYN_MAC_MAX_FRAME_SIZE_BITMASK;
-	data = data >> SYN_MAC_MAX_FRAME_SIZE_BITPOS;
+	if (!ret)
+		return mtu;
 
-	return data;
+	return ret;
 }
 
 /*
  * syn_set_max_frame_size()
  */
-static void syn_set_max_frame_size(struct nss_gmac_hal_dev *nghd,
+static int32_t syn_set_max_frame_size(struct nss_gmac_hal_dev *nghd,
 					uint32_t val)
 {
-	uint32_t data = 0;
-
-	BUG_ON(nghd == NULL);
-
-	if (val > SYN_MAC_DEFAULT_MAX_FRAME_SIZE) {
-		data = hal_read_reg(nghd->mac_base,
-				SYN_MAC_RX_CONFIG);
-		data &= (~(SYN_MAC_MAX_FRAME_SIZE_BITMASK <<
-					SYN_MAC_MAX_FRAME_SIZE_BITPOS));
-		data |= val;
-		hal_write_reg(nghd->mac_base, SYN_MAC_TX_CONFIG,
-				data);
-	}
+	return fal_port_max_frame_size_set(0, nghd->mac_id, val);
 }
 
 /*

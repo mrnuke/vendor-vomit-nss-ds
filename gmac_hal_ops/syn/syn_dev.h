@@ -21,6 +21,7 @@
 
 #include "syn_reg.h"
 #include <fal/fal_mib.h>
+#include <fal/fal_port_ctrl.h>
 
 /*
  * Subclass for base nss_gmac_haldev

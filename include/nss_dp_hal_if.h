@@ -85,8 +85,8 @@ struct nss_gmac_hal_ops {
 	void (*setduplex)(struct nss_gmac_hal_dev *, uint8_t);
 	uint8_t (*getduplex)(struct nss_gmac_hal_dev *);
 	int32_t (*getstats)(struct nss_gmac_hal_dev *);
-	void (*setmaxframe)(struct nss_gmac_hal_dev *, uint32_t);
-	uint32_t (*getmaxframe)(struct nss_gmac_hal_dev *);
+	int32_t (*setmaxframe)(struct nss_gmac_hal_dev *, uint32_t);
+	int32_t (*getmaxframe)(struct nss_gmac_hal_dev *);
 	int32_t (*getndostats)(struct nss_gmac_hal_dev *,
 			    struct rtnl_link_stats64 *);
 	void (*sendpause)(struct nss_gmac_hal_dev *);
