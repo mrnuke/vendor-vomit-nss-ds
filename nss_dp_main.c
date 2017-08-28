@@ -76,7 +76,7 @@ static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
 	ghd = dp_priv->gmac_hal_ctx;
 
 	/* Set mtu of GMAC through HAL Layer */
-	if (dp_priv->gmac_hal_ops->setmaxframe(ghd, newmtu)) {
+	if (dp_priv->gmac_hal_ops->setmaxframe(ghd, (newmtu + NSS_DP_ETH_HLEN_CRC))) {
 		netdev_dbg(netdev, "GMAC HAL set mtu failed\n");
 		return ret;
 	}
@@ -84,7 +84,7 @@ static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
 	/* Let the underlying data plane decide if the newmtu is applicable */
 	if (dp_priv->data_plane_ops->change_mtu(dp_priv->dpc, newmtu)) {
 		/* In case of failure, we set HW MTU to the previous value */
-		if (dp_priv->gmac_hal_ops->setmaxframe(ghd, netdev->mtu))
+		if (dp_priv->gmac_hal_ops->setmaxframe(ghd, (netdev->mtu + NSS_DP_ETH_HLEN_CRC)))
 			netdev_dbg(netdev, "GMAC HAL re-set mtu failed\n");
 
 		netdev_dbg(netdev, "Data plane change mtu failed\n");
@@ -273,7 +273,7 @@ static int nss_dp_open(struct net_device *netdev)
 	}
 
 	/* Set mtu of GMAC through HAL Layer */
-	if (dp_priv->gmac_hal_ops->setmaxframe(ghd, netdev->mtu)) {
+	if (dp_priv->gmac_hal_ops->setmaxframe(ghd, (netdev->mtu + NSS_DP_ETH_HLEN_CRC))) {
 		netdev_dbg(netdev, "GMAC HAL set mtu failed\n");
 		return -EAGAIN;
 	}

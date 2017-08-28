@@ -23,12 +23,14 @@
 #include <linux/etherdevice.h>
 #include <linux/netdevice.h>
 #include <linux/platform_device.h>
+#include <linux/if_vlan.h>
 
 #include "nss_dp_api_if.h"
 #include "nss_dp_hal_if.h"
 
 #define NSS_DP_START_PHY_PORT	1
 #define NSS_DP_MAX_PHY_PORTS	6
+#define NSS_DP_ETH_HLEN_CRC	(ETH_HLEN + ETH_FCS_LEN + 2*(VLAN_HLEN))
 
 struct nss_dp_global_ctx;
 
