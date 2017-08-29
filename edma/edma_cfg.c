@@ -836,6 +836,11 @@ int edma_hw_init(struct edma_hw *ehw)
 	ehw->rx_payload_offset = EDMA_RX_PREHDR_SIZE;
 	ehw->active = 0;
 
+	/* Reset EDMA */
+	ret = edma_hw_reset(ehw);
+	if (ret)
+		return ret;
+
 	/*
 	 * Disable interrupts
 	 */
@@ -913,10 +918,6 @@ int edma_hw_init(struct edma_hw *ehw)
 				desc_index = ehw->txcmpl_ring_start;
 	}
 
-	/* Reset EDMA */
-	ret = edma_hw_reset(ehw);
-	if (ret)
-		return ret;
 
 	/*
 	 * Set PPE QID to EDMA Rx ring mapping.
