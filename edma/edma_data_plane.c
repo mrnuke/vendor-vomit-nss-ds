@@ -133,12 +133,13 @@ static int edma_if_change_mtu(struct nss_dp_data_plane_ctx *dpc, uint32_t mtu)
  * edma_if_xmit()
  *	Transmit a packet using EDMA
  */
-static netdev_tx_t edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
+static int edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 				struct sk_buff *skb)
 {
 	struct net_device *netdev = dpc->dev;
 	int ret;
 	uint32_t tx_ring, skbq, nhead, ntail;
+	bool expand_skb = false;
 
 	/*
 	 * Select a Tx ring
@@ -153,37 +154,36 @@ static netdev_tx_t edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 	 */
 	if (skb_is_nonlinear(skb)) {
 		netdev_dbg(netdev, "cannot Tx non-linear skb:%p\n", skb);
-		return NETDEV_TX_OK;
-	}
-
-	if (skb_cloned(skb)) {
-		skb = skb_unshare(skb, GFP_KERNEL | GFP_ATOMIC);
-		if (unlikely(!skb)) {
-			netdev_dbg(netdev, "cannot Tx unshare skb:%p\n", skb);
-			return NETDEV_TX_OK;
-		}
+		return NSS_DP_FAILURE;
 	}
 
 	/*
-	 * Check for headroom/tailroom
+	 * Check for headroom/tailroom and clone
 	 */
 	nhead = netdev->needed_headroom;
 	ntail = netdev->needed_tailroom;
-	if ((skb_headroom(skb) < nhead)
-		|| (skb_tailroom(skb) < ntail)) {
-		if (pskb_expand_head(skb, nhead, ntail, GFP_ATOMIC)) {
-			netdev_dbg(netdev, "cannot expand skb:%p\n", skb);
-			dev_kfree_skb_any(skb);
-			return NETDEV_TX_OK;
-		}
+
+	if (skb_cloned(skb) ||
+		(skb_headroom(skb) < nhead) ||
+		(skb_headroom(skb) < ntail)) {
+		expand_skb = true;
 	}
+
+	/*
+	 * Expand the skb. This also unclones a cloned skb.
+	 */
+	if (expand_skb && pskb_expand_head(skb, nhead, ntail, GFP_ATOMIC)) {
+		netdev_dbg(netdev, "cannot expand skb:%p\n", skb);
+		return NSS_DP_FAILURE;
+	}
+
 	/*
 	 * Transmit the packet
 	 */
 	ret = edma_ring_xmit(&edma_hw, netdev, skb,
 			&edma_hw.txdesc_ring[tx_ring]);
 	if (ret == EDMA_TX_OK)
-		return NETDEV_TX_OK;
+		return NSS_DP_SUCCESS;
 
 	/*
 	 * Not enough descriptors. Stop netdev Tx queue.
@@ -191,7 +191,7 @@ static netdev_tx_t edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 	if (ret == EDMA_TX_DESC)
 		netif_stop_queue(netdev);
 
-	return NETDEV_TX_BUSY;
+	return NSS_DP_FAILURE;
 }
 
 /*
