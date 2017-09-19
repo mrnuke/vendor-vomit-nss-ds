@@ -414,46 +414,6 @@ static struct mii_bus *nss_dp_mdio_attach(struct platform_device *pdev)
 }
 
 /*
- * nss_dp_config_flow_control()
- */
-void nss_dp_config_flow_control(struct net_device *netdev)
-{
-	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-	struct nss_gmac_hal_dev *ghd = dp_priv->gmac_hal_ctx;
-
-	/* Disable TX/RX flow control */
-	dp_priv->gmac_hal_ops->rxflowcontrol(ghd, false);
-	dp_priv->gmac_hal_ops->txflowcontrol(ghd, false);
-
-	if (!dp_priv->pause)
-		return;
-
-	if (dp_priv->phydev->lp_advertising & LPA_PAUSE_CAP) {
-		netdev_dbg(netdev, "Link partner supports Tx/Rx flow control\n");
-
-		if (dp_priv->pause & FLOW_CTRL_RX)
-			dp_priv->gmac_hal_ops->rxflowcontrol(ghd, true);
-
-		if (dp_priv->pause & FLOW_CTRL_TX)
-			dp_priv->gmac_hal_ops->txflowcontrol(ghd, true);
-
-		return;
-	}
-
-	if (dp_priv->phydev->lp_advertising & LPA_PAUSE_ASYM) {
-		netdev_dbg(netdev, "Link partner supports Tx flow control\n");
-
-		if (dp_priv->pause & FLOW_CTRL_TX)
-			dp_priv->gmac_hal_ops->txflowcontrol(ghd, true);
-
-		return;
-	}
-
-	/* link partner does not support Tx/Rx flow control */
-	netdev_dbg(netdev, "Link partner does not support Tx/Rx flow control\n");
-}
-
-/*
  * nss_dp_adjust_link()
  */
 void nss_dp_adjust_link(struct net_device *netdev)
@@ -479,7 +439,6 @@ void nss_dp_adjust_link(struct net_device *netdev)
 		}
 		dp_priv->link_state = __NSS_DP_LINK_UP;
 		netif_carrier_on(netdev);
-		nss_dp_config_flow_control(netdev);
 	} else {
 		netdev_info(netdev, "PHY Link is down\n");
 		if (dp_priv->data_plane_ops->link_state(dp_priv->dpc, 0)) {
@@ -575,6 +534,9 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 			netdev_dbg(netdev, "failed to connect to phy device\n");
 			goto fail;
 		}
+
+		dp_priv->phydev->advertising &=
+				~(ADVERTISED_Pause | ADVERTISED_Asym_Pause);
 	}
 
 #if defined(NSS_DP_PPE_SUPPORT)
