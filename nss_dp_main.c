@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -18,6 +18,7 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/version.h>
 #include <linux/of.h>
 #include <linux/of_net.h>
 #include <linux/of_irq.h>
@@ -271,6 +272,81 @@ static int nss_dp_open(struct net_device *netdev)
 	return 0;
 }
 
+#ifdef CONFIG_RFS_ACCEL
+/*
+ * nss_dp_rx_flow_steer()
+ *	Steer the flow rule to NSS
+ */
+static int nss_dp_rx_flow_steer(struct net_device *netdev, struct sk_buff *skb,
+				uint16_t rxq, uint32_t flow)
+{
+	struct nss_dp_dev *dp_priv;
+	struct netdev_rx_queue *rxqueue;
+	struct rps_sock_flow_table *sock_flow_table;
+	struct rps_dev_flow_table *flow_table;
+	struct rps_dev_flow *rxflow;
+	uint16_t index;
+	uint32_t hash;
+	uint32_t rfscpu;
+	uint32_t rxcpu;
+	bool res;
+
+	if (!netdev)
+		return -EINVAL;
+
+	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+	if (!dp_priv)
+		return -EINVAL;
+
+	rxqueue = netdev->_rx;
+
+	if (skb_rx_queue_recorded(skb)) {
+		index = skb_get_rx_queue(skb);
+		rxqueue += index;
+	}
+
+	flow_table = rcu_dereference(rxqueue->rps_flow_table);
+	if (!flow_table) {
+		netdev_dbg(netdev, "RX queue RPS flow table not found\n");
+		return -EINVAL;
+	}
+
+	hash = skb_get_hash(skb);
+	rxflow = &flow_table->flows[hash & flow_table->mask];
+	rxcpu = (uint32_t)rxflow->cpu;
+
+	sock_flow_table = rcu_dereference(rps_sock_flow_table);
+	if (!sock_flow_table) {
+		netdev_dbg(netdev, "Global RPS flow table not found\n");
+		return -EINVAL;
+	}
+
+	rfscpu = sock_flow_table->ents[hash & sock_flow_table->mask];
+	rfscpu &= rps_cpu_mask;
+
+	if (rxcpu == rfscpu)
+		return 0;
+
+	/*
+	 * Delete the old flow rule
+	 */
+	if (dp_priv->data_plane_ops->rx_flow_steer(dp_priv->dpc, skb, rxcpu, false)) {
+		netdev_dbg(netdev, "Data plane delete flow rule failed\n");
+		return -EAGAIN;
+	}
+
+	/*
+	 * Add the new flow rule
+	 */
+	if (dp_priv->data_plane_ops->rx_flow_steer(dp_priv->dpc, skb, rfscpu, true)) {
+		netdev_dbg(netdev, "Data plane add flow rule failed\n");
+		return -EAGAIN;
+	}
+
+	return 0;
+}
+#endif
+
 /*
  * Netdevice operations
  */
@@ -286,6 +362,9 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 	.ndo_bridge_setlink = switchdev_port_bridge_setlink,
 	.ndo_bridge_getlink = switchdev_port_bridge_getlink,
 	.ndo_bridge_dellink = switchdev_port_bridge_dellink,
+#ifdef CONFIG_RFS_ACCEL
+	.ndo_rx_flow_steer = nss_dp_rx_flow_steer,
+#endif
 };
 
 /*

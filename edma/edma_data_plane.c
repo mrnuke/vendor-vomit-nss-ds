@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -271,6 +271,20 @@ static int edma_if_vsi_unassign(struct nss_dp_data_plane_ctx *dpc, uint32_t vsi)
 
 	return NSS_DP_SUCCESS;
 }
+
+#ifdef CONFIG_RFS_ACCEL
+/*
+ * edma_if_rx_flow_steer()
+ *	Flow steer of the data plane
+ *
+ * Initial receive flow steering function for data plane operation.
+ */
+static int edma_if_rx_flow_steer(struct nss_dp_data_plane_ctx *dpc, struct sk_buff *skb,
+					uint32_t cpu, bool is_add)
+{
+	return NSS_DP_SUCCESS;
+}
+#endif
 
 /*
  * edma_irq_init()
@@ -551,6 +565,9 @@ struct nss_dp_data_plane_ops nss_dp_edma_ops = {
 	.pause_on_off	= edma_if_pause_on_off,
 	.vsi_assign	= edma_if_vsi_assign,
 	.vsi_unassign	= edma_if_vsi_unassign,
+#ifdef CONFIG_RFS_ACCEL
+	.rx_flow_steer	= edma_if_rx_flow_steer,
+#endif
 };
 
 /*

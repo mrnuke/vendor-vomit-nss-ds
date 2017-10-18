@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,6 +55,8 @@ struct nss_dp_data_plane_ops {
 			    uint32_t pause_on);
 	int (*vsi_assign)(struct nss_dp_data_plane_ctx *dpc, uint32_t vsi);
 	int (*vsi_unassign)(struct nss_dp_data_plane_ctx *dpc, uint32_t vsi);
+	int (*rx_flow_steer)(struct nss_dp_data_plane_ctx *dpc, struct sk_buff *skb,
+				uint32_t cpu, bool is_add);
 };
 
 /*
