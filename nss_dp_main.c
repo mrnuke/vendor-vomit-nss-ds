@@ -148,24 +148,10 @@ static netdev_tx_t nss_dp_xmit(struct sk_buff *skb, struct net_device *netdev)
 	if (!skb || !netdev)
 		return NETDEV_TX_OK;
 
-	if (skb->len < ETH_HLEN) {
-		netdev_dbg(netdev, "skb->len < ETH_HLEN\n");
-		goto drop;
-	}
-
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-
 	netdev_dbg(netdev, "Tx packet, len %d\n", skb->len);
 
-	if (likely(!dp_priv->data_plane_ops->xmit(dp_priv->dpc, skb)))
-		return NETDEV_TX_OK;
-
-drop:
-	netdev_dbg(netdev, "dropping skb\n");
-	dev_kfree_skb_any(skb);
-	netdev->stats.tx_dropped++;
-
-	return NETDEV_TX_OK;
+	return dp_priv->data_plane_ops->xmit(dp_priv->dpc, skb);
 }
 
 /*

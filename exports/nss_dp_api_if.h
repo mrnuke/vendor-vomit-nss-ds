@@ -49,7 +49,7 @@ struct nss_dp_data_plane_ops {
 			  uint32_t link_state);
 	int (*mac_addr)(struct nss_dp_data_plane_ctx *dpc, uint8_t *addr);
 	int (*change_mtu)(struct nss_dp_data_plane_ctx *dpc, uint32_t mtu);
-	int (*xmit)(struct nss_dp_data_plane_ctx *dpc, struct sk_buff *os_buf);
+	netdev_tx_t (*xmit)(struct nss_dp_data_plane_ctx *dpc, struct sk_buff *os_buf);
 	void (*set_features)(struct nss_dp_data_plane_ctx *dpc);
 	int (*pause_on_off)(struct nss_dp_data_plane_ctx *dpc,
 			    uint32_t pause_on);

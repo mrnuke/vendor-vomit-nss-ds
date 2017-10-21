@@ -133,13 +133,18 @@ static int edma_if_change_mtu(struct nss_dp_data_plane_ctx *dpc, uint32_t mtu)
  * edma_if_xmit()
  *	Transmit a packet using EDMA
  */
-static int edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
+static netdev_tx_t edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 				struct sk_buff *skb)
 {
 	struct net_device *netdev = dpc->dev;
 	int ret;
 	uint32_t tx_ring, skbq, nhead, ntail;
 	bool expand_skb = false;
+
+	if (skb->len < ETH_HLEN) {
+		netdev_dbg(netdev, "skb->len < ETH_HLEN\n");
+		goto drop;
+	}
 
 	/*
 	 * Select a Tx ring
@@ -154,7 +159,7 @@ static int edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 	 */
 	if (skb_is_nonlinear(skb)) {
 		netdev_dbg(netdev, "cannot Tx non-linear skb:%p\n", skb);
-		return NSS_DP_FAILURE;
+		goto drop;
 	}
 
 	/*
@@ -174,7 +179,7 @@ static int edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 	 */
 	if (expand_skb && pskb_expand_head(skb, nhead, ntail, GFP_ATOMIC)) {
 		netdev_dbg(netdev, "cannot expand skb:%p\n", skb);
-		return NSS_DP_FAILURE;
+		goto drop;
 	}
 
 	/*
@@ -183,15 +188,21 @@ static int edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 	ret = edma_ring_xmit(&edma_hw, netdev, skb,
 			&edma_hw.txdesc_ring[tx_ring]);
 	if (ret == EDMA_TX_OK)
-		return NSS_DP_SUCCESS;
+		return NETDEV_TX_OK;
 
 	/*
 	 * Not enough descriptors. Stop netdev Tx queue.
 	 */
-	if (ret == EDMA_TX_DESC)
+	if (ret == EDMA_TX_DESC) {
 		netif_stop_queue(netdev);
+		return NETDEV_TX_BUSY;
+	}
 
-	return NSS_DP_FAILURE;
+drop:
+	dev_kfree_skb_any(skb);
+	netdev->stats.tx_dropped++;
+
+	return NETDEV_TX_OK;
 }
 
 /*
