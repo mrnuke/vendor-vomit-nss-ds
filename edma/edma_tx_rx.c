@@ -266,6 +266,7 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 				 rxdesc_desc->buffer_addr,
 				 EDMA_RX_BUFF_SIZE,
 				 DMA_FROM_DEVICE);
+
 		store_index = rxph->opaque;
 		skb = ehw->rx_skb_store[store_index];
 		ehw->rx_skb_store[store_index] = NULL;
@@ -333,10 +334,15 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 		skb->skb_iif = ndev->ifindex;
 		skb_put(skb, pkt_length);
 		skb->protocol = eth_type_trans(skb, skb->dev);
-		pr_debug("skb:%p src_port_num:%u ring_idx:%u\n",
-				skb, src_port_num, cons_idx);
-		pr_debug("netdev:%s pktlen:%d proto:0x%x\n",
-				ndev->name, pkt_length, skb->protocol);
+#ifdef CONFIG_NET_SWITCHDEV
+		skb->offload_fwd_mark = ndev->offload_fwd_mark;
+		pr_debug("skb:%p ring_idx:%u pktlen:%d proto:0x%x mark:%u\n",
+			   skb, cons_idx, pkt_length, skb->protocol,
+			   skb->offload_fwd_mark);
+#else
+		pr_debug("skb:%p ring_idx:%u pktlen:%d proto:0x%x\n",
+			   skb, cons_idx, pkt_length, skb->protocol);
+#endif
 		netif_receive_skb(skb);
 
 next_rx_desc:

@@ -45,6 +45,10 @@ void nss_dp_receive(struct net_device *netdev, struct sk_buff *skb,
 	netdev_dbg(netdev, "Rx on port%d, packet len %d, CSUM %d\n",
 			dp_dev->macid, skb->len, skb->ip_summed);
 
+#ifdef CONFIG_NET_SWITCHDEV
+	skb->offload_fwd_mark = netdev->offload_fwd_mark;
+#endif
+
 	napi_gro_receive(napi, skb);
 }
 EXPORT_SYMBOL(nss_dp_receive);
