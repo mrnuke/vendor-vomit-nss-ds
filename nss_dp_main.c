@@ -32,6 +32,17 @@
 #include "nss_dp_dev.h"
 #include "edma.h"
 
+/*
+ * Number of host CPU cores
+ */
+#define NSS_DP_HOST_CPU_NUM 4
+
+/*
+ * Number of TX/RX queue supported is based on the number of host CPU
+ */
+#define NSS_DP_NETDEV_TX_QUEUE_NUM NSS_DP_HOST_CPU_NUM
+#define NSS_DP_NETDEV_RX_QUEUE_NUM NSS_DP_HOST_CPU_NUM
+
 /* ipq40xx_mdio_data */
 struct ipq40xx_mdio_data {
 	struct mii_bus *mii_bus;
@@ -348,6 +359,23 @@ static int nss_dp_rx_flow_steer(struct net_device *netdev, struct sk_buff *skb,
 #endif
 
 /*
+ * nss_dp_select_queue()
+ *	Select tx queue
+ */
+static u16 nss_dp_select_queue(struct net_device *netdev, struct sk_buff *skb,
+				void *accel_priv, select_queue_fallback_t fallback)
+{
+	int cpu = get_cpu();
+	put_cpu();
+
+	/*
+	 * The number of queue is matching the number of CPUs so get_cpu will
+	 * always match a valid queue
+	 */
+	return cpu;
+}
+
+/*
  * Netdevice operations
  */
 static const struct net_device_ops nss_dp_netdev_ops = {
@@ -365,6 +393,7 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 #ifdef CONFIG_RFS_ACCEL
 	.ndo_rx_flow_steer = nss_dp_rx_flow_steer,
 #endif
+	.ndo_select_queue = nss_dp_select_queue,
 };
 
 /*
@@ -514,7 +543,8 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 
 	/* TODO: See if we need to do some SoC level common init */
 
-	netdev = alloc_etherdev(sizeof(struct nss_dp_dev));
+	netdev = alloc_etherdev_mqs(sizeof(struct nss_dp_dev),
+			NSS_DP_NETDEV_TX_QUEUE_NUM, NSS_DP_NETDEV_RX_QUEUE_NUM);
 	if (!netdev) {
 		pr_info("alloc_etherdev() failed\n");
 		return -ENOMEM;
