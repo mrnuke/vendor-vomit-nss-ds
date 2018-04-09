@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -819,7 +819,7 @@ int edma_hw_init(struct edma_hw *ehw)
 {
 	int ret = 0;
 	int desc_index;
-	uint32_t i, data, reg;
+	uint32_t i, data, reg = 0;
 	struct edma_rxdesc_ring *rxdesc_ring = NULL;
 
 	data = edma_reg_read(EDMA_REG_MAS_CTRL);

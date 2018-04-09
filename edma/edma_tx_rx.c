@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -42,7 +42,7 @@ int edma_alloc_rx_buffer(struct edma_hw *ehw,
 	 * Read RXFILL ring producer index
 	 */
 	reg_data = edma_reg_read(EDMA_REG_RXFILL_PROD_IDX(rxfill_ring->id));
-	next = reg_data & EDMA_RXFILL_PROD_IDX_MASK;
+	next = reg_data & EDMA_RXFILL_PROD_IDX_MASK & (rxfill_ring->count - 1);
 
 	/*
 	 * Read RXFILL ring consumer index
@@ -520,7 +520,7 @@ enum edma_tx edma_ring_xmit(struct edma_hw *ehw,
 	/*
 	 * Store the skb in tx_store
 	 */
-	store_index = hw_next_to_use;
+	store_index = hw_next_to_use & (txdesc_ring->count - 1);
 	if (unlikely(ehw->tx_skb_store[store_index] != NULL)) {
 		spin_unlock_bh(&txdesc_ring->tx_lock);
 		return EDMA_TX_DESC;
