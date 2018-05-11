@@ -612,8 +612,10 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 			goto fail;
 		}
 
-		dp_priv->phydev->advertising &=
-				~(ADVERTISED_Pause | ADVERTISED_Asym_Pause);
+		dp_priv->phydev->advertising |=
+				(ADVERTISED_Pause | ADVERTISED_Asym_Pause);
+		dp_priv->phydev->supported |=
+				(SUPPORTED_Pause | SUPPORTED_Asym_Pause);
 	}
 
 #if defined(NSS_DP_PPE_SUPPORT)
