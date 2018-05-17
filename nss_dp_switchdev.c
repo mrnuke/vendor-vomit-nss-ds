@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -71,6 +71,8 @@ static int nss_dp_stp_state_set(struct nss_dp_dev *dp_priv, u8 state)
 	case BR_STATE_FORWARDING:
 		stp_state = FAL_STP_FORWARDING;
 		break;
+	default:
+		return -EOPNOTSUPP;
 	}
 
 	err = fal_stp_port_state_set(NSS_DP_SWITCH_ID, 0, dp_priv->macid,
