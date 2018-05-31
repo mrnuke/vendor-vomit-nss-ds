@@ -20,8 +20,11 @@
 #include <linux/if_bridge.h>
 #include "nss_dp_dev.h"
 #include "fal/fal_stp.h"
+#include "fal/fal_ctrlpkt.h"
 
 #define NSS_DP_SWITCH_ID		0
+#define NSS_DP_SW_ETHTYPE_PID		0 /* PPE ethtype profile ID for slow protocols */
+#define ETH_P_NONE			0
 
 /*
  * nss_dp_attr_get()
@@ -47,6 +50,75 @@ static int nss_dp_attr_get(struct net_device *dev, struct switchdev_attr *attr)
 }
 
 /*
+ * nss_dp_set_slow_proto_filter()
+ * 	Enable/Disable filter to allow Ethernet slow-protocol
+ */
+static void nss_dp_set_slow_proto_filter(struct nss_dp_dev *dp_priv, bool filter_enable)
+{
+	sw_error_t ret = 0;
+	fal_ctrlpkt_profile_t profile;
+	fal_ctrlpkt_action_t action;
+
+	memset(&profile, 0, sizeof(profile));
+
+	/*
+	 * Action is redirect cpu
+	 */
+	action.action = FAL_MAC_RDT_TO_CPU;
+	action.sg_bypass = A_FALSE;
+
+	/*
+	 * Bypass stp
+	 */
+	action.in_stp_bypass = A_TRUE;
+	action.in_vlan_fltr_bypass = A_FALSE;
+	action.l2_filter_bypass = A_FALSE;
+	profile.action = action;
+	profile.ethtype_profile_bitmap = 0x1;
+
+	/*
+	 * Set port map
+	 */
+	profile.port_map = (1 << dp_priv->macid);
+	profile.rfdb_profile_bitmap = 0;
+	if (filter_enable) {
+		ret = fal_mgmtctrl_ctrlpkt_profile_add(NSS_DP_SWITCH_ID, &profile);
+		if (ret != SW_OK) {
+			netdev_dbg(dp_priv->netdev, "failed to add profile for port_map: 0x%x, ret: %d\n", profile.port_map, ret);
+			return;
+		}
+
+		/*
+		 * Enable filter to allow ethernet slow-protocol
+		 */
+		ret = fal_mgmtctrl_ethtype_profile_set(NSS_DP_SWITCH_ID, NSS_DP_SW_ETHTYPE_PID, ETH_P_SLOW);
+		if (ret != SW_OK) {
+			netdev_dbg(dp_priv->netdev, "failed to set ethertype profile: 0x%x, ret: %d\n", ETH_P_SLOW, ret);
+			ret = fal_mgmtctrl_ctrlpkt_profile_del(NSS_DP_SWITCH_ID, &profile);
+			if (ret != SW_OK)
+				netdev_dbg(dp_priv->netdev, "failed to delete profile for port_map: 0x%x, ret: %d\n", profile.port_map, ret);
+		}
+	} else {
+		/*
+		 * Disable filter to allow Ethernet slow protocol packets
+		 */
+		ret = fal_mgmtctrl_ethtype_profile_set(NSS_DP_SWITCH_ID, NSS_DP_SW_ETHTYPE_PID, ETH_P_NONE);
+		if (ret != SW_OK) {
+			netdev_dbg(dp_priv->netdev, "failed to reset ethertype profile: 0x%x ret: %d\n", ETH_P_NONE, ret);
+			return;
+		}
+
+		ret = fal_mgmtctrl_ctrlpkt_profile_del(NSS_DP_SWITCH_ID, &profile);
+		if (ret != SW_OK) {
+			netdev_dbg(dp_priv->netdev, "failed to delete profile for port_map: 0x%x, ret: %d\n", profile.port_map, ret);
+			ret = fal_mgmtctrl_ethtype_profile_set(NSS_DP_SWITCH_ID, NSS_DP_SW_ETHTYPE_PID, ETH_P_SLOW);
+			if (ret != SW_OK)
+				netdev_dbg(dp_priv->netdev, "failed to set ethertype profile: 0x%x, ret: %d\n", ETH_P_SLOW, ret);
+		}
+	}
+}
+
+/*
  * nss_dp_stp_state_set()
  *	Set bridge port STP state to the port of NSS data plane.
  */
@@ -58,6 +130,13 @@ static int nss_dp_stp_state_set(struct nss_dp_dev *dp_priv, u8 state)
 	switch (state) {
 	case BR_STATE_DISABLED:
 		stp_state = FAL_STP_DISABLED;
+
+		/*
+		 * Dynamic bond interfaces which are bridge slaves need to receive
+		 * ethernet slow protocol packets for LACP protocol even in STP
+		 * disabled state
+		 */
+		nss_dp_set_slow_proto_filter(dp_priv, true);
 		break;
 	case BR_STATE_LISTENING:
 		stp_state = FAL_STP_LISTENING;
@@ -70,6 +149,12 @@ static int nss_dp_stp_state_set(struct nss_dp_dev *dp_priv, u8 state)
 		break;
 	case BR_STATE_FORWARDING:
 		stp_state = FAL_STP_FORWARDING;
+
+		/*
+		 * Remove the filter for allowing ethernet slow protocol packets
+		 * for bond interfaces
+		 */
+		nss_dp_set_slow_proto_filter(dp_priv, false);
 		break;
 	default:
 		return -EOPNOTSUPP;
@@ -79,6 +164,15 @@ static int nss_dp_stp_state_set(struct nss_dp_dev *dp_priv, u8 state)
 				     stp_state);
 	if (err) {
 		netdev_dbg(dp_priv->netdev, "failed to set ftp state\n");
+
+		/*
+		 * Restore the slow proto filters
+		 */
+		if (state == BR_STATE_DISABLED)
+			nss_dp_set_slow_proto_filter(dp_priv, false);
+		else if (state == BR_STATE_FORWARDING)
+			nss_dp_set_slow_proto_filter(dp_priv, true);
+
 		return -EINVAL;
 	}
 
