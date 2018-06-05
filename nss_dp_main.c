@@ -68,7 +68,8 @@ static int32_t nss_dp_do_ioctl(struct net_device *netdev, struct ifreq *ifr,
 
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
-	/* TODO: Perform private ioctl operations */
+	if (dp_priv->phydev)
+		return phy_mii_ioctl(dp_priv->phydev, ifr, cmd);
 
 	return ret;
 }
