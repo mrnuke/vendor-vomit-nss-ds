@@ -44,6 +44,7 @@
 #define EDMA_RXDESC_DESC(R, i) EDMA_GET_DESC(R, i, struct edma_rxdesc_desc)
 #define EDMA_TXDESC_DESC(R, i) EDMA_GET_DESC(R, i, struct edma_txdesc_desc)
 #define EDMA_RXPH_SRC_INFO_TYPE_GET(rxph)	(((rxph)->src_info >> 8) & 0xf0)
+#define EDMA_RXPH_SERVICE_CODE_GET(rxph)	(((rxph)->rx_pre4) & 0xff)
 
 /*
  * Tx descriptor

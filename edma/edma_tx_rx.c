@@ -212,6 +212,46 @@ next_txcmpl_desc:
 }
 
 /*
+ * nss_phy_tstamp_rx_buf()
+ *	Receive timestamp packet
+ */
+void nss_phy_tstamp_rx_buf(__attribute__((unused))void *app_data, struct sk_buff *skb)
+{
+	struct net_device *ndev = skb->dev;
+
+	/*
+	 * The PTP_CLASS_ value 0 is passed to phy driver, which will be
+	 * set to the correct PTP class value by calling ptp_classify_raw
+	 * in drv->rxtstamp function.
+	 */
+	if (ndev && ndev->phydev && ndev->phydev->drv &&
+			ndev->phydev->drv->rxtstamp)
+		if(ndev->phydev->drv->rxtstamp(ndev->phydev, skb, 0))
+			return;
+
+	netif_receive_skb(skb);
+}
+EXPORT_SYMBOL(nss_phy_tstamp_rx_buf);
+
+/*
+ * nss_phy_tstamp_tx_buf()
+ *	Transmit timestamp packet
+ */
+void nss_phy_tstamp_tx_buf(struct net_device *ndev, struct sk_buff *skb)
+{
+	/*
+	 * Function drv->txtstamp will create a clone of skb if necessary,
+	 * the PTP_CLASS_ value 0 is passed to phy driver, which will be
+	 * set to the correct PTP class value by calling ptp_classify_raw
+	 * in the drv->txtstamp function.
+	 */
+	if (ndev && ndev->phydev && ndev->phydev->drv &&
+			ndev->phydev->drv->txtstamp)
+		ndev->phydev->drv->txtstamp(ndev->phydev, skb, 0);
+}
+EXPORT_SYMBOL(nss_phy_tstamp_tx_buf);
+
+/*
  * edma_clean_rx()
  *	Reap Rx descriptors
  */
@@ -343,7 +383,14 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 		pr_debug("skb:%p ring_idx:%u pktlen:%d proto:0x%x\n",
 			   skb, cons_idx, pkt_length, skb->protocol);
 #endif
-		netif_receive_skb(skb);
+		/*
+		 * Deliver the ptp packet to phy driver for RX timestamping
+		 */
+		if (unlikely(EDMA_RXPH_SERVICE_CODE_GET(rxph) ==
+					NSS_PTP_EVENT_SERVICE_CODE))
+			nss_phy_tstamp_rx_buf(ndev, skb);
+		else
+			netif_receive_skb(skb);
 
 next_rx_desc:
 		/*
@@ -503,6 +550,12 @@ enum edma_tx edma_ring_xmit(struct edma_hw *ehw,
 		spin_unlock_bh(&txdesc_ring->tx_lock);
 		return EDMA_TX_DESC;
 	}
+
+	/*
+	 * Deliver the ptp packet to phy driver for TX timestamping
+	 */
+	if (unlikely(skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP))
+		nss_phy_tstamp_tx_buf(netdev, skb);
 
 	/*
 	 * Make room for Tx preheader

@@ -30,6 +30,11 @@
 #define NSS_DP_FAILURE	-1
 
 /*
+ * NSS PTP service code
+ */
+#define NSS_PTP_EVENT_SERVICE_CODE	0x9
+
+/*
  * data plane context base class
  */
 struct nss_dp_data_plane_ctx {
@@ -93,4 +98,13 @@ void nss_dp_restore_data_plane(struct net_device *netdev);
  */
 struct net_device *nss_dp_get_netdev_by_macid(int macid);
 
+/*
+ * nss_phy_tstamp_rx_buf()
+ */
+void nss_phy_tstamp_rx_buf(void *app_data, struct sk_buff *skb);
+
+/*
+ * nss_phy_tstamp_tx_buf()
+ */
+void nss_phy_tstamp_tx_buf(struct net_device *ndev, struct sk_buff *skb);
 #endif	/* __DP_API_IF_H */
