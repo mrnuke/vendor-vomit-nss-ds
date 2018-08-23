@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -101,29 +101,9 @@ static const char * const qcom_strings_priv_flags[] = {
 static int32_t qcom_set_mac_speed(struct nss_gmac_hal_dev *nghd,
 				uint32_t mac_speed)
 {
-	/* TODO: Disable GMACn Tx/Rx clk */
-	/* TODO: set clock divider */
-	/* TODO: Enable GMACn Tx/Rx clk */
+	struct net_device *netdev = nghd->netdev;
 
-	uint32_t speed;
-
-	switch (mac_speed) {
-	case SPEED_1000:
-		speed = QCOM_MAC_SPEED_1000;
-		break;
-	case SPEED_100:
-		speed = QCOM_MAC_SPEED_100;
-		break;
-	case SPEED_10:
-		speed = QCOM_MAC_SPEED_10;
-		break;
-	default:
-		return -1;
-	}
-
-	/* Set speed */
-	hal_write_reg(nghd->mac_base, QCOM_MAC_SPEED, speed);
-
+	netdev_warn(netdev, "API deprecated\n");
 	return 0;
 }
 
@@ -132,17 +112,10 @@ static int32_t qcom_set_mac_speed(struct nss_gmac_hal_dev *nghd,
  */
 static uint32_t qcom_get_mac_speed(struct nss_gmac_hal_dev *nghd)
 {
-	uint32_t speed;
+	struct net_device *netdev = nghd->netdev;
 
-	/* Get speed */
-	speed = hal_read_reg(nghd->mac_base, QCOM_MAC_SPEED);
-
-	if (speed == QCOM_MAC_SPEED_100)
-		return SPEED_100;
-	else if (speed == QCOM_MAC_SPEED_10)
-		return SPEED_10;
-
-	return SPEED_1000;
+	netdev_warn(netdev, "API deprecated\n");
+	return 0;
 }
 
 /*
@@ -153,19 +126,7 @@ static void qcom_set_duplex_mode(struct nss_gmac_hal_dev *nghd,
 {
 	struct net_device *netdev = nghd->netdev;
 
-	switch (duplex_mode) {
-	case DUPLEX_FULL:
-		qcom_set_full_duplex(nghd);
-		break;
-
-	case DUPLEX_HALF:
-		qcom_set_half_duplex(nghd);
-		break;
-
-	default:
-		netdev_dbg(netdev, "%s: Invalid duplex mode %d\n", __func__,
-								duplex_mode);
-	}
+	netdev_warn(netdev, "This API deprecated\n");
 }
 
 /*
@@ -173,10 +134,10 @@ static void qcom_set_duplex_mode(struct nss_gmac_hal_dev *nghd,
  */
 static uint8_t qcom_get_duplex_mode(struct nss_gmac_hal_dev *nghd)
 {
-	if (hal_check_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_DUPLEX))
-		return DUPLEX_FULL;
+	struct net_device *netdev = nghd->netdev;
 
-	return DUPLEX_HALF;
+	netdev_warn(netdev, "API deprecated\n");
+	return 0;
 }
 
 /*

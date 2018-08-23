@@ -68,11 +68,7 @@ static int32_t nss_dp_get_settings(struct net_device *netdev,
 	if (dp_priv->phydev)
 		return phy_ethtool_gset(dp_priv->phydev, cmd);
 
-	speed = dp_priv->gmac_hal_ops->getspeed(dp_priv->gmac_hal_ctx);
-	ethtool_cmd_speed_set(cmd, speed);
-	cmd->duplex = dp_priv->gmac_hal_ops->getduplex(dp_priv->gmac_hal_ctx);
-
-	return 0;
+	return -EIO;
 }
 
 /*

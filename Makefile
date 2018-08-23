@@ -24,3 +24,11 @@ ccflags-y += $(NSS_DP_INCLUDE)
 ifeq ($(SoC),$(filter $(SoC),ipq807x ipq807x_64 ipq60xx ipq60xx_64))
 ccflags-y += -DNSS_DP_PPE_SUPPORT
 endif
+
+ifeq ($(SoC),$(filter $(SoC),ipq60xx))
+ccflags-y += -DNSS_DP_IPQ60XX
+endif
+
+ifeq ($(SoC),$(filter $(SoC),ipq807x ipq807x_64))
+ccflags-y += -DNSS_DP_IPQ807X
+endif
