@@ -706,7 +706,7 @@ int __init nss_dp_init(void)
 	 * Bail out on not supported platform
 	 * TODO: Handle this properly with SoC ops
 	 */
-	if (!of_machine_is_compatible("qcom,ipq807x") && !of_machine_is_compatible("qcom,ipq60xx"))
+	if (!of_machine_is_compatible("qcom,ipq807x") && !of_machine_is_compatible("qcom,ipq6018"))
 		return 0;
 
 	/*
