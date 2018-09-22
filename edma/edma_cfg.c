@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -804,6 +804,7 @@ int edma_hw_init(struct edma_hw *ehw)
 		edma_reg_write(EDMA_REG_TXDESC_CTRL(desc_index), data);
 	}
 
+#if defined(NSS_DP_IPQ807X)
 	/*
 	 * Clear the TXDESC2CMPL_MAP_xx reg before setting up
 	 * the mapping. This register holds TXDESC to TXFILL ring
@@ -839,7 +840,7 @@ int edma_hw_init(struct edma_hw *ehw)
 		if (desc_index == ehw->txcmpl_ring_end)
 				desc_index = ehw->txcmpl_ring_start;
 	}
-
+#endif
 
 	/*
 	 * Set PPE QID to EDMA Rx ring mapping.
@@ -890,12 +891,14 @@ int edma_hw_init(struct edma_hw *ehw)
 	reg = EDMA_REG_RXDESC2FILL_MAP_1;
 	pr_debug("EDMA_REG_RXDESC2FILL_MAP_1: 0x%x\n", edma_reg_read(reg));
 
+#if defined(NSS_DP_IPQ807X)
 	reg = EDMA_REG_TXDESC2CMPL_MAP_0;
 	pr_debug("EDMA_REG_TXDESC2CMPL_MAP_0: 0x%x\n", edma_reg_read(reg));
 	reg = EDMA_REG_TXDESC2CMPL_MAP_1;
 	pr_debug("EDMA_REG_TXDESC2CMPL_MAP_1: 0x%x\n", edma_reg_read(reg));
 	reg = EDMA_REG_TXDESC2CMPL_MAP_2;
 	pr_debug("EDMA_REG_TXDESC2CMPL_MAP_2: 0x%x\n", edma_reg_read(reg));
+#endif
 
 	/*
 	 * Enable EDMA
