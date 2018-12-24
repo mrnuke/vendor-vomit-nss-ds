@@ -774,8 +774,6 @@ int edma_hw_init(struct edma_hw *ehw)
 	for (i = 0; i < EDMA_MAX_RXDESC_RINGS; i++)
 		edma_reg_write(EDMA_REG_RX_INT_CTRL(i), 0);
 
-	edma_reg_write(EDMA_REG_MISC_INT_MASK, 0);
-
 	/*
 	 * Disable Rx rings
 	 */
@@ -900,9 +898,44 @@ int edma_hw_init(struct edma_hw *ehw)
 #endif
 
 	/*
-	 * Enable EDMA
+	 * Configure DMA request priority, DMA read burst length,
+	 * and AXI write size.
 	 */
-	edma_reg_write(EDMA_REG_PORT_CTRL, EDMA_PORT_CTRL_EN);
+	data = EDMA_DMAR_BURST_LEN_SET(EDMA_BURST_LEN_ENABLE)
+		| EDMA_DMAR_REQ_PRI_SET(0)
+		| EDMA_DMAR_TXDATA_OUTSTANDING_NUM_SET(31)
+		| EDMA_DMAR_TXDESC_OUTSTANDING_NUM_SET(7)
+		| EDMA_DMAR_RXFILL_OUTSTANDING_NUM_SET(7);
+	edma_reg_write(EDMA_REG_DMAR_CTRL, data);
+#if defined(NSS_DP_IPQ60XX)
+	data = edma_reg_read(EDMA_REG_AXIW_CTRL);
+	data |= EDMA_AXIW_MAX_WR_SIZE_EN;
+	edma_reg_write(EDMA_REG_AXIW_CTRL, data);
+#endif
+
+	/*
+	 * Misc error mask
+	 */
+	data = EDMA_MISC_AXI_RD_ERR_MASK_EN |
+		EDMA_MISC_AXI_WR_ERR_MASK_EN |
+		EDMA_MISC_RX_DESC_FIFO_FULL_MASK_EN |
+		EDMA_MISC_RX_ERR_BUF_SIZE_MASK_EN |
+		EDMA_MISC_TX_SRAM_FULL_MASK_EN |
+		EDMA_MISC_TX_CMPL_BUF_FULL_MASK_EN |
+		EDMA_MISC_DATA_LEN_ERR_MASK_EN;
+#if defined(NSS_DP_IPQ807X)
+	data |= EDMA_MISC_PKT_LEN_LA_64K_MASK_EN |
+		 EDMA_MISC_PKT_LEN_LE_40_MASK_EN;
+#else
+	data |= EDMA_MISC_TX_TIMEOUT_MASK_EN;
+#endif
+	edma_reg_write(EDMA_REG_MISC_INT_MASK, data);
+
+	/*
+	 * Global EDMA enable and padding enable
+	 */
+	data = EDMA_PORT_PAD_EN | EDMA_PORT_EDMA_EN;
+	edma_reg_write(EDMA_REG_PORT_CTRL, data);
 
 	/*
 	 * Enable Rx rings
