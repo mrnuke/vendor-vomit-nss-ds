@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -287,6 +287,25 @@ static int edma_if_rx_flow_steer(struct nss_dp_data_plane_ctx *dpc, struct sk_bu
 #endif
 
 /*
+ * edma_if_deinit()
+ *	Free edma resources
+ */
+static int edma_if_deinit(struct nss_dp_data_plane_ctx *dpc)
+{
+	/*
+	 * Free up resources used by EDMA if all the
+	 * interfaces have been overridden
+	 * */
+	if (edma_hw.dp_override_cnt == EDMA_MAX_GMACS - 1) {
+		edma_cleanup(true);
+	} else {
+		edma_hw.dp_override_cnt++;
+	}
+
+	return NSS_DP_SUCCESS;
+}
+
+/*
  * edma_irq_init()
  *	Initialize interrupt handlers for the driver
  */
@@ -568,6 +587,7 @@ struct nss_dp_data_plane_ops nss_dp_edma_ops = {
 #ifdef CONFIG_RFS_ACCEL
 	.rx_flow_steer	= edma_if_rx_flow_steer,
 #endif
+	.deinit		= edma_if_deinit,
 };
 
 /*
@@ -751,14 +771,38 @@ edma_init_remap_fail:
 }
 
 /*
+ * edma_disable_port()
+ * 	EDMA disable port
+ */
+static void edma_disable_port(void)
+{
+	edma_reg_write(EDMA_REG_PORT_CTRL, EDMA_DISABLE);
+}
+
+/*
  * edma_cleanup()
  *	EDMA cleanup
  */
-void edma_cleanup(void)
+void edma_cleanup(bool is_dp_override)
 {
 	int i;
 	struct edma_txcmpl_ring *txcmpl_ring = NULL;
 	struct edma_rxdesc_ring *rxdesc_ring = NULL;
+
+	/*
+	 * The cleanup can happen from data plane override
+	 * or from module_exit, we want to cleanup only once
+	 */
+	if (!edma_hw.edma_initialized) {
+		/*
+		 * Disable EDMA only at module exit time, since NSS firmware
+		 * depends on this setting.
+		 */
+		if (!is_dp_override) {
+			edma_disable_port();
+		}
+		return;
+	}
 
 	/*
 	 * Disable Rx rings used by this driver
@@ -771,7 +815,7 @@ void edma_cleanup(void)
 	 */
 	for (i = edma_hw.txdesc_ring_start; i < edma_hw.txdesc_ring_end; i++) {
 		txcmpl_ring = &edma_hw.txcmpl_ring[i];
-		edma_reg_write(EDMA_REG_TXDESC_CTRL(txcmpl_ring->id),
+		edma_reg_write(EDMA_REG_TXDESC_CTRL(i),
 				EDMA_RING_DISABLE);
 	}
 
@@ -808,7 +852,7 @@ void edma_cleanup(void)
 		for (i = 0; i < edma_hw.txcmpl_rings; i++) {
 			synchronize_irq(edma_hw.txcmpl_intr[i]);
 			free_irq(edma_hw.txcmpl_intr[i],
-					(void *)&(edma_hw.pdev)->dev);
+					(void *)(edma_hw.pdev));
 		}
 
 		/*
@@ -817,7 +861,7 @@ void edma_cleanup(void)
 		for (i = 0; i < edma_hw.rxfill_rings; i++) {
 			synchronize_irq(edma_hw.rxfill_intr[i]);
 			free_irq(edma_hw.rxfill_intr[i],
-					(void *)&(edma_hw.pdev)->dev);
+					(void *)(edma_hw.pdev));
 		}
 
 		/*
@@ -826,28 +870,26 @@ void edma_cleanup(void)
 		for (i = 0; i < edma_hw.rxdesc_rings; i++) {
 			synchronize_irq(edma_hw.rxdesc_intr[i]);
 			free_irq(edma_hw.rxdesc_intr[i],
-					(void *)&(edma_hw.pdev)->dev);
+					(void *)(edma_hw.pdev));
 		}
 
 		/*
 		 * Free Misc IRQ
 		 */
 		synchronize_irq(edma_hw.misc_intr);
-		free_irq(edma_hw.misc_intr, (void *)&(edma_hw.pdev)->dev);
+		free_irq(edma_hw.misc_intr, (void *)(edma_hw.pdev));
 
 		netif_napi_del(&edma_hw.napi);
+		edma_hw.napi_added = 0;
 	}
 
 	/*
-	 * Disable EDMA
+	 * Disable EDMA only at module exit time, since NSS firmware
+	 * depends on this setting.
 	 */
-	edma_reg_write(EDMA_REG_PORT_CTRL, EDMA_DISABLE);
-
-	/*
-	 * Remove NAPI
-	 */
-	if (edma_hw.napi_added)
-		netif_napi_del(&edma_hw.napi);
+	if (!is_dp_override) {
+		edma_disable_port();
+	}
 
 	/*
 	 * cleanup rings and free
@@ -856,4 +898,10 @@ void edma_cleanup(void)
 	iounmap(edma_hw.reg_base);
 	release_mem_region((edma_hw.reg_resource)->start,
 			   resource_size(edma_hw.reg_resource));
+
+	/*
+	 * Mark initialize false, so that we do not
+	 * try to cleanup again
+	 */
+	edma_hw.edma_initialized = false;
 }

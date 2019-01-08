@@ -712,6 +712,7 @@ int __init nss_dp_init(void)
 	/*
 	 * TODO Move this to soc_ops
 	 */
+	dp_global_ctx.common_init_done = false;
 	ret = edma_init();
 	if (ret) {
 		pr_info("EDMA init failed\n");
@@ -722,6 +723,7 @@ int __init nss_dp_init(void)
 	if (ret)
 		pr_info("NSS DP platform drv register failed\n");
 
+	dp_global_ctx.common_init_done = true;
 	pr_info("**********************************************************\n");
 	pr_info("* NSS Data Plane driver\n");
 	pr_info("**********************************************************\n");
@@ -738,7 +740,11 @@ void __exit nss_dp_exit(void)
 	/*
 	 * TODO Move this to soc_ops
 	 */
-	edma_cleanup();
+	if (dp_global_ctx.common_init_done) {
+		edma_cleanup(false);
+		dp_global_ctx.common_init_done = false;
+	}
+
 	platform_driver_unregister(&nss_dp_drv);
 }
 

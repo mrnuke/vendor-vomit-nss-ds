@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, 2019 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -79,7 +79,7 @@ int nss_dp_override_data_plane(struct net_device *netdev,
 
 	if (!dp_ops->open || !dp_ops->close || !dp_ops->link_state
 		|| !dp_ops->mac_addr || !dp_ops->change_mtu || !dp_ops->xmit
-		|| !dp_ops->set_features || !dp_ops->pause_on_off) {
+		|| !dp_ops->set_features || !dp_ops->pause_on_off || !dp_ops->deinit) {
 		netdev_dbg(netdev, "All the op functions must be present, reject this registeration\n");
 		return NSS_DP_FAILURE;
 	}
@@ -93,7 +93,14 @@ int nss_dp_override_data_plane(struct net_device *netdev,
 		nss_dp_reset_netdev_features(netdev);
 	}
 
-	/* Recored the data_plane_ctx, data_plane_ops */
+	/*
+	 * Free up the resources used by the data plane
+	 */
+	dp_dev->data_plane_ops->deinit(dpc);
+
+	/*
+	 * Override the data_plane_ctx, data_plane_ops
+	 */
 	dp_dev->dpc = dpc;
 	dp_dev->data_plane_ops = dp_ops;
 
@@ -143,6 +150,10 @@ void nss_dp_restore_data_plane(struct net_device *netdev)
 
 	dp_dev->data_plane_ops = &nss_dp_edma_ops;
 	dp_dev->dpc = &dp_global_data_plane_ctx[dp_dev->macid-1];
+
+	/*
+	 * TODO: Re-initialize EDMA dataplane
+	 */
 }
 EXPORT_SYMBOL(nss_dp_restore_data_plane);
 

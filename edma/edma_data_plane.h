@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016, 2018-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -259,6 +259,10 @@ struct edma_hw {
 			/* Tx Cmpl ring interrupt mask */
 	uint32_t misc_intr_mask;
 			/* misc interrupt interrupt mask */
+	uint32_t dp_override_cnt;
+			/* number of interfaces overriden */
+	bool edma_initialized;
+			/* flag to check initialization status */
 };
 
 extern struct edma_hw edma_hw;
@@ -278,5 +282,6 @@ irqreturn_t edma_handle_irq(int irq, void *ctx);
 irqreturn_t edma_handle_misc_irq(int irq, void *ctx);
 int edma_napi(struct napi_struct *napi, int budget);
 void edma_cleanup_rings(struct edma_hw *ehw);
+void edma_cleanup(bool is_dp_override);
 int edma_hw_init(struct edma_hw *ehw);
 #endif /* __NSS_DP_EDMA_DATAPLANE__ */

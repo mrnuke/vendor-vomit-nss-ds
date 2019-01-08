@@ -54,13 +54,10 @@ static void edma_cleanup_rxfill_ring_res(struct edma_hw *ehw,
 	cons_idx = reg_data & EDMA_RXFILL_CONS_IDX_MASK;
 
 	while (curr_idx != cons_idx) {
-		if (curr_idx == rxfill_ring->count)
-			curr_idx = 0;
-
 		/*
 		 * Get RXFILL descriptor
 		 */
-		rxfill_desc = EDMA_RXFILL_DESC(rxfill_ring, curr_idx);
+		rxfill_desc = EDMA_RXFILL_DESC(rxfill_ring, cons_idx);
 
 		/*
 		 * Get Rx preheader
@@ -78,7 +75,9 @@ static void edma_cleanup_rxfill_ring_res(struct edma_hw *ehw,
 		skb = ehw->rx_skb_store[store_idx];
 		ehw->rx_skb_store[store_idx] = NULL;
 		dev_kfree_skb_any(skb);
-		curr_idx++;
+		cons_idx++;
+		if (cons_idx == rxfill_ring->count)
+			cons_idx = 0;
 	}
 
 	/*
@@ -756,6 +755,7 @@ int edma_hw_init(struct edma_hw *ehw)
 				EDMA_TX_INT_MASK_UGT_INT;
 	ehw->rx_payload_offset = EDMA_RX_PREHDR_SIZE;
 	ehw->active = 0;
+	ehw->edma_initialized = false;
 
 	/* Reset EDMA */
 	ret = edma_hw_reset(ehw);
@@ -927,6 +927,8 @@ int edma_hw_init(struct edma_hw *ehw)
 		data |= EDMA_TXDESC_TX_EN;
 		edma_reg_write(EDMA_REG_TXDESC_CTRL(i), data);
 	}
+
+	ehw->edma_initialized = true;
 
 	return 0;
 }
