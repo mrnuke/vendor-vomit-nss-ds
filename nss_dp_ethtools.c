@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -60,7 +60,6 @@ static int32_t nss_dp_get_settings(struct net_device *netdev,
 				   struct ethtool_cmd *cmd)
 {
 	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-	uint32_t speed;
 
 	/*
 	 * If there is a PHY attached, get the status from Kernel helper

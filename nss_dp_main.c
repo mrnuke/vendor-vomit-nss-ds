@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -289,7 +289,7 @@ static int nss_dp_open(struct net_device *netdev)
  * nss_dp_rx_flow_steer()
  *	Steer the flow rule to NSS
  */
-static int nss_dp_rx_flow_steer(struct net_device *netdev, struct sk_buff *skb,
+static int nss_dp_rx_flow_steer(struct net_device *netdev, const struct sk_buff *_skb,
 				uint16_t rxq, uint32_t flow)
 {
 	struct nss_dp_dev *dp_priv;
@@ -297,11 +297,11 @@ static int nss_dp_rx_flow_steer(struct net_device *netdev, struct sk_buff *skb,
 	struct rps_sock_flow_table *sock_flow_table;
 	struct rps_dev_flow_table *flow_table;
 	struct rps_dev_flow *rxflow;
+	struct sk_buff *skb = (struct sk_buff *)_skb;
 	uint16_t index;
 	uint32_t hash;
 	uint32_t rfscpu;
 	uint32_t rxcpu;
-	bool res;
 
 	if (!netdev)
 		return -EINVAL;

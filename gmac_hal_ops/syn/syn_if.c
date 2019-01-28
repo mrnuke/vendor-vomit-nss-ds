@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -139,7 +139,7 @@ static int32_t syn_get_mmc_stats(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_get_max_frame_size()
  */
-static uint32_t syn_get_max_frame_size(struct nss_gmac_hal_dev *nghd)
+static int32_t syn_get_max_frame_size(struct nss_gmac_hal_dev *nghd)
 {
 	int ret;
 	uint32_t mtu;

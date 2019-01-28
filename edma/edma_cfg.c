@@ -592,7 +592,6 @@ static void edma_configure_txdesc_ring(struct edma_hw *ehw,
 static void edma_configure_txcmpl_ring(struct edma_hw *ehw,
 					struct edma_txcmpl_ring *txcmpl_ring)
 {
-	uint32_t txcmpl_ugt_thre, low_thre = 0, txcmpl_fc_thre = 0;
 	uint32_t tx_mod_timer;
 
 	/*
