@@ -555,50 +555,6 @@ static int edma_init_rings(struct edma_hw *ehw)
 }
 
 /*
- * edma_configure_rx_thershold()
- *	Configure Rx threshold parameters
- */
-static void edma_configure_rx_threshold(void)
-{
-	uint32_t rxq_fc_thre, rxq_ctrl;
-
-	rxq_fc_thre = (EDMA_RXFILL_FIFO_XOFF_THRE &
-			EDMA_RXFILL_FIFO_XOFF_THRE_MASK)
-			<< EDMA_RXFILL_FIFO_XOFF_THRE_SHIFT;
-	rxq_fc_thre |= (EDMA_RXFILL_FIFO_XOFF_THRE &
-			EDMA_DESC_FIFO_XOFF_THRE_MASK)
-			<< EDMA_DESC_FIFO_XOFF_THRE_SHIFT;
-	edma_reg_write(EDMA_REG_RXQ_FC_THRE, rxq_fc_thre);
-
-	rxq_ctrl = (EDMA_RXFILL_PF_THRE & EDMA_RXFILL_PF_THRE_MASK)
-			<< EDMA_RXFILL_PF_THRE_SHIFT;
-	rxq_ctrl |= (EDMA_RXDESC_WB_THRE & EDMA_RXDESC_WB_THRE_MASK)
-			<< EDMA_RXDESC_WB_THRE_SHIFT;
-	rxq_ctrl |= (EDMA_RXDESC_WB_TIMER & EDMA_RXDESC_WB_TIMER_MASK)
-			<< EDMA_RXDESC_WB_TIMER_SHIFT;
-	edma_reg_write(EDMA_REG_RXQ_CTRL, rxq_ctrl);
-}
-
-/*
- * edma_configure_tx_threshold()
- *	Configure global Tx threshold parameters
- */
-static void edma_configure_tx_threshold(void)
-{
-	uint32_t txq_ctrl;
-
-	txq_ctrl = (EDMA_TXDESC_PF_THRE & EDMA_TXDESC_PF_THRE_MASK)
-		    << EDMA_TXDESC_PF_THRE_SHIFT;
-	txq_ctrl |= (EDMA_TXCMPL_WB_THRE & EDMA_TXCMPL_WB_THRE_MASK)
-		     << EDMA_TXCMPL_WB_THRE_SHIFT;
-	txq_ctrl |= (EDMA_TXDESC_PKT_SRAM_THRE & EDMA_TXDESC_PKT_SRAM_THRE_MASK)
-		     << EDMA_TXDESC_PKT_SRAM_THRE_SHIFT;
-	txq_ctrl |= (EDMA_TXCMPL_WB_TIMER & EDMA_TXCMPL_WB_TIMER_MASK)
-		     << EDMA_TXCMPL_WB_TIMER_SHIFT;
-	edma_reg_write(EDMA_REG_TXQ_CTRL, txq_ctrl);
-}
-
-/*
  * edma_configure_txdesc_ring()
  *	Configure one TxDesc ring
  */
@@ -654,13 +610,6 @@ static void edma_configure_txcmpl_ring(struct edma_hw *ehw,
 	edma_reg_write(EDMA_REG_TXCMPL_CTRL(txcmpl_ring->id),
 			EDMA_TXCMPL_RETMODE_OPAQUE);
 
-	txcmpl_ugt_thre = (low_thre & EDMA_TXCMPL_LOW_THRE_MASK)
-			<< EDMA_TXCMPL_LOW_THRE_SHIFT;
-	txcmpl_ugt_thre |= (txcmpl_fc_thre & EDMA_TXCMPL_FC_THRE_MASK)
-			<< EDMA_TXCMPL_FC_THRE_SHIFT;
-	edma_reg_write(EDMA_REG_TXCMPL_UGT_THRE(txcmpl_ring->id),
-				txcmpl_ugt_thre);
-
 	tx_mod_timer = (EDMA_TX_MOD_TIMER & EDMA_TX_MOD_TIMER_INIT_MASK)
 			<< EDMA_TX_MOD_TIMER_INIT_SHIFT;
 	edma_reg_write(EDMA_REG_TX_MOD_TIMER(txcmpl_ring->id),
@@ -686,16 +635,6 @@ static void edma_configure_rxdesc_ring(struct edma_hw *ehw,
 		 << EDMA_RXDESC_PL_OFFSET_SHIFT;
 	edma_reg_write(EDMA_REG_RXDESC_RING_SIZE(rxdesc_ring->id), data);
 
-	data = (EDMA_RXDESC_XON_THRE & EDMA_RXDESC_FC_XON_THRE_MASK)
-			  << EDMA_RXDESC_FC_XON_THRE_SHIFT;
-	data |= (EDMA_RXDESC_XOFF_THRE & EDMA_RXDESC_FC_XOFF_THRE_MASK)
-			   << EDMA_RXDESC_FC_XOFF_THRE_SHIFT;
-	edma_reg_write(EDMA_REG_RXDESC_FC_THRE(rxdesc_ring->id), data);
-
-	data = (EDMA_RXDESC_LOW_THRE & EDMA_RXDESC_LOW_THRE_MASK)
-			   << EDMA_RXDESC_LOW_THRE_SHIFT;
-	edma_reg_write(EDMA_REG_RXDESC_UGT_THRE(rxdesc_ring->id), data);
-
 	data = (EDMA_RX_MOD_TIMER_INIT & EDMA_RX_MOD_TIMER_INIT_MASK)
 			<< EDMA_RX_MOD_TIMER_INIT_SHIFT;
 	edma_reg_write(EDMA_REG_RX_MOD_TIMER(rxdesc_ring->id), data);
@@ -714,29 +653,12 @@ static void edma_configure_rxfill_ring(struct edma_hw *ehw,
 					struct edma_rxfill_ring *rxfill_ring)
 {
 	uint32_t data = 0;
-	uint32_t rxfill_low_thre = (rxfill_ring->count / 4);
-	uint32_t rxfill_xon_thre = (rxfill_ring->count / 8);
-	uint32_t rxfill_xoff_thre = (rxfill_ring->count / 16);
-	uint32_t rxfill_fc_thre;
-	uint32_t rxfill_ugt_thre;
 
 	edma_reg_write(EDMA_REG_RXFILL_BA(rxfill_ring->id),
 			(uint32_t)(rxfill_ring->dma & EDMA_RING_DMA_MASK));
 
 	data = rxfill_ring->count & EDMA_RXFILL_RING_SIZE_MASK;
 	edma_reg_write(EDMA_REG_RXFILL_RING_SIZE(rxfill_ring->id), data);
-
-	rxfill_fc_thre = (rxfill_xon_thre & EDMA_RXFILL_FC_XON_THRE_MASK)
-				<< EDMA_RXFILL_FC_XON_THRE_SHIFT;
-	rxfill_fc_thre |= (rxfill_xoff_thre & EDMA_RXFILL_FC_XOFF_THRE_MASK)
-				<< EDMA_RXFILL_FC_XOFF_THRE_SHIFT;
-	edma_reg_write(EDMA_REG_RXFILL_FC_THRE(rxfill_ring->id),
-				rxfill_fc_thre);
-
-	rxfill_ugt_thre = (rxfill_low_thre & EDMA_RXFILL_LOW_THRE_MASK)
-				<< EDMA_RXFILL_LOW_THRE_SHIFT;
-	edma_reg_write(EDMA_REG_RXFILL_UGT_THRE(rxfill_ring->id),
-				rxfill_ugt_thre);
 
 	/*
 	 * Alloc Rx buffers
@@ -939,12 +861,6 @@ int edma_hw_init(struct edma_hw *ehw)
 	edma_configure_rings(ehw);
 
 	/*
-	 * Configure Tx/Rx queue threshold parameters
-	 */
-	edma_configure_tx_threshold();
-	edma_configure_rx_threshold();
-
-	/*
 	 * Set RXDESC2FILL_MAP_xx reg.
 	 * There are two registers RXDESC2FILL_0 and RXDESC2FILL_1
 	 * 3 bits holds the rx fill ring mapping for each of the
@@ -980,12 +896,6 @@ int edma_hw_init(struct edma_hw *ehw)
 	pr_debug("EDMA_REG_TXDESC2CMPL_MAP_1: 0x%x\n", edma_reg_read(reg));
 	reg = EDMA_REG_TXDESC2CMPL_MAP_2;
 	pr_debug("EDMA_REG_TXDESC2CMPL_MAP_2: 0x%x\n", edma_reg_read(reg));
-
-	/*
-	 * Set DMA request priority
-	 */
-	edma_reg_write(EDMA_REG_DMAR_CTRL,
-		(1 & EDMA_DMAR_REQ_PRI_MASK) << EDMA_DMAR_REQ_PRI_SHIFT);
 
 	/*
 	 * Enable EDMA
