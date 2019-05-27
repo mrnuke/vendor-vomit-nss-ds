@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -80,7 +80,6 @@ static void nss_dp_set_slow_proto_filter(struct nss_dp_dev *dp_priv, bool filter
 	 * Set port map
 	 */
 	profile.port_map = (1 << dp_priv->macid);
-	profile.rfdb_profile_bitmap = 0;
 	if (filter_enable) {
 		ret = fal_mgmtctrl_ctrlpkt_profile_add(NSS_DP_SWITCH_ID, &profile);
 		if (ret != SW_OK) {
@@ -89,31 +88,47 @@ static void nss_dp_set_slow_proto_filter(struct nss_dp_dev *dp_priv, bool filter
 		}
 
 		/*
-		 * Enable filter to allow ethernet slow-protocol
+		 * Enable filter to allow ethernet slow-protocol,
+		 * if this is the first port being disabled by STP
 		 */
-		ret = fal_mgmtctrl_ethtype_profile_set(NSS_DP_SWITCH_ID, NSS_DP_SW_ETHTYPE_PID, ETH_P_SLOW);
-		if (ret != SW_OK) {
-			netdev_dbg(dp_priv->netdev, "failed to set ethertype profile: 0x%x, ret: %d\n", ETH_P_SLOW, ret);
-			ret = fal_mgmtctrl_ctrlpkt_profile_del(NSS_DP_SWITCH_ID, &profile);
-			if (ret != SW_OK)
-				netdev_dbg(dp_priv->netdev, "failed to delete profile for port_map: 0x%x, ret: %d\n", profile.port_map, ret);
-		}
-	} else {
-		/*
-		 * Disable filter to allow Ethernet slow protocol packets
-		 */
-		ret = fal_mgmtctrl_ethtype_profile_set(NSS_DP_SWITCH_ID, NSS_DP_SW_ETHTYPE_PID, ETH_P_NONE);
-		if (ret != SW_OK) {
-			netdev_dbg(dp_priv->netdev, "failed to reset ethertype profile: 0x%x ret: %d\n", ETH_P_NONE, ret);
+		if (!dp_priv->ctx->slowproto_acl_bm) {
+			ret = fal_mgmtctrl_ethtype_profile_set(NSS_DP_SWITCH_ID, NSS_DP_SW_ETHTYPE_PID, ETH_P_SLOW);
+			if (ret != SW_OK) {
+				netdev_dbg(dp_priv->netdev, "failed to set ethertype profile: 0x%x, ret: %d\n", ETH_P_SLOW, ret);
+				ret = fal_mgmtctrl_ctrlpkt_profile_del(NSS_DP_SWITCH_ID, &profile);
+				if (ret != SW_OK) {
+					netdev_dbg(dp_priv->netdev, "failed to delete profile for port_map: 0x%x, ret: %d\n", profile.port_map, ret);
+				}
+			}
 			return;
 		}
+
+		/*
+		 * Add port to port bitmap
+		 */
+		dp_priv->ctx->slowproto_acl_bm = dp_priv->ctx->slowproto_acl_bm | (1 << dp_priv->macid);
+	} else {
 
 		ret = fal_mgmtctrl_ctrlpkt_profile_del(NSS_DP_SWITCH_ID, &profile);
 		if (ret != SW_OK) {
 			netdev_dbg(dp_priv->netdev, "failed to delete profile for port_map: 0x%x, ret: %d\n", profile.port_map, ret);
-			ret = fal_mgmtctrl_ethtype_profile_set(NSS_DP_SWITCH_ID, NSS_DP_SW_ETHTYPE_PID, ETH_P_SLOW);
-			if (ret != SW_OK)
-				netdev_dbg(dp_priv->netdev, "failed to set ethertype profile: 0x%x, ret: %d\n", ETH_P_SLOW, ret);
+			return;
+		}
+
+		/*
+		 * Delete port from port bitmap
+		 */
+		dp_priv->ctx->slowproto_acl_bm = dp_priv->ctx->slowproto_acl_bm & (~(1 << dp_priv->macid));
+
+		/*
+		 * If all ports are in STP-enabled state, then we do not need
+		 * the filter to allow ethernet slow protocol packets
+		 */
+		if (!dp_priv->ctx->slowproto_acl_bm) {
+			ret = fal_mgmtctrl_ethtype_profile_set(NSS_DP_SWITCH_ID, NSS_DP_SW_ETHTYPE_PID, ETH_P_NONE);
+			if (ret != SW_OK) {
+				netdev_dbg(dp_priv->netdev, "failed to reset ethertype profile: 0x%x ret: %d\n", ETH_P_NONE, ret);
+			}
 		}
 	}
 }

@@ -642,6 +642,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	}
 
 	dp_global_ctx.nss_dp[dp_priv->macid - 1] = dp_priv;
+	dp_global_ctx.slowproto_acl_bm = 0;
 
 	netdev_dbg(netdev, "Init NSS DP GMAC%d (base = 0x%lx)\n",
 				dp_priv->macid, netdev->base_addr);

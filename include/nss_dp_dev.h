@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -85,6 +85,7 @@ struct nss_dp_dev {
 struct nss_dp_global_ctx {
 	struct nss_dp_dev *nss_dp[NSS_DP_MAX_PHY_PORTS];
 	bool common_init_done;		/* Flag to hold common init state */
+	uint8_t slowproto_acl_bm;	/* Port bitmap to allow slow protocol packets */
 };
 
 /* Global data */
