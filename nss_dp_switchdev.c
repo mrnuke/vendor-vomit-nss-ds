@@ -99,8 +99,8 @@ static void nss_dp_set_slow_proto_filter(struct nss_dp_dev *dp_priv, bool filter
 				if (ret != SW_OK) {
 					netdev_dbg(dp_priv->netdev, "failed to delete profile for port_map: 0x%x, ret: %d\n", profile.port_map, ret);
 				}
+				return;
 			}
-			return;
 		}
 
 		/*
