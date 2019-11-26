@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -234,8 +234,6 @@ static const struct switchdev_ops nss_dp_switchdev_ops = {
  */
 void nss_dp_switchdev_setup(struct net_device *dev)
 {
-#ifdef CONFIG_NET_SWITCHDEV
 	dev->switchdev_ops = &nss_dp_switchdev_ops;
-#endif
 	switchdev_port_fwd_mark_set(dev, NULL, false);
 }

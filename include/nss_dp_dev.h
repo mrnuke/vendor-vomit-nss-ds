@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -75,8 +75,10 @@ struct nss_dp_dev {
 	struct nss_gmac_hal_ops *gmac_hal_ops;	/* GMAC HAL OPS*/
 
 	/* switchdev related attributes */
+#ifdef CONFIG_NET_SWITCHDEV
 	u8 stp_state;			/* STP state of this physical port */
 	unsigned long brport_flags;	/* bridge port flags */
+#endif
 };
 
 /*
@@ -130,6 +132,8 @@ void nss_dp_set_ethtool_ops(struct net_device *netdev);
 /*
  * nss data plane switchdev helpers
  */
+#ifdef CONFIG_NET_SWITCHDEV
 void nss_dp_switchdev_setup(struct net_device *dev);
+#endif
 
 #endif	/* __NSS_DP_DEV_H__ */

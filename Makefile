@@ -11,8 +11,11 @@ qca-nss-dp-objs += edma/edma_cfg.o \
 		   edma/edma_tx_rx.o \
 		   nss_dp_attach.o \
 		   nss_dp_ethtools.o \
-		   nss_dp_main.o \
-		   nss_dp_switchdev.o
+		   nss_dp_main.o
+
+ifneq ($(CONFIG_NET_SWITCHDEV),)
+qca-nss-dp-objs += nss_dp_switchdev.o
+endif
 
 qca-nss-dp-objs += gmac_hal_ops/qcom/qcom_if.o
 qca-nss-dp-objs += gmac_hal_ops/syn/syn_if.o
