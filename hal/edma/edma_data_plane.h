@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, 2018-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016, 2018-2020, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -28,8 +28,8 @@
 #define EDMA_TX_PREHDR_SIZE		(sizeof(struct edma_tx_preheader))
 #define EDMA_RING_SIZE			128
 #define EDMA_NAPI_WORK			100
-#define EDMA_START_GMACS		NSS_DP_START_PHY_PORT
-#define EDMA_MAX_GMACS			NSS_DP_MAX_PHY_PORTS
+#define EDMA_START_GMACS		NSS_DP_START_IFNUM
+#define EDMA_MAX_GMACS			NSS_DP_HAL_MAX_PORTS
 #define EDMA_TX_PKT_MIN_SIZE		33
 #if defined(NSS_DP_IPQ60XX)
 #define EDMA_MAX_TXCMPL_RINGS		24	/* Max TxCmpl rings */

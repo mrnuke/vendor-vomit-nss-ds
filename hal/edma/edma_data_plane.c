@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -594,7 +594,6 @@ struct nss_dp_data_plane_ops nss_dp_edma_ops = {
  * edma_of_get_pdata()
  *	Read the device tree details for EDMA
  */
-
 static int edma_of_get_pdata(struct resource *edma_res)
 {
 	/*
@@ -725,7 +724,7 @@ int edma_init(void)
 	 */
 	if (edma_of_get_pdata(&res_edma) < 0) {
 		pr_warn("Unable to get EDMA DTS data.\n");
-		return 0;
+		return -EINVAL;
 	}
 
 	/*

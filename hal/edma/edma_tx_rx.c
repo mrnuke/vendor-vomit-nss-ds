@@ -337,8 +337,8 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 		 */
 		pkt_length = rxdesc_desc->status & EDMA_RXDESC_PACKET_LEN_MASK;
 
-		if (unlikely((src_port_num < NSS_DP_START_PHY_PORT)  ||
-			(src_port_num > NSS_DP_MAX_PHY_PORTS))) {
+		if (unlikely((src_port_num < NSS_DP_START_IFNUM)  ||
+			(src_port_num > NSS_DP_HAL_MAX_PORTS))) {
 			pr_warn("WARN: Port number error :%d. Drop skb:%p\n",
 					src_port_num, skb);
 			dev_kfree_skb_any(skb);

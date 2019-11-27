@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016, 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016, 2019-2020, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -26,7 +26,6 @@
 
 extern int edma_init(void);
 extern void edma_cleanup(bool is_dp_override);
-extern int32_t edma_register_netdevice(struct net_device *netdev,
-					uint32_t macid);
+extern struct nss_dp_data_plane_ops nss_dp_edma_ops;
 
 #endif /*__NSS_DP_EDMA__ */

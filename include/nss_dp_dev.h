@@ -30,14 +30,6 @@
 #include "nss_dp_api_if.h"
 #include "nss_dp_hal_if.h"
 
-#define NSS_DP_START_PHY_PORT	1
-#if defined(NSS_DP_IPQ60XX)
-#define NSS_DP_MAX_PHY_PORTS   5
-#else
-#define NSS_DP_MAX_PHY_PORTS   6
-#endif
-#define NSS_DP_ETH_HLEN_CRC	(ETH_HLEN + ETH_FCS_LEN + 2*(VLAN_HLEN))
-
 #define NSS_DP_ACL_DEV_ID 0
 
 struct nss_dp_global_ctx;
@@ -71,10 +63,10 @@ struct nss_dp_dev {
 	struct nss_dp_data_plane_ctx *dpc;
 					/* context when NSS owns GMACs */
 	struct nss_dp_data_plane_ops *data_plane_ops;
-					/* ops for each data plane*/
+					/* ops for each data plane */
 	struct nss_dp_global_ctx *ctx;	/* Global NSS DP context */
 	struct nss_gmac_hal_dev *gmac_hal_ctx;	/* context of gmac hal */
-	struct nss_gmac_hal_ops *gmac_hal_ops;	/* GMAC HAL OPS*/
+	struct nss_gmac_hal_ops *gmac_hal_ops;	/* GMAC HAL OPS */
 
 	/* switchdev related attributes */
 #ifdef CONFIG_NET_SWITCHDEV
@@ -87,14 +79,16 @@ struct nss_dp_dev {
  * nss data plane global context
  */
 struct nss_dp_global_ctx {
-	struct nss_dp_dev *nss_dp[NSS_DP_MAX_PHY_PORTS];
+	struct nss_dp_dev *nss_dp[NSS_DP_HAL_MAX_PORTS];
+	struct nss_gmac_hal_ops *gmac_hal_ops[GMAC_HAL_TYPE_MAX];
+					/* GMAC HAL OPS */
 	bool common_init_done;		/* Flag to hold common init state */
 	uint8_t slowproto_acl_bm;	/* Port bitmap to allow slow protocol packets */
 };
 
 /* Global data */
 extern struct nss_dp_global_ctx dp_global_ctx;
-extern struct nss_dp_data_plane_ctx dp_global_data_plane_ctx[NSS_DP_MAX_PHY_PORTS];
+extern struct nss_dp_data_plane_ctx dp_global_data_plane_ctx[NSS_DP_HAL_MAX_PORTS];
 
 /*
  * nss data plane link state
@@ -123,8 +117,6 @@ enum nss_dp_priv_flags {
 	__NSS_DP_PRIV_FLAG_MAX,
 };
 #define NSS_DP_PRIV_FLAG(x)	(1 << __NSS_DP_PRIV_FLAG_ ## x)
-
-extern struct nss_dp_data_plane_ops nss_dp_edma_ops;
 
 /*
  * nss_dp_set_ethtool_ops()

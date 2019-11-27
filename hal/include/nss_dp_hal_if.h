@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017,2020 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,7 +25,7 @@
 
 enum gmac_device_type {
 	GMAC_HAL_TYPE_QCOM = 0,
-	GMAC_HAL_TYPE_10G,
+	GMAC_HAL_TYPE_SYN_XGMAC,
 	GMAC_HAL_TYPE_MAX
 };
 
