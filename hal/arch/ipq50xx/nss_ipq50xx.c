@@ -14,21 +14,35 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __NSS_DP_ARCH_H__
-#define __NSS_DP_ARCH_H__
+#include "nss_dp_hal.h"
 
-#define NSS_DP_HAL_MAX_PORTS		5
-#define NSS_DP_HAL_CPU_NUM		4
-#define NSS_DP_HAL_START_IFNUM		1
-#define NSS_DP_HAL_MAX_MTU_SIZE		9216
-#define NSS_DP_HAL_MAX_PACKET_LEN	65535
-#define NSS_DP_PREHEADER_SIZE		32
-
-/**
- * nss_dp_hal_gmac_stats
- *	The per-GMAC statistics structure.
+/*
+ * nss_dp_hal_get_data_plane_ops
+ *	Return the data plane ops for GMAC data plane.
  */
-struct nss_dp_hal_gmac_stats {
-};
+struct nss_dp_data_plane_ops *nss_dp_hal_get_data_plane_ops(void)
+{
+	/*
+	 * TODO: Return GMAC data plane ops here.
+	 */
+	return NULL;
+}
 
-#endif /* __NSS_DP_ARCH_H__ */
+/*
+ * nss_dp_hal_init
+ *	Sets the gmac ops based on the GMAC type.
+ */
+bool nss_dp_hal_init(void)
+{
+	nss_dp_hal_set_gmac_ops(&syn_hal_ops, GMAC_HAL_TYPE_SYN_GMAC);
+	return true;
+}
+
+/*
+ * nss_dp_hal_cleanup
+ *	Sets the gmac ops to NULL.
+ */
+void nss_dp_hal_cleanup(void)
+{
+	nss_dp_hal_set_gmac_ops(NULL, GMAC_HAL_TYPE_SYN_GMAC);
+}

@@ -14,21 +14,17 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __NSS_DP_ARCH_H__
-#define __NSS_DP_ARCH_H__
+#ifndef __SYN_DEV_H__
+#define __SYN_DEV_H__
 
-#define NSS_DP_HAL_MAX_PORTS		5
-#define NSS_DP_HAL_CPU_NUM		4
-#define NSS_DP_HAL_START_IFNUM		1
-#define NSS_DP_HAL_MAX_MTU_SIZE		9216
-#define NSS_DP_HAL_MAX_PACKET_LEN	65535
-#define NSS_DP_PREHEADER_SIZE		32
+#include <nss_dp_dev.h>
 
-/**
- * nss_dp_hal_gmac_stats
- *	The per-GMAC statistics structure.
+/*
+ * Subclass for base nss_gmac_hal_dev
  */
-struct nss_dp_hal_gmac_stats {
+struct syn_hal_dev {
+	struct nss_gmac_hal_dev nghd;	/* Base class */
+	struct nss_dp_gmac_stats stats;	/* Stats structure */
 };
 
-#endif /* __NSS_DP_ARCH_H__ */
+#endif /*__SYN_DEV_H__*/

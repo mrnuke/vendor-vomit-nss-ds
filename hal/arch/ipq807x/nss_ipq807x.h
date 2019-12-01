@@ -24,4 +24,11 @@
 #define NSS_DP_HAL_MAX_PACKET_LEN	65535
 #define NSS_DP_PREHEADER_SIZE		32
 
+/**
+ * nss_dp_hal_gmac_stats
+ *	The per-GMAC statistics structure.
+ */
+struct nss_dp_hal_gmac_stats {
+};
+
 #endif /* __NSS_DP_ARCH_H__ */

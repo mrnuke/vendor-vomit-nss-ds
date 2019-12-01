@@ -24,8 +24,9 @@
 #include <uapi/linux/if_link.h>
 
 enum gmac_device_type {
-	GMAC_HAL_TYPE_QCOM = 0,
-	GMAC_HAL_TYPE_SYN_XGMAC,
+	GMAC_HAL_TYPE_QCOM = 0,	/* 1G GMAC type */
+	GMAC_HAL_TYPE_SYN_XGMAC,/* Synopsys XGMAC type */
+	GMAC_HAL_TYPE_SYN_GMAC,	/* Synopsys 1G GMAC type */
 	GMAC_HAL_TYPE_MAX
 };
 

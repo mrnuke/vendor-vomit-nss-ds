@@ -41,3 +41,9 @@ ifeq ($(SoC),$(filter $(SoC),ipq807x ipq807x_64))
 qca-nss-dp-objs += hal/arch/ipq807x/nss_ipq807x.o
 ccflags-y += -DNSS_DP_IPQ807X
 endif
+
+ifeq ($(SoC),$(filter $(SoC),ipq50xx ipq50xx_64))
+qca-nss-dp-objs += hal/arch/ipq50xx/nss_ipq50xx.o \
+		   hal/gmac_hal_ops/syn/gmac/syn_if.o
+ccflags-y += -DNSS_DP_IPQ50XX
+endif

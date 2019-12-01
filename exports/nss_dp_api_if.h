@@ -64,6 +64,14 @@ struct nss_dp_data_plane_ctx {
 };
 
 /**
+ * nss_dp_gmac_stats
+ *	The per-GMAC statistics structure.
+ */
+struct nss_dp_gmac_stats {
+	struct nss_dp_hal_gmac_stats stats;
+};
+
+/**
  * nss_dp_data_plane_ops
  *	Per data-plane ops structure.
  *
@@ -86,6 +94,7 @@ struct nss_dp_data_plane_ops {
 	int (*vsi_unassign)(struct nss_dp_data_plane_ctx *dpc, uint32_t vsi);
 	int (*rx_flow_steer)(struct nss_dp_data_plane_ctx *dpc, struct sk_buff *skb,
 				uint32_t cpu, bool is_add);
+	void (*get_stats)(struct nss_dp_data_plane_ctx *dpc, struct nss_dp_gmac_stats *stats);
 	int (*deinit)(struct nss_dp_data_plane_ctx *dpc);
 };
 
