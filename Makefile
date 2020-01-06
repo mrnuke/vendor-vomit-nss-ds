@@ -20,6 +20,7 @@ qca-nss-dp-objs += gmac_hal_ops/syn/syn_if.o
 NSS_DP_INCLUDE = -I$(obj)/include -I$(obj)/exports -I$(obj)/gmac_hal_ops/include
 
 ccflags-y += $(NSS_DP_INCLUDE)
+ccflags-y += -Werror
 
 ifeq ($(SoC),$(filter $(SoC),ipq807x ipq807x_64 ipq60xx ipq60xx_64))
 ccflags-y += -DNSS_DP_PPE_SUPPORT
