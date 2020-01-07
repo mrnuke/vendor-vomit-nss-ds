@@ -340,6 +340,14 @@ static int nss_dp_rx_flow_steer(struct net_device *netdev, const struct sk_buff 
 		return 0;
 
 	/*
+	 * check rx_flow_steer is defined in data plane ops
+	 */
+	if (!dp_priv->data_plane_ops->rx_flow_steer) {
+		netdev_dbg(netdev, "Data plane ops not defined for flow steer\n");
+		return -EINVAL;
+	}
+
+	/*
 	 * Delete the old flow rule
 	 */
 	if (dp_priv->data_plane_ops->rx_flow_steer(dp_priv->dpc, skb, rxcpu, false)) {
