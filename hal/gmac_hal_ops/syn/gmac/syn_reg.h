@@ -504,4 +504,20 @@ enum syn_dma_init_values {
 	SYN_DMA_AXI_BUS_MODE_VAL = SYN_DMA_AXI_BLEN16 | SYN_DMA_RD_OSR_NUM_REQS8
 		| SYN_DMA_WR_OSR_NUM_REQS8,
 };
+
+
+extern void syn_disable_dma_interrupt(struct nss_gmac_hal_dev *nghd);
+extern void syn_enable_dma_interrupt(struct nss_gmac_hal_dev *nghd);
+extern void syn_enable_dma_rx(struct nss_gmac_hal_dev *nghd);
+extern void syn_disable_dma_rx(struct nss_gmac_hal_dev *nghd);
+extern void syn_enable_dma_tx(struct nss_gmac_hal_dev *nghd);
+extern void syn_disable_dma_tx(struct nss_gmac_hal_dev *nghd);
+extern void syn_clear_dma_status(struct nss_gmac_hal_dev *nghd);
+extern void syn_resume_dma_tx(struct nss_gmac_hal_dev *nghd);
+extern uint32_t syn_get_rx_missed(struct nss_gmac_hal_dev *nghd);
+extern uint32_t syn_get_fifo_overflows(struct nss_gmac_hal_dev *nghd);
+
+extern void syn_init_tx_desc_base(struct nss_gmac_hal_dev *nghd, uint32_t tx_desc_dma);
+extern void syn_init_rx_desc_base(struct nss_gmac_hal_dev *nghd, uint32_t rx_desc_dma);
+
 #endif /*__SYN_REG_H__*/

@@ -25,6 +25,10 @@ endif
 NSS_DP_INCLUDE = -I$(obj)/include -I$(obj)/exports -I$(obj)/gmac_hal_ops/include \
 		 -I$(obj)/hal/include
 
+ifeq ($(SoC),$(filter $(SoC),ipq50xx ipq50xx_64))
+NSS_DP_INCLUDE += -I$(obj)/hal/gmac_hal_ops/syn/gmac
+endif
+
 ccflags-y += $(NSS_DP_INCLUDE)
 ccflags-y += -Werror
 

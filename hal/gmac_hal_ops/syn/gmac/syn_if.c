@@ -288,9 +288,19 @@ static inline void syn_disable_mmc_ipc_rx_interrupt(struct nss_gmac_hal_dev *ngh
  * syn_disable_dma_interrupt()
  *	Disables all DMA interrupts.
  */
-static inline void syn_disable_dma_interrupt(struct nss_gmac_hal_dev *nghd)
+void syn_disable_dma_interrupt(struct nss_gmac_hal_dev *nghd)
 {
 	hal_write_reg(nghd->mac_base, SYN_DMA_INT_ENABLE, SYN_DMA_INT_DISABLE);
+}
+
+/*
+ * syn_enable_dma_interrupt()
+ *
+ * Enables all DMA interrupts.
+ */
+void syn_enable_dma_interrupt(struct nss_gmac_hal_dev *nghd)
+{
+	hal_write_reg(nghd->mac_base, SYN_DMA_INT_ENABLE, SYN_DMA_INT_EN);
 }
 
 /*
@@ -313,6 +323,119 @@ static inline void syn_disable_interrupt_all(struct nss_gmac_hal_dev *nghd)
 static inline void syn_dma_bus_mode_init(struct nss_gmac_hal_dev *nghd)
 {
 	hal_write_reg(nghd->mac_base, SYN_DMA_BUS_MODE, SYN_DMA_BUS_MODE_VAL);
+}
+
+/*
+ * syn_clear_dma_status()
+ *	Clear all the pending dma interrupts.
+ */
+void syn_clear_dma_status(struct nss_gmac_hal_dev *nghd)
+{
+	uint32_t data;
+
+	data = hal_read_reg(nghd->mac_base, SYN_DMA_STATUS);
+	hal_write_reg(nghd->mac_base, SYN_DMA_STATUS, data);
+}
+
+/*
+ * syn_enable_dma_rx()
+ *	Enable Rx GMAC operation
+ */
+void syn_enable_dma_rx(struct nss_gmac_hal_dev *nghd)
+{
+	uint32_t data;
+
+	data = hal_read_reg(nghd->mac_base, SYN_DMA_OPERATION_MODE);
+	data |= SYN_DMA_RX_START;
+	hal_write_reg(nghd->mac_base, SYN_DMA_OPERATION_MODE, data);
+}
+
+/*
+ * syn_disable_dma_rx()
+ *	Disable Rx GMAC operation
+ */
+void syn_disable_dma_rx(struct nss_gmac_hal_dev *nghd)
+{
+	uint32_t data;
+
+	data = hal_read_reg(nghd->mac_base, SYN_DMA_OPERATION_MODE);
+	data &= ~SYN_DMA_RX_START;
+	hal_write_reg(nghd->mac_base, SYN_DMA_OPERATION_MODE, data);
+}
+
+/*
+ * syn_enable_dma_tx()
+ *	Enable Rx GMAC operation
+ */
+void syn_enable_dma_tx(struct nss_gmac_hal_dev *nghd)
+{
+	uint32_t data;
+
+	data = hal_read_reg(nghd->mac_base, SYN_DMA_OPERATION_MODE);
+	data |= SYN_DMA_TX_START;
+	hal_write_reg(nghd->mac_base, SYN_DMA_OPERATION_MODE, data);
+}
+
+/*
+ * syn_disable_dma_tx()
+ *	Disable Rx GMAC operation
+ */
+void syn_disable_dma_tx(struct nss_gmac_hal_dev *nghd)
+{
+	uint32_t data;
+
+	data = hal_read_reg(nghd->mac_base, SYN_DMA_OPERATION_MODE);
+	data &= ~SYN_DMA_TX_START;
+	hal_write_reg(nghd->mac_base, SYN_DMA_OPERATION_MODE, data);
+}
+
+/*
+ * syn_resume_dma_tx
+ *	Resumes the DMA Transmission.
+ */
+void syn_resume_dma_tx(struct nss_gmac_hal_dev *nghd)
+{
+	hal_write_reg(nghd->mac_base, SYN_DMA_TX_POLL_DEMAND, 0);
+}
+
+/*
+ * syn_get_rx_missed
+ *	Get Rx missed errors
+ */
+uint32_t syn_get_rx_missed(struct nss_gmac_hal_dev *nghd)
+{
+	uint32_t missed_frame_buff_overflow;
+	missed_frame_buff_overflow = hal_read_reg(nghd->mac_base, SYN_DMA_MISSED_FRAME_AND_BUFF_OVERFLOW_COUNTER);
+	return missed_frame_buff_overflow & 0xFFFF;
+}
+
+/*
+ * syn_get_fifo_overflows
+ *	Get FIFO overflows
+ */
+uint32_t syn_get_fifo_overflows(struct nss_gmac_hal_dev *nghd)
+{
+	uint32_t missed_frame_buff_overflow;
+	missed_frame_buff_overflow = hal_read_reg(nghd->mac_base, SYN_DMA_MISSED_FRAME_AND_BUFF_OVERFLOW_COUNTER);
+	return (missed_frame_buff_overflow >> 17) & 0x7ff;
+}
+
+/*
+ * syn_init_tx_desc_base()
+ *	Programs the Dma Tx Base address with the starting address of the descriptor ring or chain.
+ */
+void syn_init_tx_desc_base(struct nss_gmac_hal_dev *nghd, uint32_t tx_desc_dma)
+{
+	hal_write_reg(nghd->mac_base, SYN_DMA_TX_DESCRIPTOR_LIST_ADDRESS, tx_desc_dma);
+}
+
+/*
+ * syn_init_rx_desc_base()
+ *	Programs the Dma Rx Base address with the starting address of the descriptor ring or chain.
+ */
+void syn_init_rx_desc_base(struct nss_gmac_hal_dev *nghd, uint32_t rx_desc_dma)
+{
+	hal_write_reg(nghd->mac_base, SYN_DMA_RX_DESCRIPTOR_LIST_ADDRESS, rx_desc_dma);
 }
 
 /*
