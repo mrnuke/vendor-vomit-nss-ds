@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2017, 2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, 2019-2020 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -16,6 +16,7 @@
  **************************************************************************
  */
 
+#include <linux/version.h>
 #include "nss_dp_dev.h"
 #include <nss_dp_api_if.h>
 
@@ -46,7 +47,14 @@ void nss_dp_receive(struct net_device *netdev, struct sk_buff *skb,
 			dp_dev->macid, skb->len, skb->ip_summed);
 
 #ifdef CONFIG_NET_SWITCHDEV
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
 	skb->offload_fwd_mark = netdev->offload_fwd_mark;
+#else
+	/*
+	 * TODO: Implement ndo_get_devlink_port()
+	 */
+	skb->offload_fwd_mark = 0;
+#endif
 #endif
 
 	napi_gro_receive(napi, skb);

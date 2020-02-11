@@ -24,6 +24,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/of_address.h>
+#include <linux/phy.h>
 #if defined(NSS_DP_PPE_SUPPORT)
 #include <ref/ref_vsi.h>
 #endif
@@ -137,6 +138,7 @@ static int32_t nss_dp_set_mac_address(struct net_device *netdev, void *macaddr)
 /*
  * nss_dp_get_stats64()
  */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
 static struct rtnl_link_stats64 *nss_dp_get_stats64(struct net_device *netdev,
 					     struct rtnl_link_stats64 *stats)
 {
@@ -151,6 +153,20 @@ static struct rtnl_link_stats64 *nss_dp_get_stats64(struct net_device *netdev,
 
 	return stats;
 }
+#else
+static void nss_dp_get_stats64(struct net_device *netdev,
+					     struct rtnl_link_stats64 *stats)
+{
+	struct nss_dp_dev *dp_priv;
+
+	if (!netdev)
+		return;
+
+	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+
+	dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
+}
+#endif
 
 /*
  * nss_dp_xmit()
@@ -371,8 +387,13 @@ static int nss_dp_rx_flow_steer(struct net_device *netdev, const struct sk_buff 
  * nss_dp_select_queue()
  *	Select tx queue
  */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
 static u16 nss_dp_select_queue(struct net_device *netdev, struct sk_buff *skb,
 				void *accel_priv, select_queue_fallback_t fallback)
+#else
+static u16 nss_dp_select_queue(struct net_device *netdev, struct sk_buff *skb,
+				struct net_device *sb_dev)
+#endif
 {
 	int cpu = get_cpu();
 	put_cpu();
@@ -396,13 +417,17 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 	.ndo_validate_addr = eth_validate_addr,
 	.ndo_change_mtu = nss_dp_change_mtu,
 	.ndo_do_ioctl = nss_dp_do_ioctl,
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
 	.ndo_bridge_setlink = switchdev_port_bridge_setlink,
 	.ndo_bridge_getlink = switchdev_port_bridge_getlink,
 	.ndo_bridge_dellink = switchdev_port_bridge_dellink,
+#endif
+	.ndo_select_queue = nss_dp_select_queue,
+
 #ifdef CONFIG_RFS_ACCEL
 	.ndo_rx_flow_steer = nss_dp_rx_flow_steer,
 #endif
-	.ndo_select_queue = nss_dp_select_queue,
 };
 
 /*
@@ -454,6 +479,12 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 	of_property_read_u32(np, "qcom,forced-duplex", &dp_priv->forced_duplex);
 
 	maddr = (uint8_t *)of_get_mac_address(np);
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 0))
+	if (IS_ERR((void *)maddr)) {
+		maddr = NULL;
+	}
+#endif
+
 	if (maddr && is_valid_ether_addr(maddr)) {
 		ether_addr_copy(netdev->dev_addr, maddr);
 	} else {
@@ -614,19 +645,30 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 			goto fail;
 		}
 		snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT,
-			 dp_priv->miibus->id, dp_priv->phy_mdio_addr);
+				dp_priv->miibus->id, dp_priv->phy_mdio_addr);
+
+		SET_NETDEV_DEV(netdev, &pdev->dev);
+
 		dp_priv->phydev = phy_connect(netdev, phy_id,
-					      &nss_dp_adjust_link,
-					      dp_priv->phy_mii_type);
+				&nss_dp_adjust_link,
+				dp_priv->phy_mii_type);
 		if (IS_ERR(dp_priv->phydev)) {
 			netdev_dbg(netdev, "failed to connect to phy device\n");
 			goto fail;
 		}
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
 		dp_priv->phydev->advertising |=
-				(ADVERTISED_Pause | ADVERTISED_Asym_Pause);
+			(ADVERTISED_Pause | ADVERTISED_Asym_Pause);
 		dp_priv->phydev->supported |=
-				(SUPPORTED_Pause | SUPPORTED_Asym_Pause);
+			(SUPPORTED_Pause | SUPPORTED_Asym_Pause);
+#else
+		linkmode_set_bit(ETHTOOL_LINK_MODE_Pause_BIT, dp_priv->phydev->advertising);
+		linkmode_set_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, dp_priv->phydev->advertising);
+
+		linkmode_set_bit(ETHTOOL_LINK_MODE_Pause_BIT, dp_priv->phydev->supported);
+		linkmode_set_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, dp_priv->phydev->supported);
+#endif
 	}
 
 #if defined(NSS_DP_PPE_SUPPORT)
@@ -717,7 +759,7 @@ int __init nss_dp_init(void)
 	 * Bail out on not supported platform
 	 * TODO: Handle this properly with SoC ops
 	 */
-	if (!of_machine_is_compatible("qcom,ipq807x") && !of_machine_is_compatible("qcom,ipq6018"))
+	if (!of_machine_is_compatible("qcom,ipq807x") && !of_machine_is_compatible("qcom,ipq8074") && !of_machine_is_compatible("qcom,ipq6018"))
 		return 0;
 
 	/*

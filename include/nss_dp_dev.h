@@ -19,11 +19,13 @@
 #ifndef __NSS_DP_DEV_H__
 #define __NSS_DP_DEV_H__
 
+#include <linux/version.h>
 #include <linux/ethtool.h>
 #include <linux/etherdevice.h>
 #include <linux/netdevice.h>
 #include <linux/platform_device.h>
 #include <linux/if_vlan.h>
+#include <linux/switch.h>
 
 #include "nss_dp_api_if.h"
 #include "nss_dp_hal_if.h"

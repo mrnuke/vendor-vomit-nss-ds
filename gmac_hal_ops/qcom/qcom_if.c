@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, 2020 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -162,7 +162,6 @@ static void qcom_tx_flow_control(struct nss_gmac_hal_dev *nghd, bool enabled)
 		qcom_clear_tx_flow_ctrl(nghd);
 }
 
-
 /*
  * qcom_get_mib_stats()
  */
@@ -272,14 +271,14 @@ int32_t qcom_get_strings(struct nss_gmac_hal_dev *nghd, int32_t sset,
 	case ETH_SS_STATS:
 		for (i = 0; i < QCOM_STATS_LEN; i++) {
 			memcpy(data, qcom_gstrings_stats[i].stat_string,
-				ETH_GSTRING_LEN);
+				strlen(qcom_gstrings_stats[i].stat_string));
 			data += ETH_GSTRING_LEN;
 		}
 		break;
 	case ETH_SS_PRIV_FLAGS:
 		for (i = 0; i < QCOM_PRIV_FLAGS_LEN; i++) {
 			memcpy(data, qcom_strings_priv_flags[i],
-				ETH_GSTRING_LEN);
+				strlen(qcom_strings_priv_flags[i]));
 			data += ETH_GSTRING_LEN;
 		}
 		break;

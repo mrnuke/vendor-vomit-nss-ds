@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -93,7 +93,6 @@ static const char *const syn_strings_priv_flags[] = {
 
 #define SYN_STATS_LEN	ARRAY_SIZE(syn_gstrings_stats)
 #define SYN_PRIV_FLAGS_LEN	ARRAY_SIZE(syn_strings_priv_flags)
-
 
 /*
  * syn_rx_flow_control()
@@ -312,7 +311,7 @@ static int32_t syn_get_strings(struct nss_gmac_hal_dev *nghd,
 	case ETH_SS_STATS:
 		for (i = 0; i < SYN_STATS_LEN; i++) {
 			memcpy(data, syn_gstrings_stats[i].stat_string,
-				ETH_GSTRING_LEN);
+				strlen(syn_gstrings_stats[i].stat_string));
 			data += ETH_GSTRING_LEN;
 		}
 		break;
@@ -320,7 +319,7 @@ static int32_t syn_get_strings(struct nss_gmac_hal_dev *nghd,
 	case ETH_SS_PRIV_FLAGS:
 		for (i = 0; i < SYN_PRIV_FLAGS_LEN; i++) {
 			memcpy(data, syn_strings_priv_flags[i],
-				ETH_GSTRING_LEN);
+				strlen(syn_strings_priv_flags[i]));
 			data += ETH_GSTRING_LEN;
 		}
 

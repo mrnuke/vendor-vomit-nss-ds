@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,7 +14,9 @@
  * USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <linux/version.h>
 #include <linux/interrupt.h>
+#include <linux/phy.h>
 #include <linux/netdevice.h>
 #include <linux/debugfs.h>
 
@@ -375,7 +377,14 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 		skb_put(skb, pkt_length);
 		skb->protocol = eth_type_trans(skb, skb->dev);
 #ifdef CONFIG_NET_SWITCHDEV
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
 		skb->offload_fwd_mark = ndev->offload_fwd_mark;
+#else
+		/*
+		 * TODO: Implement ndo_get_devlink_port()
+		 */
+		 skb->offload_fwd_mark = 0;
+#endif
 		pr_debug("skb:%p ring_idx:%u pktlen:%d proto:0x%x mark:%u\n",
 			   skb, cons_idx, pkt_length, skb->protocol,
 			   skb->offload_fwd_mark);
