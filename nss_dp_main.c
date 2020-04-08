@@ -209,7 +209,9 @@ static int nss_dp_close(struct net_device *netdev)
 	}
 #endif
 
-	/* Notify data plane to close */
+	/*
+	 * Notify data plane to close
+	 */
 	if (dp_priv->data_plane_ops->close(dp_priv->dpc)) {
 		netdev_dbg(netdev, "Data plane close failed\n");
 		return -EAGAIN;
@@ -632,10 +634,8 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	 * context pointer as an argument
 	 */
 	dp_priv->gmac_hal_ops = nss_dp_hal_get_gmac_ops(gmac_hal_pdata.mactype);
-
 	if (!dp_priv->gmac_hal_ops) {
-		netdev_dbg(netdev, "Unsupported Mac type: %d\n",
-					gmac_hal_pdata.mactype);
+		netdev_dbg(netdev, "Unsupported Mac type: %d\n", gmac_hal_pdata.mactype);
 		goto fail;
 	}
 
@@ -703,8 +703,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	dp_global_ctx.nss_dp[dp_priv->macid - 1] = dp_priv;
 	dp_global_ctx.slowproto_acl_bm = 0;
 
-	netdev_dbg(netdev, "Init NSS DP GMAC%d (base = 0x%lx)\n",
-				dp_priv->macid, netdev->base_addr);
+	netdev_dbg(netdev, "Init NSS DP GMAC%d (base = 0x%lx)\n", dp_priv->macid, netdev->base_addr);
 
 	return 0;
 

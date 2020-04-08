@@ -22,10 +22,7 @@
  */
 struct nss_dp_data_plane_ops *nss_dp_hal_get_data_plane_ops(void)
 {
-	/*
-	 * TODO: Return GMAC data plane ops here.
-	 */
-	return NULL;
+	return &nss_dp_gmac_ops;
 }
 
 /*

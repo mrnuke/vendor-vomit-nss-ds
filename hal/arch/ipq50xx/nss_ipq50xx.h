@@ -123,4 +123,6 @@ struct nss_dp_hal_gmac_stats {
 	uint64_t mmc_tx_octets_gb;	/**< Number of good/bad octets sent*/
 };
 
+extern struct nss_dp_data_plane_ops nss_dp_gmac_ops;
+
 #endif /* __NSS_DP_ARCH_H__ */

@@ -295,8 +295,7 @@ void syn_disable_dma_interrupt(struct nss_gmac_hal_dev *nghd)
 
 /*
  * syn_enable_dma_interrupt()
- *
- * Enables all DMA interrupts.
+ *	Enables all DMA interrupts.
  */
 void syn_enable_dma_interrupt(struct nss_gmac_hal_dev *nghd)
 {

@@ -48,6 +48,9 @@ endif
 
 ifeq ($(SoC),$(filter $(SoC),ipq50xx ipq50xx_64))
 qca-nss-dp-objs += hal/arch/ipq50xx/nss_ipq50xx.o \
-		   hal/gmac_hal_ops/syn/gmac/syn_if.o
+		   hal/gmac_hal_ops/syn/gmac/syn_if.o \
+		   hal/syn_gmac_dp/syn_data_plane.o \
+		   hal/syn_gmac_dp/syn_dp_tx_rx.o \
+		   hal/syn_gmac_dp/syn_dp_cfg.o
 ccflags-y += -DNSS_DP_IPQ50XX
 endif

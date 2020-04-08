@@ -56,9 +56,7 @@ struct nss_dp_dev {
 
 	struct net_device *netdev;
 	struct platform_device *pdev;
-
 	struct napi_struct napi;
-	struct rtnl_link_stats64 stats;	/* statistics counters */
 
 	struct nss_dp_data_plane_ctx *dpc;
 					/* context when NSS owns GMACs */
