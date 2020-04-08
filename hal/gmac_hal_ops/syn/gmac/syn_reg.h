@@ -505,6 +505,14 @@ enum syn_dma_init_values {
 		| SYN_DMA_WR_OSR_NUM_REQS8,
 };
 
+/*
+ * desc_mode
+ *	GMAC descriptors mode
+ */
+enum desc_mode {
+	RINGMODE = 0x00000001,
+	CHAINMODE = 0x00000002,
+};
 
 extern void syn_disable_dma_interrupt(struct nss_gmac_hal_dev *nghd);
 extern void syn_enable_dma_interrupt(struct nss_gmac_hal_dev *nghd);

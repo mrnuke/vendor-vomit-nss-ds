@@ -103,7 +103,14 @@ int nss_dp_override_data_plane(struct net_device *netdev,
 	/*
 	 * Free up the resources used by the data plane
 	 */
-	dp_dev->data_plane_ops->deinit(dpc);
+	if (dp_dev->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE)) {
+		if (dp_dev->data_plane_ops->deinit(dpc)) {
+			netdev_dbg(netdev, "Data plane init failed\n");
+			return -ENOMEM;
+		}
+
+		dp_dev->drv_flags &= ~NSS_DP_PRIV_FLAG(INIT_DONE);
+	}
 
 	/*
 	 * Override the data_plane_ctx, data_plane_ops
