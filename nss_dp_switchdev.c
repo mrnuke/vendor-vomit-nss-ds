@@ -295,6 +295,13 @@ static int nss_dp_switchdev_event(struct notifier_block *unused,
 {
 	struct net_device *dev = switchdev_notifier_info_to_dev(ptr);
 
+	/*
+	 * Handle switchdev event only for physical devices
+	 */
+	if (!nss_dp_is_phy_dev(dev)) {
+		return NOTIFY_DONE;
+	}
+
 	if (event == SWITCHDEV_PORT_ATTR_SET)
 		nss_dp_switchdev_port_attr_set_event(dev, ptr);
 

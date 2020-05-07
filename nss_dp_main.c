@@ -528,6 +528,17 @@ static struct mii_bus *nss_dp_mdio_attach(struct platform_device *pdev)
 	return mdio_data->mii_bus;
 }
 
+#ifdef CONFIG_NET_SWITCHDEV
+/*
+ * nss_dp_is_phy_dev()
+ *	Check if it is dp device
+ */
+bool nss_dp_is_phy_dev(struct net_device *dev)
+{
+	return (dev->netdev_ops == &nss_dp_netdev_ops);
+}
+#endif
+
 /*
  * nss_dp_adjust_link()
  */

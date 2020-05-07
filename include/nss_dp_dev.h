@@ -136,6 +136,7 @@ void nss_dp_set_ethtool_ops(struct net_device *netdev);
  */
 #ifdef CONFIG_NET_SWITCHDEV
 void nss_dp_switchdev_setup(struct net_device *dev);
+bool nss_dp_is_phy_dev(struct net_device *dev);
 #endif
 
 #endif	/* __NSS_DP_DEV_H__ */
