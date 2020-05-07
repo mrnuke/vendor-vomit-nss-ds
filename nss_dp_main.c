@@ -767,7 +767,8 @@ int __init nss_dp_init(void)
 	 */
 	if (!of_machine_is_compatible("qcom,ipq807x") &&
 			!of_machine_is_compatible("qcom,ipq8074") &&
-			!of_machine_is_compatible("qcom,ipq6018"))
+			!of_machine_is_compatible("qcom,ipq6018") &&
+			!of_machine_is_compatible("qcom,ipq5018"))
 		return 0;
 
 	/*
