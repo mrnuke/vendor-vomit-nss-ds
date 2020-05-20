@@ -321,7 +321,7 @@ static inline void syn_dma_bus_mode_init(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_dma_tcsr_axi_cache_override(struct nss_gmac_hal_dev *nghd)
 {
-	hal_write_reg(nghd->mac_base, TCSR_GMAC_AXI_CACHE_OVERRIDE,
+	hal_write_reg(nghd->tcsr_base, TCSR_GMAC_AXI_CACHE_OVERRIDE,
 					TCSR_GMAC_AXI_CACHE_OVERRIDE_VALUE);
 }
 
@@ -769,12 +769,26 @@ static void *syn_init(struct gmac_hal_platform_data *gmacpdata)
 		return NULL;
 	}
 
+	/*
+	 * Populate the TCSR base addresses
+	 */
+	shd->nghd.tcsr_base =
+		devm_ioremap_nocache(&dp_priv->pdev->dev, TCSR_BASE_ADDRESS,
+				     TCSR_REG_SIZE);
+	if (!shd->nghd.tcsr_base) {
+		netdev_dbg(ndev, "ioremap fail for tcsr.\n");
+		devm_iounmap(&dp_priv->pdev->dev, shd->nghd.mac_base);
+		devm_kfree(&dp_priv->pdev->dev, shd);
+		return NULL;
+	}
+
 	spin_lock_init(&shd->nghd.slock);
 
-	netdev_dbg(ndev, "ioremap OK.Size 0x%x Ndev base 0x%lx macbase 0x%p\n",
+	netdev_dbg(ndev, "ioremap OK.Size 0x%x Ndev base 0x%lx macbase 0x%p tcsrbase 0x%p\n",
 			gmacpdata->reg_len,
 			ndev->base_addr,
-			shd->nghd.mac_base);
+			shd->nghd.mac_base,
+			shd->nghd.tcsr_base);
 
 	syn_disable_interrupt_all(&shd->nghd);
 	syn_dma_init(&shd->nghd);

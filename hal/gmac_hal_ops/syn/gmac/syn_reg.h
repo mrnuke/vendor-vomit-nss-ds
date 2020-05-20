@@ -88,11 +88,6 @@
 #define SYN_HW_FEATURE					0x1058
 
 /*
- * TCSR_GMAC_AXI_CACHE_OVERRIDE Register
- */
-#define TCSR_GMAC_AXI_CACHE_OVERRIDE			0x0193D224
-
-/*
  * Register Bit Definitions
  */
 
@@ -474,13 +469,6 @@ enum syn_dma_axi_bus_mode_reg {
 	SYN_DMA_AXI_BLEN8 = 0x00000004,
 	SYN_DMA_AXI_BLEN4 = 0x00000002,
 	SYN_DMA_UNDEFINED = 0x00000001,
-};
-
-/*
- * TCSR_GMAC_AXI_CACHE_OVERRIDE = 0x0193D224
- */
-enum tcsr_gmac_axi_cache_override_value {
-	TCSR_GMAC_AXI_CACHE_OVERRIDE_VALUE = 0x05050505,
 };
 
 /*

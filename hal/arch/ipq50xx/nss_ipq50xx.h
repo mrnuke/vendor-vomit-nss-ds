@@ -26,6 +26,24 @@
 #define NSS_DP_HAL_MAX_MTU_SIZE			NSS_DP_GMAC_FULL_JUMBO_FRAME_MTU
 #define NSS_DP_HAL_MAX_PACKET_LEN		65535
 
+/*
+ * TCSR_BASE Register Address
+ */
+#define TCSR_BASE_ADDRESS			0x01937000
+#define TCSR_REG_SIZE				0x21000
+
+/*
+ * TCSR_GMAC_AXI_CACHE_OVERRIDE Register
+ */
+#define TCSR_GMAC_AXI_CACHE_OVERRIDE		0x6224
+
+/**
+ * TCSR_GMAC_AXI_CACHE_OVERRIDE = 0x0193D224
+ */
+enum tcsr_gmac_axi_cache_override_value {
+	TCSR_GMAC_AXI_CACHE_OVERRIDE_VALUE = 0x05050505,
+};
+
 /**
  * nss_dp_hal_gmac_stats
  *	The per-GMAC statistics structure.

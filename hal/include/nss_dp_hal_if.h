@@ -36,7 +36,7 @@ enum gmac_device_type {
 struct gmac_hal_platform_data {
 	struct net_device *netdev; /* Net device */
 	uint32_t reg_len;	/* Register space length */
-	uint32_t mactype;	/* Mac chip type */
+	uint32_t mactype;	/* MAC chip type */
 	uint32_t macid;		/* MAC sequence id on the Chip */
 };
 
@@ -44,8 +44,9 @@ struct gmac_hal_platform_data {
  * NSS GMAC HAL device data
  */
 struct nss_gmac_hal_dev {
-	void __iomem *mac_base;	/* base address of MAC registers	*/
-	uint32_t version;	/* Gmac Revision version		*/
+	void __iomem *mac_base;	/* Base address of MAC registers	*/
+	void __iomem *tcsr_base;	/* Base address of TCSR registers	*/
+	uint32_t version;	/* GMAC Revision version		*/
 	uint32_t drv_flags;	/* Driver specific feature flags	*/
 
 	/*
@@ -59,7 +60,7 @@ struct nss_gmac_hal_dev {
 
 	struct net_device *netdev;
 	struct resource *memres;
-	uint32_t mac_reg_len; /* Mac Register block length		*/
+	uint32_t mac_reg_len;	/* MAC Register block length		*/
 	uint32_t mac_id;	/* MAC sequence id on the Chip */
 	spinlock_t slock;	/* lock to protect concurrent reg access */
 };
