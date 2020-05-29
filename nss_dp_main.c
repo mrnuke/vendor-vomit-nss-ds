@@ -24,6 +24,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/of_address.h>
+#include <linux/of_mdio.h>
 #include <linux/phy.h>
 #if defined(NSS_DP_PPE_SUPPORT)
 #include <ref/ref_vsi.h>
@@ -500,6 +501,14 @@ static struct mii_bus *nss_dp_mdio_attach(struct platform_device *pdev)
 	struct device_node *mdio_node;
 	struct platform_device *mdio_plat;
 	struct ipq40xx_mdio_data *mdio_data;
+
+	/*
+	 * Find mii_bus using "mdio-bus" handle.
+	 */
+	mdio_node = of_parse_phandle(pdev->dev.of_node, "mdio-bus", 0);
+	if (mdio_node) {
+		return of_mdio_find_bus(mdio_node);
+	}
 
 	mdio_node = of_find_compatible_node(NULL, NULL, "qcom,ipq40xx-mdio");
 	if (!mdio_node) {
