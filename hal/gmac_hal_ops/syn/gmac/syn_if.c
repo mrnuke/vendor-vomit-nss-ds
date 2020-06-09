@@ -20,6 +20,7 @@
 #include <linux/ethtool.h>
 #include <linux/vmalloc.h>
 #include <linux/spinlock.h>
+#include <linux/qcom_scm.h>
 #include <linux/io.h>
 #include "syn_dev.h"
 #include "syn_reg.h"
@@ -440,10 +441,12 @@ void syn_init_rx_desc_base(struct nss_gmac_hal_dev *nghd, uint32_t rx_desc_dma)
 /*
  * syn_dma_tcsr_axi_cache_override()
  *	Function to program DMA AXI Cache override register.
+ *
+ * Make a secure io call to set XPU protected TCSR register.
  */
 static inline void syn_dma_tcsr_axi_cache_override(struct nss_gmac_hal_dev *nghd)
 {
-	hal_write_reg(nghd->tcsr_base, TCSR_GMAC_AXI_CACHE_OVERRIDE,
+	qcom_scm_tcsr_reg_write((TCSR_BASE_ADDRESS + TCSR_GMAC_AXI_CACHE_OVERRIDE),
 					TCSR_GMAC_AXI_CACHE_OVERRIDE_VALUE);
 }
 
@@ -829,6 +832,10 @@ static void syn_dma_init(struct nss_gmac_hal_dev *nghd)
 	syn_dma_bus_mode_init(nghd);
 	syn_dma_axi_bus_mode_init(nghd);
 	syn_dma_operation_mode_init(nghd);
+
+	/*
+	 * Enable AXI Cache override for GMAC.
+	 */
 	syn_dma_tcsr_axi_cache_override(nghd);
 }
 
