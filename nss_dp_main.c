@@ -486,7 +486,7 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 		ether_addr_copy(netdev->dev_addr, maddr);
 	} else {
 		random_ether_addr(netdev->dev_addr);
-		pr_info("GMAC%d(%p) Invalid MAC@ - using %pM\n", dp_priv->macid,
+		pr_info("GMAC%d(%px) Invalid MAC@ - using %pM\n", dp_priv->macid,
 						dp_priv, netdev->dev_addr);
 	}
 

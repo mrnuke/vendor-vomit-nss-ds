@@ -328,7 +328,7 @@ void nss_dp_switchdev_setup(struct net_device *dev)
 
 	err = register_switchdev_blocking_notifier(&nss_dp_switchdev_notifier);
 	if (err) {
-		netdev_dbg(dev, "%p:Failed to register switchdev notifier\n", dev);
+		netdev_dbg(dev, "%px:Failed to register switchdev notifier\n", dev);
 	}
 
 	switch_init_done = true;

@@ -158,7 +158,7 @@ static netdev_tx_t edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 	 * Check for non-linear skb
 	 */
 	if (skb_is_nonlinear(skb)) {
-		netdev_dbg(netdev, "cannot Tx non-linear skb:%p\n", skb);
+		netdev_dbg(netdev, "cannot Tx non-linear skb:%px\n", skb);
 		goto drop;
 	}
 
@@ -178,7 +178,7 @@ static netdev_tx_t edma_if_xmit(struct nss_dp_data_plane_ctx *dpc,
 	 * Expand the skb. This also unclones a cloned skb.
 	 */
 	if (expand_skb && pskb_expand_head(skb, nhead, ntail, GFP_ATOMIC)) {
-		netdev_dbg(netdev, "cannot expand skb:%p\n", skb);
+		netdev_dbg(netdev, "cannot expand skb:%px\n", skb);
 		goto drop;
 	}
 
@@ -501,7 +501,7 @@ rx_fill_ring_intr_req_fail:
 static int edma_register_netdevice(struct net_device *netdev, uint32_t macid)
 {
 	if (!netdev) {
-		pr_info("nss_dp_edma: Invalid netdev pointer %p\n", netdev);
+		pr_info("nss_dp_edma: Invalid netdev pointer %px\n", netdev);
 		return -EINVAL;
 	}
 
@@ -612,7 +612,7 @@ static int edma_of_get_pdata(struct resource *edma_res)
 	 */
 	edma_hw.pdev = of_find_device_by_node(edma_hw.device_node);
 	if (!edma_hw.pdev) {
-		pr_warn("Platform device for node %p(%s) not found\n",
+		pr_warn("Platform device for node %px(%s) not found\n",
 				edma_hw.device_node,
 				(edma_hw.device_node)->name);
 		return -EINVAL;

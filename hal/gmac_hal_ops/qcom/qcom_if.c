@@ -342,7 +342,7 @@ static int32_t qcom_start(struct nss_gmac_hal_dev *nghd)
 	qcom_tx_enable(nghd);
 	qcom_rx_enable(nghd);
 
-	netdev_dbg(nghd->netdev, "%s: mac_base:0x%p mac_enable:0x%x\n",
+	netdev_dbg(nghd->netdev, "%s: mac_base:0x%px mac_enable:0x%x\n",
 			__func__, nghd->mac_base,
 			hal_read_reg(nghd->mac_base, QCOM_MAC_ENABLE));
 
@@ -357,7 +357,7 @@ static int32_t qcom_stop(struct nss_gmac_hal_dev *nghd)
 	qcom_tx_disable(nghd);
 	qcom_rx_disable(nghd);
 
-	netdev_dbg(nghd->netdev, "%s: mac_base:0x%p mac_enable:0x%x\n",
+	netdev_dbg(nghd->netdev, "%s: mac_base:0x%px mac_enable:0x%x\n",
 			__func__, nghd->mac_base,
 			hal_read_reg(nghd->mac_base, QCOM_MAC_ENABLE));
 	return 0;
@@ -409,7 +409,7 @@ static void *qcom_init(struct gmac_hal_platform_data *gmacpdata)
 
 	spin_lock_init(&qhd->nghd.slock);
 
-	netdev_dbg(ndev, "ioremap OK.Size 0x%x Ndev base 0x%lx macbase 0x%p\n",
+	netdev_dbg(ndev, "ioremap OK.Size 0x%x Ndev base 0x%lx macbase 0x%px\n",
 			gmacpdata->reg_len,
 			ndev->base_addr,
 			qhd->nghd.mac_base);

@@ -184,7 +184,7 @@ uint32_t edma_clean_tx(struct edma_hw *ehw,
 		len = skb_headlen(skb);
 		daddr = (dma_addr_t)virt_to_phys(skb->data);
 
-		pr_debug("skb:%p cons_idx:%d prod_idx:%d word1:0x%x\n",
+		pr_debug("skb:%px cons_idx:%d prod_idx:%d word1:0x%x\n",
 			   skb, cons_idx, prod_idx, txcmpl->status);
 
 		dma_unmap_single(&pdev->dev, daddr,
@@ -326,7 +326,7 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 			src_port_num = rxph->src_info &
 				EDMA_PREHDR_PORTNUM_BITS;
 		} else {
-			pr_warn("WARN: src_info_type:0x%x. Drop skb:%p\n",
+			pr_warn("WARN: src_info_type:0x%x. Drop skb:%px\n",
 				  EDMA_RXPH_SRC_INFO_TYPE_GET(rxph), skb);
 			dev_kfree_skb_any(skb);
 			goto next_rx_desc;
@@ -339,7 +339,7 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 
 		if (unlikely((src_port_num < NSS_DP_START_IFNUM)  ||
 			(src_port_num > NSS_DP_HAL_MAX_PORTS))) {
-			pr_warn("WARN: Port number error :%d. Drop skb:%p\n",
+			pr_warn("WARN: Port number error :%d. Drop skb:%px\n",
 					src_port_num, skb);
 			dev_kfree_skb_any(skb);
 			goto next_rx_desc;
@@ -353,7 +353,7 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 		 */
 		ndev = ehw->netdev_arr[src_port_num - 1];
 		if (unlikely(!ndev)) {
-			pr_warn("WARN: netdev Null src_info_type:0x%x. Drop skb:%p\n",
+			pr_warn("WARN: netdev Null src_info_type:0x%x. Drop skb:%px\n",
 					src_port_num, skb);
 			dev_kfree_skb_any(skb);
 			goto next_rx_desc;
@@ -385,11 +385,11 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 		 */
 		 skb->offload_fwd_mark = 0;
 #endif
-		pr_debug("skb:%p ring_idx:%u pktlen:%d proto:0x%x mark:%u\n",
+		pr_debug("skb:%px ring_idx:%u pktlen:%d proto:0x%x mark:%u\n",
 			   skb, cons_idx, pkt_length, skb->protocol,
 			   skb->offload_fwd_mark);
 #else
-		pr_debug("skb:%p ring_idx:%u pktlen:%d proto:0x%x\n",
+		pr_debug("skb:%px ring_idx:%u pktlen:%d proto:0x%x\n",
 			   skb, cons_idx, pkt_length, skb->protocol);
 #endif
 		/*
@@ -625,7 +625,7 @@ enum edma_tx edma_ring_xmit(struct edma_hw *ehw,
 	txdesc->word1 |= ((buf_len & EDMA_TXDESC_DATA_LENGTH_MASK)
 			<< EDMA_TXDESC_DATA_LENGTH_SHIFT);
 
-	netdev_dbg(netdev, "skb:%p tx_ring:%u proto:0x%x\n",
+	netdev_dbg(netdev, "skb:%px tx_ring:%u proto:0x%x\n",
 			skb, txdesc_ring->id, ntohs(skb->protocol));
 	netdev_dbg(netdev, "port:%u prod_idx:%u cons_idx:%u\n",
 			dp_dev->macid, hw_next_to_use, hw_next_to_clean);

@@ -89,7 +89,7 @@ static int syn_dp_if_init(struct nss_dp_data_plane_ctx *dpc)
 	int err;
 
 	if (!netdev) {
-		netdev_dbg(netdev, "nss_dp_gmac: Invalid netdev pointer %p\n", netdev);
+		netdev_dbg(netdev, "nss_dp_gmac: Invalid netdev pointer %px\n", netdev);
 		return NSS_DP_FAILURE;
 	}
 
@@ -122,7 +122,7 @@ static int syn_dp_if_init(struct nss_dp_data_plane_ctx *dpc)
 	 * Initialize the Tx/Rx ring
 	 */
 	if (syn_dp_setup_rings(gmac_dev, netdev, dev, dev_info)) {
-		netdev_dbg(netdev, "nss_dp_gmac: Error initializing GMAC rings %p\n", netdev);
+		netdev_dbg(netdev, "nss_dp_gmac: Error initializing GMAC rings %px\n", netdev);
 		return NSS_DP_FAILURE;
 	}
 

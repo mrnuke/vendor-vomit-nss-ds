@@ -137,7 +137,7 @@ void nss_dp_start_data_plane(struct net_device *netdev,
 	}
 
 	if (dp_dev->dpc != dpc) {
-		netdev_dbg(netdev, "Cookie %p does not match, reject\n", dpc);
+		netdev_dbg(netdev, "Cookie %px does not match, reject\n", dpc);
 		return;
 	}
 

@@ -356,7 +356,7 @@ static int32_t syn_start(struct nss_gmac_hal_dev *nghd)
 		return -1;
 
 	netdev_dbg(nghd->netdev,
-			"%s: mac_base:0x%p tx_enable:0x%x rx_enable:0x%x\n",
+			"%s: mac_base:0x%px tx_enable:0x%x rx_enable:0x%x\n",
 			__func__,
 			nghd->mac_base,
 			hal_read_reg(nghd->mac_base,
@@ -377,7 +377,7 @@ static int32_t syn_stop(struct nss_gmac_hal_dev *nghd)
 	syn_tx_disable(nghd);
 	syn_rx_disable(nghd);
 
-	netdev_dbg(nghd->netdev, "%s: Stopping mac_base:0x%p\n", __func__,
+	netdev_dbg(nghd->netdev, "%s: Stopping mac_base:0x%px\n", __func__,
 		   nghd->mac_base);
 
 	return 0;
@@ -431,7 +431,7 @@ static void *syn_init(struct gmac_hal_platform_data *gmacpdata)
 
 	spin_lock_init(&shd->nghd.slock);
 
-	netdev_dbg(ndev, "ioremap OK.Size 0x%x Ndev base 0x%lx macbase 0x%p\n",
+	netdev_dbg(ndev, "ioremap OK.Size 0x%x Ndev base 0x%lx macbase 0x%px\n",
 			gmacpdata->reg_len,
 			ndev->base_addr,
 			shd->nghd.mac_base);
