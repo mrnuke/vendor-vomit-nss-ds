@@ -21,6 +21,7 @@
 #include <linux/vmalloc.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
+#include <nss_dp_hal.h>
 #include "syn_dev.h"
 #include "syn_reg.h"
 
@@ -816,6 +817,17 @@ static void syn_get_mac_address(struct nss_gmac_hal_dev *nghd,
  */
 static void syn_dma_init(struct nss_gmac_hal_dev *nghd)
 {
+	struct net_device *ndev = nghd->netdev;
+	struct nss_dp_dev *dp_priv = netdev_priv(ndev);
+
+	/*
+	 * Enable SoC specific GMAC clocks.
+	 */
+	nss_dp_hal_clk_enable(dp_priv);
+
+	/*
+	 * Configure DMA registers.
+	 */
 	syn_dma_bus_mode_init(nghd);
 	syn_dma_axi_bus_mode_init(nghd);
 	syn_dma_operation_mode_init(nghd);

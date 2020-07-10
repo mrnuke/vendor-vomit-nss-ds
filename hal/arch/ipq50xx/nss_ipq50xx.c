@@ -15,6 +15,7 @@
  */
 
 #include <linux/of.h>
+#include <linux/clk.h>
 #include <linux/ioport.h>
 #include <linux/qcom_scm.h>
 #include "nss_dp_hal.h"
@@ -91,6 +92,34 @@ static void nss_dp_hal_tcsr_set(void)
 struct nss_dp_data_plane_ops *nss_dp_hal_get_data_plane_ops(void)
 {
 	return &nss_dp_gmac_ops;
+}
+
+/*
+ * nss_dp_hal_clk_enable
+ *	Function to enable GCC_SNOC_GMAC_AXI_CLK.
+ *
+ * These clocks are required for GMAC operations.
+ */
+void nss_dp_hal_clk_enable(struct nss_dp_dev *dp_priv)
+{
+	struct platform_device *pdev = dp_priv->pdev;
+	struct device *dev = &pdev->dev;
+	struct clk *gmac_clk = NULL;
+	int err;
+
+	gmac_clk = devm_clk_get(dev, NSS_SNOC_GMAC_AXI_CLK);
+	if (IS_ERR(gmac_clk)) {
+		pr_err("%s: cannot get clock: %s\n", __func__,
+						NSS_SNOC_GMAC_AXI_CLK);
+		return;
+	}
+
+	err = clk_prepare_enable(gmac_clk);
+	if (err) {
+		pr_err("%s: cannot enable clock: %s, err: %d\n", __func__,
+						NSS_SNOC_GMAC_AXI_CLK, err);
+		return;
+	}
 }
 
 /*

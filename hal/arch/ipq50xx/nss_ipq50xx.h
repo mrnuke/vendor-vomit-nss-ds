@@ -41,6 +41,11 @@
  */
 #define TCSR_GMAC_AXI_CACHE_OVERRIDE_VALUE	0x05050505
 
+/*
+ * GCC_SNOC_GMAC_AXI_CLOCK
+ */
+#define NSS_SNOC_GMAC_AXI_CLK			"nss-snoc-gmac-axi-clk"
+
 /**
  * nss_dp_hal_gmac_stats
  *	The per-GMAC statistics structure.
