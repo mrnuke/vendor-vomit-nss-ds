@@ -43,7 +43,7 @@ endif
 
 ifeq ($(SoC),$(filter $(SoC),ipq807x ipq807x_64))
 qca-nss-dp-objs += hal/arch/ipq807x/nss_ipq807x.o
-ccflags-y += -DNSS_DP_IPQ807X
+ccflags-y += -DNSS_DP_IPQ807X -DNSS_DP_EDMA_TX_SMALL_PKT_WAR
 endif
 
 ifeq ($(SoC),$(filter $(SoC),ipq50xx ipq50xx_64))
