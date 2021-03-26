@@ -30,7 +30,7 @@ NSS_DP_INCLUDE += -I$(obj)/hal/gmac_hal_ops/syn/gmac
 endif
 
 ccflags-y += $(NSS_DP_INCLUDE)
-ccflags-y += -Werror
+ccflags-y += -Wall -Werror
 
 ifeq ($(SoC),$(filter $(SoC),ipq807x ipq807x_64 ipq60xx ipq60xx_64))
 ccflags-y += -DNSS_DP_PPE_SUPPORT
