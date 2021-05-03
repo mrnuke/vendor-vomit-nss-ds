@@ -418,7 +418,7 @@ static void *qcom_init(struct nss_gmac_hal_platform_data *gmacpdata)
 	qhd->nghd.mac_id = gmacpdata->macid;
 
 	/* Populate the mac base addresses */
-	qhd->nghd.mac_base = devm_ioremap_nocache(&dp_priv->pdev->dev,
+	qhd->nghd.mac_base = devm_ioremap(&dp_priv->pdev->dev,
 						res->start, resource_size(res));
 	if (!qhd->nghd.mac_base) {
 		netdev_dbg(ndev, "ioremap fail.\n");
