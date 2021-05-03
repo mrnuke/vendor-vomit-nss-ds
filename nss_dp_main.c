@@ -584,7 +584,11 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 	hal_pdata->netdev = netdev;
 	hal_pdata->macid = dp_priv->macid;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0))
 	dp_priv->phy_mii_type = of_get_phy_mode(np);
+#else
+	of_get_phy_mode(np, &dp_priv->phy_mii_type);
+#endif
 	dp_priv->link_poll = of_property_read_bool(np, "qcom,link-poll");
 	if (of_property_read_u32(np, "qcom,phy-mdio-addr",
 		&dp_priv->phy_mdio_addr) && dp_priv->link_poll) {

@@ -22,7 +22,7 @@
 #include <linux/etherdevice.h>
 #include <linux/netdevice.h>
 #include <linux/platform_device.h>
-#include <linux/switch.h>
+#include <linux/phy.h>
 #include <linux/version.h>
 
 #include "nss_dp_api_if.h"
@@ -99,7 +99,7 @@ struct nss_dp_dev {
 	/* Phy related stuff */
 	struct phy_device *phydev;	/* Phy device */
 	struct mii_bus *miibus;		/* MII bus */
-	uint32_t phy_mii_type;		/* RGMII/SGMII/QSGMII */
+	phy_interface_t phy_mii_type;	/* RGMII/SGMII/QSGMII */
 	uint32_t phy_mdio_addr;		/* Mdio address */
 	bool link_poll;			/* Link polling enable? */
 	uint32_t forced_speed;		/* Forced speed? */
