@@ -175,7 +175,14 @@ static void edma_cfg_tx_desc_ring_configure(struct edma_txdesc_ring *txdesc_ring
 			(uint32_t)(txdesc_ring->count &
 			EDMA_TXDESC_RING_SIZE_MASK));
 
-	edma_reg_write(EDMA_REG_TXDESC_PROD_IDX(txdesc_ring->id), EDMA_TX_INITIAL_PROD_IDX);
+	edma_reg_write(EDMA_REG_TXDESC_PROD_IDX(txdesc_ring->id),
+			(uint32_t)EDMA_TX_INITIAL_PROD_IDX);
+
+	/*
+	 * Configure group ID for flow control for this Tx ring
+	 */
+	edma_reg_write(EDMA_REG_TXDESC_CTRL(txdesc_ring->id),
+			EDMA_TXDESC_CTRL_FC_GRP_ID_SET(txdesc_ring->fc_grp_id));
 }
 
 /*
@@ -266,14 +273,14 @@ void edma_cfg_tx_rings_enable(struct edma_gbl_ctx *egc)
 	/*
 	 * Enable Tx rings
 	 */
-	for (i = egc->txdesc_ring_start; i < egc->txdesc_ring_end; i++) {
+	for (i = 0; i < egc->num_txdesc_rings; i++) {
 		uint32_t data;
+		struct edma_txdesc_ring *txdesc_ring = &egc->txdesc_rings[i];
 
-		data = edma_reg_read(EDMA_REG_TXDESC_CTRL(i));
-		data |= EDMA_TXDESC_TX_EN;
-		edma_reg_write(EDMA_REG_TXDESC_CTRL(i), data);
+		data = edma_reg_read(EDMA_REG_TXDESC_CTRL(txdesc_ring->id));
+		data |= EDMA_TXDESC_CTRL_TXEN_SET(EDMA_TXDESC_TX_ENABLE);
+		edma_reg_write(EDMA_REG_TXDESC_CTRL(txdesc_ring->id), data);
 	}
-
 }
 
 /*
@@ -293,7 +300,7 @@ void edma_cfg_tx_rings_disable(struct edma_gbl_ctx *egc)
 
 		txdesc_ring = &egc->txdesc_rings[i];
 		data = edma_reg_read(EDMA_REG_TXDESC_CTRL(txdesc_ring->id));
-		data &= ~EDMA_TXDESC_TX_EN;
+		data &= ~EDMA_TXDESC_TX_ENABLE;
 		edma_reg_write(EDMA_REG_TXDESC_CTRL(txdesc_ring->id), data);
 	}
 }
@@ -377,7 +384,21 @@ void edma_cfg_tx_mapping(struct edma_gbl_ctx *egc)
  */
 static int edma_cfg_tx_rings_setup(struct edma_gbl_ctx *egc)
 {
-	uint32_t i;
+	uint32_t i, j = 0;
+
+	/*
+	 * Set Txdesc flow control group id
+	 */
+	for (i = 0; i < EDMA_TX_RING_PER_CORE_MAX; i++) {
+		for_each_possible_cpu(j) {
+			struct edma_txdesc_ring *txdesc_ring = NULL;
+			uint32_t txdesc_idx = egc->tx_map[i][j]
+						- egc->txdesc_ring_start;
+
+			txdesc_ring = &egc->txdesc_rings[txdesc_idx];
+			txdesc_ring->fc_grp_id = egc->tx_fc_grp_map[i];
+		}
+	}
 
 	/*
 	 * Allocate TxDesc ring descriptors

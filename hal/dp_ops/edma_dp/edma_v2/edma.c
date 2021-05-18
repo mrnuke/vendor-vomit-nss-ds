@@ -564,6 +564,18 @@ static int edma_of_get_pdata(struct resource *edma_res)
 	}
 
 	/*
+	 * Get TXDESC flow control Group ID Map
+	 */
+	ret = of_property_read_u32_array(edma_gbl_ctx.device_node,
+			"qcom,txdesc-fc-grp-map",
+			(int32_t *)edma_gbl_ctx.tx_fc_grp_map, EDMA_MAX_GMACS);
+	if (ret) {
+		edma_err("Unable to read TxDesc-Fc-Grp map array. \
+			ret: %d\n", ret);
+		return -EINVAL;
+	}
+
+	/*
 	 * Get RXDESC Map
 	 */
 	ret = of_property_read_u32_array(edma_gbl_ctx.device_node,
@@ -634,7 +646,7 @@ static int edma_hw_reset(struct edma_gbl_ctx *egc)
 
 /*
  * edma_init_ring_maps()
- *	API to initialize TX/RX rings in the global context
+ *	API to initialize TX/RX ring maps in the global context
  */
 static void edma_init_ring_maps(void)
 {
@@ -654,6 +666,10 @@ static void edma_init_ring_maps(void)
 		for_each_possible_cpu(j) {
 			edma_gbl_ctx.txcmpl_map[i][j] = -1;
 		}
+	}
+
+	for (i = 0; i < EDMA_MAX_GMACS; i++) {
+		edma_gbl_ctx.tx_fc_grp_map[i] = -1;
 	}
 }
 

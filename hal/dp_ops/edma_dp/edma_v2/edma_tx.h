@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -164,6 +166,7 @@ struct edma_txdesc_ring {
 	struct edma_sec_txdesc *sdesc;	/* Secondary descriptor ring virtual address */
 	dma_addr_t sdma;		/* Secondary descriptor ring physical address */
 	uint32_t count;			/* Number of descriptors */
+	uint8_t fc_grp_id;		/* Flow control group ID */
 };
 
 /*
