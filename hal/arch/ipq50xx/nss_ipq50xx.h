@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,10 +20,20 @@
 #define NSS_DP_HAL_MAX_PORTS			2
 #define NSS_DP_HAL_CPU_NUM			2
 #define NSS_DP_HAL_START_IFNUM			0
-#define NSS_DP_GMAC_NORMAL_FRAME_MTU		1500
-#define NSS_DP_GMAC_MINI_JUMBO_FRAME_MTU	1978
-#define NSS_DP_GMAC_FULL_JUMBO_FRAME_MTU	9000
-#define NSS_DP_HAL_MAX_MTU_SIZE			NSS_DP_GMAC_FULL_JUMBO_FRAME_MTU
+
+/*
+ * Synopsys GMAC supports a maximum frame size of 16383 bytes.
+ * So, the max MTU value is maximum frame size excluding
+ * Ethernet header size (14B), FCS (4B) and 2x VLANs (8B).
+ */
+#define NSS_DP_HAL_MAX_MTU_SIZE			16357
+
+/*
+ * SSDK API internally takes care of adding size of
+ * 2xVLANs (8B) when configuring the MTU value.
+ * So, the max L2 overhead does not consider 2xVLANs.
+ */
+#define NSS_DP_HAL_MTU_L2_OVERHEAD		(ETH_HLEN + ETH_FCS_LEN)
 #define NSS_DP_HAL_MAX_PACKET_LEN		65535
 
 /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -125,6 +125,24 @@ void nss_dp_hal_clk_enable(struct nss_dp_dev *dp_priv)
 						NSS_SNOC_GMAC_AXI_CLK, err);
 		return;
 	}
+}
+
+/*
+ * nss_dp_hal_set_mtu
+ *	Configures the MTU in the GMAC.
+ */
+int32_t nss_dp_hal_set_mtu(struct nss_dp_dev *dp_priv, uint16_t mtu)
+{
+	uint16_t frame_sz;
+
+	if (mtu > NSS_DP_HAL_MAX_MTU_SIZE) {
+		netdev_warn(dp_priv->netdev, "Maximum allowed MTU: %d\n",
+						NSS_DP_HAL_MAX_MTU_SIZE);
+		return -1;
+	}
+
+	frame_sz = mtu + NSS_DP_HAL_MTU_L2_OVERHEAD;
+	return dp_priv->gmac_hal_ops->setmaxframe(dp_priv->gmac_hal_ctx, frame_sz);
 }
 
 /*

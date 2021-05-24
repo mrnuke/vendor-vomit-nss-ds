@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -83,14 +83,24 @@ static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
 
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
-	/* Let the underlying data plane decide if the newmtu is applicable */
+	/*
+	 * Configure the new MTU value to underlying HW.
+	 */
+	if (nss_dp_hal_set_mtu(dp_priv, newmtu)) {
+		netdev_dbg(netdev, "GMAC MTU change failed: %d\n", newmtu);
+		return ret;
+	}
+
+	/*
+	 * Let the underlying data plane decide if the newmtu is applicable.
+	 */
 	if (dp_priv->data_plane_ops->change_mtu(dp_priv->dpc, newmtu)) {
-		netdev_dbg(netdev, "Data plane change mtu failed\n");
+		netdev_dbg(netdev, "Data plane change mtu failed: %d\n", newmtu);
+		nss_dp_hal_set_mtu(dp_priv, netdev->mtu);
 		return ret;
 	}
 
 	netdev->mtu = newmtu;
-
 	return 0;
 }
 
