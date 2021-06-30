@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -278,8 +278,8 @@ static void syn_dp_if_get_stats(struct nss_dp_data_plane_ctx *dpc, struct nss_dp
 	struct syn_dp_info *dev_info = &dp_info[gmac_dev->macid - 1];
 
 	spin_lock_bh(&dev_info->stats_lock);
-	netdev_dbg(netdev, "GETTING stats: rx_packets:%llu rx_bytes:%llu mmc_rx_crc_errors:%llu", dev_info->stats.stats.rx_packets,
-			dev_info->stats.stats.rx_bytes, dev_info->stats.stats.mmc_rx_crc_errors);
+	netdev_dbg(netdev, "GETTING stats: rx_packets:%llu rx_bytes:%llu", dev_info->stats.stats.rx_packets,
+			dev_info->stats.stats.rx_bytes);
 	memcpy(stats, &dev_info->stats, sizeof(*stats));
 	spin_unlock_bh(&dev_info->stats_lock);
 }

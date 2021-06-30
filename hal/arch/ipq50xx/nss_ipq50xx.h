@@ -105,34 +105,6 @@ struct nss_dp_hal_gmac_stats {
 	uint64_t gmac_worst_case_ticks;	/**< Worst case iteration of the GMAC in ticks */
 	uint64_t gmac_iterations;	/**< Number of iterations around the GMAC */
 	uint64_t tx_pause_frames;	/**< Number of pause frames sent by the GMAC */
-	uint64_t mmc_rx_overflow_errors;
-					/**< Number of RX overflow errors */
-	uint64_t mmc_rx_watchdog_timeout_errors;
-					/**< Number of RX watchdog timeout errors */
-	uint64_t mmc_rx_crc_errors;	/**< Number of RX CRC errors */
-	uint64_t mmc_rx_ip_header_errors;
-					/**< Number of RX IP header errors read from MMC counter*/
-	uint64_t mmc_rx_octets_g;
-					/**< Number of good octets received */
-	uint64_t mmc_rx_ucast_frames;	/**< Number of Unicast frames received */
-	uint64_t mmc_rx_bcast_frames;	/**< Number of Bcast frames received */
-	uint64_t mmc_rx_mcast_frames;	/**< Number of Mcast frames received */
-	uint64_t mmc_rx_undersize;
-					/**< Number of RX undersize frames */
-	uint64_t mmc_rx_oversize;
-					/**< Number of RX oversize frames */
-	uint64_t mmc_rx_jabber;		/**< Number of jabber frames */
-	uint64_t mmc_rx_octets_gb;
-					/**< Number of good/bad octets */
-	uint64_t mmc_rx_frag_frames_g;	/**< Number of good ipv4 frag frames */
-	uint64_t mmc_tx_octets_g;	/**< Number of good octets sent */
-	uint64_t mmc_tx_ucast_frames;	/**< Number of Unicast frames sent*/
-	uint64_t mmc_tx_bcast_frames;	/**< Number of Broadcast frames sent */
-	uint64_t mmc_tx_mcast_frames;	/**< Number of Multicast frames sent */
-	uint64_t mmc_tx_deferred;	/**< Number of Deferred frames sent */
-	uint64_t mmc_tx_single_col;	/**< Number of single collisions */
-	uint64_t mmc_tx_multiple_col;	/**< Number of multiple collisions */
-	uint64_t mmc_tx_octets_gb;	/**< Number of good/bad octets sent*/
 };
 
 extern struct nss_dp_data_plane_ops nss_dp_gmac_ops;

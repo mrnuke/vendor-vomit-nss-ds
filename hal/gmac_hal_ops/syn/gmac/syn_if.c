@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -26,6 +26,7 @@
 #include "syn_reg.h"
 
 #define SYN_STAT(m)	offsetof(struct nss_dp_hal_gmac_stats, m)
+#define SYN_MIB_STAT(m)	offsetof(fal_mib_counter_t, m)
 #define HW_ERR_SIZE	sizeof(uint64_t)
 
 /*
@@ -85,30 +86,60 @@ static const struct syn_ethtool_stats syn_gstrings_stats[] = {
 	{"gmac_worst_case_ticks", SYN_STAT(gmac_worst_case_ticks)},
 	{"gmac_iterations", SYN_STAT(gmac_iterations)},
 	{"tx_pause_frames", SYN_STAT(tx_pause_frames)},
-	{"mmc_rx_overflow_errors", SYN_STAT(mmc_rx_overflow_errors)},
-	{"mmc_rx_watchdog_timeout_errors", SYN_STAT(mmc_rx_watchdog_timeout_errors)},
-	{"mmc_rx_crc_errors", SYN_STAT(mmc_rx_crc_errors)},
-	{"mmc_rx_ip_header_errors", SYN_STAT(mmc_rx_ip_header_errors)},
-	{"mmc_rx_octets_g", SYN_STAT(mmc_rx_octets_g)},
-	{"mmc_rx_ucast_frames", SYN_STAT(mmc_rx_ucast_frames)},
-	{"mmc_rx_bcast_frames", SYN_STAT(mmc_rx_bcast_frames)},
-	{"mmc_rx_mcast_frames", SYN_STAT(mmc_rx_mcast_frames)},
-	{"mmc_rx_undersize", SYN_STAT(mmc_rx_undersize)},
-	{"mmc_rx_oversize", SYN_STAT(mmc_rx_oversize)},
-	{"mmc_rx_jabber", SYN_STAT(mmc_rx_jabber)},
-	{"mmc_rx_octets_gb", SYN_STAT(mmc_rx_octets_gb)},
-	{"mmc_rx_frag_frames_g", SYN_STAT(mmc_rx_frag_frames_g)},
-	{"mmc_tx_octets_g", SYN_STAT(mmc_tx_octets_g)},
-	{"mmc_tx_ucast_frames", SYN_STAT(mmc_tx_ucast_frames)},
-	{"mmc_tx_bcast_frames", SYN_STAT(mmc_tx_bcast_frames)},
-	{"mmc_tx_mcast_frames", SYN_STAT(mmc_tx_mcast_frames)},
-	{"mmc_tx_deferred", SYN_STAT(mmc_tx_deferred)},
-	{"mmc_tx_single_col", SYN_STAT(mmc_tx_single_col)},
-	{"mmc_tx_multiple_col", SYN_STAT(mmc_tx_multiple_col)},
-	{"mmc_tx_octets_gb", SYN_STAT(mmc_tx_octets_gb)},
+};
+
+/*
+ * Array of strings describing statistics
+ */
+static const struct syn_ethtool_stats syn_gstrings_mib_stats[] = {
+	{"rx_broadcast", SYN_MIB_STAT(RxBroad)},
+	{"rx_pause", SYN_MIB_STAT(RxPause)},
+	{"rx_unicast", SYN_MIB_STAT(RxUniCast)},
+	{"rx_multicast", SYN_MIB_STAT(RxMulti)},
+	{"rx_fcserr", SYN_MIB_STAT(RxFcsErr)},
+	{"rx_alignerr", SYN_MIB_STAT(RxAllignErr)},
+	{"rx_runt", SYN_MIB_STAT(RxRunt)},
+	{"rx_frag", SYN_MIB_STAT(RxFragment)},
+	{"rx_pkt64", SYN_MIB_STAT(Rx64Byte)},
+	{"rx_pkt65to127", SYN_MIB_STAT(Rx128Byte)},
+	{"rx_pkt128to255", SYN_MIB_STAT(Rx256Byte)},
+	{"rx_pkt256to511", SYN_MIB_STAT(Rx512Byte)},
+	{"rx_pkt512to1023", SYN_MIB_STAT(Rx1024Byte)},
+	{"rx_pkt1024to1518", SYN_MIB_STAT(Rx1518Byte)},
+	{"rx_pkt1519tox", SYN_MIB_STAT(RxMaxByte)},
+	{"rx_toolong", SYN_MIB_STAT(RxTooLong)},
+	{"rx_pktgoodbyte", SYN_MIB_STAT(RxGoodByte)},
+	{"rx_pktbadbyte", SYN_MIB_STAT(RxBadByte)},
+	{"rx_overflow", SYN_MIB_STAT(RxOverFlow)},
+	{"rx_14to63", SYN_MIB_STAT(Rx14To63)},
+	{"rx_toolongbyte", SYN_MIB_STAT(RxTooLongByte)},
+	{"rx_runtbyte", SYN_MIB_STAT(RxRuntByte)},
+	{"tx_broadcast", SYN_MIB_STAT(TxBroad)},
+	{"tx_pause", SYN_MIB_STAT(TxPause)},
+	{"tx_multicast", SYN_MIB_STAT(TxMulti)},
+	{"tx_underrun", SYN_MIB_STAT(TxUnderRun)},
+	{"tx_pkt64", SYN_MIB_STAT(Tx64Byte)},
+	{"tx_pkt65to127", SYN_MIB_STAT(Tx128Byte)},
+	{"tx_pkt128to255", SYN_MIB_STAT(Tx256Byte)},
+	{"tx_pkt256to511", SYN_MIB_STAT(Tx512Byte)},
+	{"tx_pkt512to1023", SYN_MIB_STAT(Tx1024Byte)},
+	{"tx_pkt1024to1518", SYN_MIB_STAT(Tx1518Byte)},
+	{"tx_pkt1519tox", SYN_MIB_STAT(TxMaxByte)},
+	{"tx_oversize", SYN_MIB_STAT(TxOverSize)},
+	{"tx_pktbyte_h", SYN_MIB_STAT(TxByte)},
+	{"tx_collisions", SYN_MIB_STAT(TxCollision)},
+	{"tx_abortcol", SYN_MIB_STAT(TxAbortCol)},
+	{"tx_multicol", SYN_MIB_STAT(TxMultiCol)},
+	{"tx_singlecol", SYN_MIB_STAT(TxSingalCol)},
+	{"tx_exesdeffer", SYN_MIB_STAT(TxExcDefer)},
+	{"tx_deffer", SYN_MIB_STAT(TxDefer)},
+	{"tx_latecol", SYN_MIB_STAT(TxLateCol)},
+	{"tx_unicast", SYN_MIB_STAT(TxUniCast)},
+	{"filtered", SYN_MIB_STAT(Filtered)},
 };
 
 #define SYN_STATS_LEN		ARRAY_SIZE(syn_gstrings_stats)
+#define SYN_STATS_MIB_STATS_LEN	ARRAY_SIZE(syn_gstrings_mib_stats)
 
 /*
  * syn_set_rx_flow_ctrl()
@@ -501,6 +532,7 @@ static int syn_get_stats(struct nss_gmac_hal_dev *nghd)
 	struct nss_dp_dev *dp_priv;
 	struct syn_hal_dev *shd;
 	struct nss_dp_gmac_stats *stats;
+	fal_mib_counter_t *mib_stats;
 
 	BUG_ON(nghd == NULL);
 
@@ -512,6 +544,14 @@ static int syn_get_stats(struct nss_gmac_hal_dev *nghd)
 		return -1;
 
 	dp_priv->data_plane_ops->get_stats(dp_priv->dpc, stats);
+
+	/*
+	 * Get mib stats.
+	 */
+	mib_stats = &(shd->mib_stats);
+	if (fal_mib_counter_get(0, nghd->mac_id, mib_stats) < 0) {
+		return -1;
+	}
 
 	return 0;
 }
@@ -638,11 +678,13 @@ static int syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
 {
 	struct syn_hal_dev *shd;
 	struct nss_dp_hal_gmac_stats *ndo_stats;
+	fal_mib_counter_t *mib_stats;
 
 	BUG_ON(nghd == NULL);
 
 	shd = (struct syn_hal_dev *)nghd;
 	ndo_stats = &(shd->stats.stats);
+	mib_stats = &(shd->mib_stats);
 
 	/*
 	 * Read stats from the registered dataplane.
@@ -655,8 +697,8 @@ static int syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
 	stats->rx_errors = ndo_stats->rx_errors;
 	stats->rx_dropped = ndo_stats->rx_errors;
 	stats->rx_length_errors = ndo_stats->rx_length_errors;
-	stats->rx_over_errors = ndo_stats->mmc_rx_overflow_errors;
-	stats->rx_crc_errors = ndo_stats->mmc_rx_crc_errors;
+	stats->rx_over_errors = mib_stats->RxOverFlow;
+	stats->rx_crc_errors = mib_stats->RxFcsErr;
 	stats->rx_frame_errors = ndo_stats->rx_dribble_bit_errors;
 	stats->rx_fifo_errors = ndo_stats->fifo_overflows;
 	stats->rx_missed_errors = ndo_stats->rx_missed;
@@ -680,8 +722,9 @@ static int32_t syn_get_eth_stats(struct nss_gmac_hal_dev *nghd,
 {
 	struct syn_hal_dev *shd;
 	struct nss_dp_gmac_stats *stats;
+	fal_mib_counter_t *mib_stats;
 	uint8_t *p = NULL;
-	int i;
+	int i, i_mib;
 
 	BUG_ON(nghd == NULL);
 
@@ -695,8 +738,17 @@ static int32_t syn_get_eth_stats(struct nss_gmac_hal_dev *nghd,
 		return -1;
 
 	for (i = 0; i < SYN_STATS_LEN; i++) {
-		p = ((uint8_t *)(stats) +
-				syn_gstrings_stats[i].stat_offset);
+		p = ((uint8_t *)(stats) + syn_gstrings_stats[i].stat_offset);
+		data[i] = *(uint32_t *)p;
+	}
+
+	/*
+	 * Fill in the mib stats from the mib stats collected from FAL layer
+	 */
+	mib_stats = &(shd->mib_stats);
+	for (i_mib = 0; i_mib < SYN_STATS_MIB_STATS_LEN; i_mib++) {
+		p = ((uint8_t *)(mib_stats) + syn_gstrings_mib_stats[i_mib].stat_offset);
+		i = SYN_STATS_LEN + i_mib;
 		data[i] = *(uint32_t *)p;
 	}
 
@@ -716,7 +768,7 @@ static int32_t syn_get_strset_count(struct nss_gmac_hal_dev *nghd,
 
 	switch (sset) {
 	case ETH_SS_STATS:
-		return SYN_STATS_LEN;
+		return (SYN_STATS_LEN + SYN_STATS_MIB_STATS_LEN);
 	}
 
 	netdev_dbg(netdev, "%s: Invalid string set\n", __func__);
@@ -743,6 +795,13 @@ static int32_t syn_get_strings(struct nss_gmac_hal_dev *nghd,
 				ETH_GSTRING_LEN);
 			data += ETH_GSTRING_LEN;
 		}
+
+		for (i = 0; i < SYN_STATS_MIB_STATS_LEN; i++) {
+			memcpy(data, syn_gstrings_mib_stats[i].stat_string,
+				ETH_GSTRING_LEN);
+			data += ETH_GSTRING_LEN;
+		}
+
 		break;
 
 	default:

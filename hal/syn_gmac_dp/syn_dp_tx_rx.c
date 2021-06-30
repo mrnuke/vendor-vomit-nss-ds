@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -202,9 +202,7 @@ int syn_dp_rx(struct nss_dp_dev *gmac_dev, struct syn_dp_info *dev_info, int bud
 			if (status & (desc_rx_crc | desc_rx_collision |
 					desc_rx_overflow | desc_rx_dribbling |
 					desc_rx_length_error)) {
-				dev_info->stats.stats.mmc_rx_crc_errors += (status & desc_rx_crc) ? 1 : 0;
 				dev_info->stats.stats.rx_late_collision_errors += (status & desc_rx_collision) ? 1 : 0;
-				dev_info->stats.stats.mmc_rx_overflow_errors += (status & desc_rx_overflow) ? 1 : 0;
 				dev_info->stats.stats.rx_dribble_bit_errors += (status & desc_rx_dribbling) ? 1 : 0;
 				dev_info->stats.stats.rx_length_errors += (status & desc_rx_length_error) ? 1 : 0;
 			}

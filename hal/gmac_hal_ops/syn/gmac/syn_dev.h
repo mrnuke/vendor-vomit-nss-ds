@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,6 +18,8 @@
 #define __SYN_DEV_H__
 
 #include <nss_dp_dev.h>
+#include <fal/fal_mib.h>
+#include <fal/fal_port_ctrl.h>
 
 /*
  * Subclass for base nss_gmac_hal_dev
@@ -25,6 +27,7 @@
 struct syn_hal_dev {
 	struct nss_gmac_hal_dev nghd;	/* Base class */
 	struct nss_dp_gmac_stats stats;	/* Stats structure */
+	fal_mib_counter_t mib_stats;	/* Mib stats */
 };
 
 #endif /*__SYN_DEV_H__*/
