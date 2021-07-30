@@ -35,10 +35,10 @@
 #include "nss_dp_hal.h"
 
 /*
- * Number of TX/RX queue supported is based on the number of host CPU
+ * Number of TX/RX queue supported
  */
-#define NSS_DP_NETDEV_TX_QUEUE_NUM NSS_DP_HAL_CPU_NUM
-#define NSS_DP_NETDEV_RX_QUEUE_NUM NSS_DP_HAL_CPU_NUM
+#define NSS_DP_NETDEV_TX_QUEUE_NUM NSS_DP_QUEUE_NUM
+#define NSS_DP_NETDEV_RX_QUEUE_NUM NSS_DP_QUEUE_NUM
 
 /* ipq40xx_mdio_data */
 struct ipq40xx_mdio_data {
@@ -87,7 +87,7 @@ static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
 	/*
 	 * Configure the new MTU value to underlying HW.
 	 */
-	if (nss_dp_hal_set_mtu(dp_priv, newmtu)) {
+	if (dp_priv->gmac_hal_ops->setmaxframe(dp_priv->gmac_hal_ctx, newmtu)) {
 		netdev_dbg(netdev, "GMAC MTU change failed: %d\n", newmtu);
 		return ret;
 	}
@@ -96,8 +96,10 @@ static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
 	 * Let the underlying data plane decide if the newmtu is applicable.
 	 */
 	if (dp_priv->data_plane_ops->change_mtu(dp_priv->dpc, newmtu)) {
-		netdev_dbg(netdev, "Data plane change mtu failed: %d\n", newmtu);
-		nss_dp_hal_set_mtu(dp_priv, netdev->mtu);
+		netdev_dbg(netdev, "Data plane change mtu failed: %d\n",
+								newmtu);
+		dp_priv->gmac_hal_ops->setmaxframe(dp_priv->gmac_hal_ctx,
+								netdev->mtu);
 		return ret;
 	}
 
@@ -149,28 +151,53 @@ static struct rtnl_link_stats64 *nss_dp_get_stats64(struct net_device *netdev,
 					     struct rtnl_link_stats64 *stats)
 {
 	struct nss_dp_dev *dp_priv;
+	struct nss_dp_gmac_stats dp_stats;
 
 	if (!netdev)
 		return stats;
 
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
-	dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
+	/*
+	 * Retrieve the statistics from the dataplane.
+	 * Some SoCs like IPQ807x/IPQ60xx do not support
+	 * statistics in dataplane. We workaround by
+	 * retrieving the statistics from GMAC ops (MIB stats)
+	 * temporarily until this is fixed for these SoCs.
+	 */
+	if (!dp_priv->data_plane_ops->get_stats) {
+		dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
+		return stats;
+	}
 
-	return stats;
+	dp_priv->data_plane_ops->get_stats(dp_priv->dpc, &dp_stats);
+	return nss_dp_hal_get_ndo_stats(&dp_stats.stats, stats);
 }
 #else
 static void nss_dp_get_stats64(struct net_device *netdev,
 					     struct rtnl_link_stats64 *stats)
 {
 	struct nss_dp_dev *dp_priv;
+	struct nss_dp_gmac_stats dp_stats;
 
 	if (!netdev)
 		return;
 
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
-	dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
+	/*
+	 * Retrieve the statistics from the dataplane.
+	 * Some SoCs like IPQ807x/IPQ60xx do not support
+	 * statistics in dataplane. We workaround by
+	 * retrieving the statistics from GMAC ops (MIB stats)
+	 * temporarily until this is fixed for these SoCs.
+	 */
+	if (!dp_priv->data_plane_ops->get_stats) {
+		dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
+		return;
+	}
+	dp_priv->data_plane_ops->get_stats(dp_priv->dpc, &dp_stats);
+	nss_dp_hal_get_ndo_stats(&dp_stats.stats, stats);
 }
 #endif
 
@@ -459,7 +486,7 @@ static const struct net_device_ops nss_dp_netdev_ops = {
  */
 static int32_t nss_dp_of_get_pdata(struct device_node *np,
 				   struct net_device *netdev,
-				   struct gmac_hal_platform_data *hal_pdata)
+				   struct nss_gmac_hal_platform_data *hal_pdata)
 {
 	uint8_t *maddr;
 	struct nss_dp_dev *dp_priv;
@@ -616,7 +643,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	struct net_device *netdev;
 	struct nss_dp_dev *dp_priv;
 	struct device_node *np = pdev->dev.of_node;
-	struct gmac_hal_platform_data gmac_hal_pdata;
+	struct nss_gmac_hal_platform_data gmac_hal_pdata;
 	int32_t ret = 0;
 	uint8_t phy_id[MII_BUS_ID_SIZE + 3];
 #if defined(NSS_DP_PPE_SUPPORT)
@@ -682,7 +709,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 
 	dp_priv->gmac_hal_ctx = dp_priv->gmac_hal_ops->init(&gmac_hal_pdata);
 	if (!(dp_priv->gmac_hal_ctx)) {
-		netdev_dbg(netdev, "gmac hal init failed\n");
+		netdev_dbg(netdev, "GMAC hal init failed\n");
 		goto fail;
 	}
 
@@ -690,7 +717,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		dp_priv->miibus = nss_dp_mdio_attach(pdev);
 		if (!dp_priv->miibus) {
 			netdev_dbg(netdev, "failed to find miibus\n");
-			goto fail;
+			goto phy_setup_fail;
 		}
 		snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT,
 				dp_priv->miibus->id, dp_priv->phy_mdio_addr);
@@ -702,7 +729,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 				dp_priv->phy_mii_type);
 		if (IS_ERR(dp_priv->phydev)) {
 			netdev_dbg(netdev, "failed to connect to phy device\n");
-			goto fail;
+			goto phy_setup_fail;
 		}
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
@@ -724,7 +751,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	port_id = dp_priv->macid;
 	if (ppe_port_vsi_get(0, port_id, &vsi_id)) {
 		netdev_dbg(netdev, "failed to get port's default VSI\n");
-		goto fail;
+		goto phy_setup_fail;
 	}
 
 	dp_priv->vsi = vsi_id;
@@ -734,7 +761,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	 */
 	if (fal_port_vsi_set(0, port_id, vsi_id) < 0) {
 		netdev_dbg(netdev, "Data plane vsi assign failed\n");
-		goto fail;
+		goto phy_setup_fail;
 	}
 #endif
 
@@ -745,8 +772,7 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	if (ret) {
 		netdev_dbg(netdev, "Error registering netdevice %s\n",
 								netdev->name);
-		dp_priv->gmac_hal_ops->exit(dp_priv->gmac_hal_ctx);
-		goto fail;
+		goto phy_setup_fail;
 	}
 
 	dp_global_ctx.nss_dp[dp_priv->macid - 1] = dp_priv;
@@ -756,6 +782,8 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 
 	return 0;
 
+phy_setup_fail:
+	dp_priv->gmac_hal_ops->exit(dp_priv->gmac_hal_ctx);
 fail:
 	free_netdev(netdev);
 	return -EFAULT;
@@ -769,13 +797,16 @@ static int nss_dp_remove(struct platform_device *pdev)
 	uint32_t i;
 	struct nss_dp_dev *dp_priv;
 	struct nss_gmac_hal_ops *hal_ops;
+	struct nss_dp_data_plane_ops *dp_ops;
 
 	for (i = 0; i < NSS_DP_HAL_MAX_PORTS; i++) {
 		dp_priv = dp_global_ctx.nss_dp[i];
 		if (!dp_priv)
 			continue;
 
+		dp_ops = dp_priv->data_plane_ops;
 		hal_ops = dp_priv->gmac_hal_ops;
+
 		if (dp_priv->phydev)
 			phy_disconnect(dp_priv->phydev);
 
@@ -785,8 +816,9 @@ static int nss_dp_remove(struct platform_device *pdev)
 		 */
 		fal_port_vsi_set(0, dp_priv->macid, 0xFFFF);
 #endif
-		unregister_netdev(dp_priv->netdev);
+		dp_ops->deinit(dp_priv->dpc);
 		hal_ops->exit(dp_priv->gmac_hal_ctx);
+		unregister_netdev(dp_priv->netdev);
 		free_netdev(dp_priv->netdev);
 		dp_global_ctx.nss_dp[i] = NULL;
 	}
@@ -817,20 +849,12 @@ int __init nss_dp_init(void)
 {
 	int ret;
 
-	/*
-	 * Bail out on not supported platform
-	 * TODO: Handle this properly with SoC ops
-	 */
-	if (!of_machine_is_compatible("qcom,ipq807x") &&
-			!of_machine_is_compatible("qcom,ipq8074") &&
-			!of_machine_is_compatible("qcom,ipq6018") &&
-			!of_machine_is_compatible("qcom,ipq5018"))
-		return 0;
+	dp_global_ctx.common_init_done = false;
 
 	/*
-	 * TODO Move this to soc_ops
+	 * Check platform compatibility and
+	 * set GMAC and data_plane ops.
 	 */
-	dp_global_ctx.common_init_done = false;
 	if (!nss_dp_hal_init()) {
 		pr_err("DP hal init failed.\n");
 		return -EFAULT;
@@ -853,7 +877,6 @@ int __init nss_dp_init(void)
  */
 void __exit nss_dp_exit(void)
 {
-
 	/*
 	 * TODO Move this to soc_ops
 	 */

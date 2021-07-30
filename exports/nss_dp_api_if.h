@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -45,9 +45,7 @@
  */
 #define NSS_DP_START_IFNUM	NSS_DP_HAL_START_IFNUM
 			/**< First GMAC interface number (0/1) depending on SoC. */
-#define NSS_DP_MAX_MTU_SIZE	NSS_DP_HAL_MAX_MTU_SIZE
-#define NSS_DP_MAX_PACKET_LEN	NSS_DP_HAL_MAX_PACKET_LEN
-#define NSS_DP_MAX_INTERFACES	(NSS_DP_HAL_MAX_PORTS + NSS_DP_HAL_START_IFNUM)
+#define NSS_DP_MAX_INTERFACES	(NSS_DP_HAL_MAX_PORTS + NSS_DP_START_IFNUM)
 			/**< Last interface index for the SoC, to be used by qca-nss-drv. */
 
 /*

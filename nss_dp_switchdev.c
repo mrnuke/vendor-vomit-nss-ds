@@ -16,9 +16,9 @@
  **************************************************************************
  */
 
-#include <linux/version.h>
-#include <net/switchdev.h>
 #include <linux/if_bridge.h>
+#include <linux/if_vlan.h>
+#include <linux/version.h>
 #include <net/switchdev.h>
 
 #include "nss_dp_dev.h"

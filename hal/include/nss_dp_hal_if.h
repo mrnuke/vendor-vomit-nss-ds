@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2017,2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017,2020-2021 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -23,7 +23,7 @@
 #include <linux/netdevice.h>
 #include <uapi/linux/if_link.h>
 
-enum gmac_device_type {
+enum nss_gmac_hal_device_type {
 	GMAC_HAL_TYPE_QCOM = 0,	/* 1G GMAC type */
 	GMAC_HAL_TYPE_SYN_XGMAC,/* Synopsys XGMAC type */
 	GMAC_HAL_TYPE_SYN_GMAC,	/* Synopsys 1G GMAC type */
@@ -31,9 +31,9 @@ enum gmac_device_type {
 };
 
 /*
- * gmac_hal_platform_data
+ * nss_gmac_hal_platform_data
  */
-struct gmac_hal_platform_data {
+struct nss_gmac_hal_platform_data {
 	struct net_device *netdev; /* Net device */
 	uint32_t reg_len;	/* Register space length */
 	uint32_t mactype;	/* MAC chip type */
@@ -68,7 +68,7 @@ struct nss_gmac_hal_dev {
  * nss_gmac_hal_ops
  */
 struct nss_gmac_hal_ops {
-	void* (*init)(struct gmac_hal_platform_data *);
+	void* (*init)(struct nss_gmac_hal_platform_data *);
 	void (*exit)(struct nss_gmac_hal_dev *);
 	int32_t (*start)(struct nss_gmac_hal_dev *);
 	int32_t (*stop)(struct nss_gmac_hal_dev *);
@@ -97,8 +97,8 @@ struct nss_gmac_hal_ops {
 	int32_t (*getethtoolstats)(struct nss_gmac_hal_dev *, uint64_t *);
 };
 
-extern struct nss_gmac_hal_ops qcom_hal_ops;
-extern struct nss_gmac_hal_ops syn_hal_ops;
+extern struct nss_gmac_hal_ops qcom_gmac_ops;
+extern struct nss_gmac_hal_ops syn_gmac_ops;
 
 /**********************************************************
  * Common functions
@@ -108,14 +108,33 @@ extern struct nss_gmac_hal_ops syn_hal_ops;
  */
 static inline uint32_t hal_read_reg(void __iomem *regbase, uint32_t regoffset)
 {
-	return readl_relaxed(regbase + regoffset);
+	return (uint32_t)readl(regbase + regoffset);
 }
 
 /*
  * hal_write_reg()
  */
 static inline void hal_write_reg(void __iomem *regbase, uint32_t regoffset,
-				 uint32_t regdata)
+								uint32_t val)
+{
+	writel(val, regbase + regoffset);
+}
+
+/*
+ * hal_read_relaxed_reg()
+ */
+static inline uint32_t hal_read_relaxed_reg(void __iomem *regbase,
+							uint32_t regoffset)
+{
+	return readl_relaxed(regbase + regoffset);
+}
+
+/*
+ * hal_write_relaxed_reg()
+ */
+static inline void hal_write_relaxed_reg(void __iomem *regbase,
+						uint32_t regoffset,
+						uint32_t regdata)
 {
 	writel_relaxed(regdata, regbase + regoffset);
 }
@@ -130,8 +149,8 @@ static inline void hal_set_reg_bits(struct nss_gmac_hal_dev *nghd,
 	uint32_t data;
 
 	spin_lock(&nghd->slock);
-	data = bitpos | hal_read_reg(nghd->mac_base, regoffset);
-	hal_write_reg(nghd->mac_base, regoffset, data);
+	data = bitpos | hal_read_relaxed_reg(nghd->mac_base, regoffset);
+	hal_write_relaxed_reg(nghd->mac_base, regoffset, data);
 	spin_unlock(&nghd->slock);
 }
 
@@ -145,8 +164,8 @@ static inline void hal_clear_reg_bits(struct nss_gmac_hal_dev *nghd,
 	uint32_t data;
 
 	spin_lock(&nghd->slock);
-	data = ~bitpos & hal_read_reg(nghd->mac_base, regoffset);
-	hal_write_reg(nghd->mac_base, regoffset, data);
+	data = ~bitpos & hal_read_relaxed_reg(nghd->mac_base, regoffset);
+	hal_write_relaxed_reg(nghd->mac_base, regoffset, data);
 	spin_unlock(&nghd->slock);
 }
 
@@ -157,6 +176,7 @@ static inline bool hal_check_reg_bits(void __iomem *regbase,
 				      uint32_t regoffset,
 				      uint32_t bitpos)
 {
-	return (bitpos & hal_read_reg(regbase, regoffset)) != 0;
+	return (bitpos & hal_read_relaxed_reg(regbase, regoffset)) != 0;
 }
+
 #endif /* __NSS_DP_HAL_IF_H__ */

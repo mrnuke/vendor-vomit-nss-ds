@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -19,16 +19,15 @@
 #ifndef __NSS_DP_DEV_H__
 #define __NSS_DP_DEV_H__
 
-#include <linux/version.h>
-#include <linux/ethtool.h>
 #include <linux/etherdevice.h>
 #include <linux/netdevice.h>
 #include <linux/platform_device.h>
-#include <linux/if_vlan.h>
 #include <linux/switch.h>
+#include <linux/version.h>
 
 #include "nss_dp_api_if.h"
 #include "nss_dp_hal_if.h"
+#include "nss_dp_hal_info.h"
 
 #define NSS_DP_ACL_DEV_ID 0
 
@@ -63,8 +62,12 @@ struct nss_dp_dev {
 	struct nss_dp_data_plane_ops *data_plane_ops;
 					/* ops for each data plane */
 	struct nss_dp_global_ctx *ctx;	/* Global NSS DP context */
-	struct nss_gmac_hal_dev *gmac_hal_ctx;	/* context of gmac hal */
-	struct nss_gmac_hal_ops *gmac_hal_ops;	/* GMAC HAL OPS */
+	struct nss_gmac_hal_dev *gmac_hal_ctx;
+					/* context of gmac hal */
+	struct nss_gmac_hal_ops *gmac_hal_ops;
+					/* GMAC HAL OPS */
+	struct nss_dp_hal_info dp_info;
+					/* SoC specific data plane information */
 
 	/* switchdev related attributes */
 #ifdef CONFIG_NET_SWITCHDEV
