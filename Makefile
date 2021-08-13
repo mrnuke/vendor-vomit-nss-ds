@@ -45,5 +45,13 @@ NSS_DP_INCLUDE += -I$(obj)/hal/dp_ops/syn_gmac_dp/include
 ccflags-y += -DNSS_DP_IPQ50XX
 endif
 
+ifeq ($(SoC),$(filter $(SoC),ipq95xx))
+qca-nss-dp-objs += hal/gmac_ops/qcom/qcom_if.o \
+		   hal/gmac_ops/syn/xgmac/syn_if.o
+NSS_DP_INCLUDE += -I$(obj)/hal/dp_ops/edma_dp/edma_v2
+NSS_DP_INCLUDE += -I$(obj)/hal/dp_ops/edma_dp/edma_v2/include
+ccflags-y += -DNSS_DP_IPQ95XX -DNSS_DP_PPE_SUPPORT
+endif
+
 ccflags-y += $(NSS_DP_INCLUDE)
 ccflags-y += -Wall -Werror
