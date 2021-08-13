@@ -555,9 +555,10 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 				   struct net_device *netdev,
 				   struct nss_gmac_hal_platform_data *hal_pdata)
 {
-	uint8_t *maddr;
+	u8 maddr[ETH_ALEN];
 	struct nss_dp_dev *dp_priv;
 	struct resource memres_devtree = {0};
+	int ret;
 
 	dp_priv = netdev_priv(netdev);
 
@@ -600,14 +601,8 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 	of_property_read_u32(np, "qcom,forced-speed", &dp_priv->forced_speed);
 	of_property_read_u32(np, "qcom,forced-duplex", &dp_priv->forced_duplex);
 
-	maddr = (uint8_t *)of_get_mac_address(np);
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 0))
-	if (IS_ERR((void *)maddr)) {
-		maddr = NULL;
-	}
-#endif
-
-	if (maddr && is_valid_ether_addr(maddr)) {
+	ret = of_get_mac_address(np, maddr);
+	if (!ret && is_valid_ether_addr(maddr)) {
 		ether_addr_copy(netdev->dev_addr, maddr);
 	} else {
 		random_ether_addr(netdev->dev_addr);
