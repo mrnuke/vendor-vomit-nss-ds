@@ -33,4 +33,8 @@
 struct nss_dp_hal_gmac_stats {
 };
 
+extern int edma_init(void);
+extern void edma_cleanup(bool is_dp_override);
+extern struct nss_dp_data_plane_ops nss_dp_edma_ops;
+
 #endif /* __NSS_DP_ARCH_H__ */

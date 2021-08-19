@@ -46,7 +46,12 @@ ccflags-y += -DNSS_DP_IPQ50XX
 endif
 
 ifeq ($(SoC),$(filter $(SoC),ipq95xx))
-qca-nss-dp-objs += hal/gmac_ops/qcom/qcom_if.o \
+qca-nss-dp-objs += hal/dp_ops/edma_dp/edma_v2/edma.o \
+		   hal/dp_ops/edma_dp/edma_v2/edma_cfg_rx.o \
+		   hal/dp_ops/edma_dp/edma_v2/edma_cfg_tx.o \
+		   hal/dp_ops/edma_dp/edma_v2/edma_dp.o \
+		   hal/dp_ops/edma_dp/edma_v2/edma_misc.o \
+		   hal/gmac_ops/qcom/qcom_if.o \
 		   hal/gmac_ops/syn/xgmac/syn_if.o
 NSS_DP_INCLUDE += -I$(obj)/hal/dp_ops/edma_dp/edma_v2
 NSS_DP_INCLUDE += -I$(obj)/hal/dp_ops/edma_dp/edma_v2/include
@@ -55,3 +60,4 @@ endif
 
 ccflags-y += $(NSS_DP_INCLUDE)
 ccflags-y += -Wall -Werror
+ccflags-y += -DEDMA_DEBUG_LEVEL=2

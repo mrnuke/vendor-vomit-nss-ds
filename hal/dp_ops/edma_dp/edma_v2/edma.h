@@ -21,20 +21,39 @@
 #include "edma_rx.h"
 #include "edma_tx.h"
 #include <nss_dp_arch.h>
+#include <nss_dp_dev.h>
 
+/*
+ * The driver uses kernel DMA constructs that assume an architecture
+ * where the view of physical addresses is consistent between SoC and
+ * IO device(EDMA).
+ * Note that this may not be compatible for platforms where this
+ * assumption is not true, for example IO devices with IOMMU support.
+ */
+#if defined(CONFIG_ARM_SMMU) || \
+	defined(CONFIG_IOMMU_SUPPORT)
+#error "Build Error: Platform is enabled with IOMMU/SMMU support."
+#endif
+
+#define EDMA_HW_RESET_ID		"edma_rst"
+#define EDMA_HW_CFG_RESET_ID		"edma_cfg_reset"
 #define EDMA_BUF_SIZE			2000
 #define EDMA_DEVICE_NODE_NAME		"edma"
-#define EDMA_RX_RING_SIZE		256
-#define EDMA_TX_RING_SIZE		256
-#define EDMA_RX_RING_SIZE_MASK		(EDMA_RX_RING_SIZE - 1)
-#define EDMA_TX_RING_SIZE_MASK		(EDMA_TX_RING_SIZE - 1)
 #define EDMA_START_GMACS		NSS_DP_HAL_START_IFNUM
 #define EDMA_MAX_GMACS			NSS_DP_HAL_MAX_PORTS
+#define EDMA_IRQ_NAME_SIZE		32
 
-#define EDMA_MAX_TXCMPL_RINGS		32	/* Max TxCmpl rings */
-#define EDMA_MAX_RXDESC_RINGS		24	/* Max RxDesc rings */
-#define EDMA_MAX_TXDESC_RINGS		32	/* Max TxDesc rings */
-#define EDMA_MAX_RXFILL_RINGS		8	/* Max RxFill rings */
+/*
+ * EDMA MISC status get macros
+ */
+#define EDMA_MISC_AXI_RD_ERR_STATUS_GET(x)	((x) & EDMA_MISC_AXI_RD_ERR_MASK)
+#define EDMA_MISC_AXI_WR_ERR_STATUS_GET(x)	(((x) & EDMA_MISC_AXI_WR_ERR_MASK) >> 1)
+#define EDMA_MISC_RX_DESC_FIFO_FULL_STATUS_GET(x)	(((x) & EDMA_MISC_RX_DESC_FIFO_FULL_MASK) >> 2)
+#define EDMA_MISC_RX_ERR_BUF_SIZE_STATUS_GET(x)		(((x) & EDMA_MISC_RX_ERR_BUF_SIZE_MASK) >> 3)
+#define EDMA_MISC_TX_SRAM_FULL_STATUS_GET(x)		(((x) & EDMA_MISC_TX_SRAM_FULL_MASK) >> 4)
+#define EDMA_MISC_TX_CMPL_BUF_FULL_STATUS_GET(x)		(((x) & EDMA_MISC_TX_CMPL_BUF_FULL_MASK) >> 5)
+#define EDMA_MISC_DATA_LEN_ERR_STATUS_GET(x)		(((x) & EDMA_MISC_DATA_LEN_ERR_MASK) >> 6)
+#define EDMA_MISC_TX_TIMEOUT_STATUS_GET(x)		(((x) & EDMA_MISC_TX_TIMEOUT_MASK) >> 7)
 
 /*
  * EDMA private data structure
@@ -50,7 +69,7 @@ struct edma_gbl_ctx {
 			/* EDMA base register mapped address */
 	struct resource *reg_resource;
 			/* Memory resource */
-	int32_t active_port_count;
+	atomic_t active_port_count;
 			/* Count of active number of ports */
 	bool napi_added;
 			/* NAPI flag */
@@ -125,5 +144,30 @@ struct edma_gbl_ctx {
 	bool edma_initialized;
 			/* Flag to check initialization status */
 };
+
+extern struct edma_gbl_ctx edma_gbl_ctx;
+
+int edma_irq_init(void);
+irqreturn_t edma_misc_handle_irq(int irq, void *ctx);
+void edma_enable_interrupts(struct edma_gbl_ctx *egc);
+void edma_disable_interrupts(struct edma_gbl_ctx *egc);
+
+/*
+ * edma_reg_read()
+ *	Read EDMA register
+ */
+static inline uint32_t edma_reg_read(uint32_t reg_off)
+{
+	return hal_read_reg(edma_gbl_ctx.reg_base, reg_off);
+}
+
+/*
+ * edma_reg_write()
+ *	Write EDMA register
+ */
+static inline void edma_reg_write(uint32_t reg_off, uint32_t val)
+{
+	hal_write_reg(edma_gbl_ctx.reg_base, reg_off, val);
+}
 
 #endif	/* __EDMA_H__ */

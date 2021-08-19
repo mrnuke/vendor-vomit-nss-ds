@@ -17,15 +17,21 @@
 #ifndef __EDMA_TX_H__
 #define __EDMA_TX_H__
 
-#define EDMA_GET_DESC(R, i, type)	(&((((type) *)((R)->desc))[(i)]))
-#define EDMA_GET_PDESC(R, i, type)	(&((((type) *)((R)->pdesc))[(i)]))
-#define EDMA_GET_SDESC(R, i, type)	(&((((type) *)((R)->sdesc))[(i)]))
+#define EDMA_GET_DESC(R, i, type)	(&(((type *)((R)->desc))[(i)]))
+#define EDMA_GET_PDESC(R, i, type)	(&(((type *)((R)->pdesc))[(i)]))
+#define EDMA_GET_SDESC(R, i, type)	(&(((type *)((R)->sdesc))[(i)]))
 #define EDMA_TXCMPL_DESC(R, i)		EDMA_GET_DESC(R, i, struct edma_txcmpl_desc)
 #define EDMA_TXDESC_PRI_DESC(R, i)	EDMA_GET_PDESC(R, i, struct edma_pri_txdesc)
 #define EDMA_TXDESC_SEC_DESC(R, i)	EDMA_GET_SDESC(R, i, struct edma_sec_txdesc)
 
+#define EDMA_MAX_TXCMPL_RINGS		32	/* Max TxCmpl rings */
+#define EDMA_MAX_TXDESC_RINGS		32	/* Max TxDesc rings */
+
 #define EDMA_TXCMPL_RING_PER_CORE_MAX	6
 #define EDMA_TX_MAX_PRIORITY_LEVEL	1
+
+#define EDMA_TX_RING_SIZE		256
+#define EDMA_TX_RING_SIZE_MASK		(EDMA_TX_RING_SIZE - 1)
 
 #define EDMA_TX_RING_PER_CORE_MAX	(EDMA_TX_MAX_PRIORITY_LEVEL * EDMA_MAX_GMACS)
 

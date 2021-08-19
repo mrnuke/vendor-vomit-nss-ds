@@ -35,7 +35,7 @@ struct rtnl_link_stats64 *nss_dp_hal_get_ndo_stats(
  */
 struct nss_dp_data_plane_ops *nss_dp_hal_get_data_plane_ops(void)
 {
-	return NULL;
+	return &nss_dp_edma_ops;
 }
 
 /*
@@ -48,6 +48,10 @@ bool nss_dp_hal_init(void)
 	 * Bail out on not supported platform
 	 */
 	if (!of_machine_is_compatible("qcom,ipq9574")) {
+		return false;
+	}
+
+	if (edma_init()) {
 		return false;
 	}
 
@@ -65,4 +69,5 @@ void nss_dp_hal_cleanup(void)
 {
 	nss_dp_hal_set_gmac_ops(NULL, GMAC_HAL_TYPE_QCOM);
 	nss_dp_hal_set_gmac_ops(NULL, GMAC_HAL_TYPE_SYN_XGMAC);
+	edma_cleanup(false);
 }

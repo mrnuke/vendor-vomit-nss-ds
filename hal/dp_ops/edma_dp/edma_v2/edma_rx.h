@@ -20,12 +20,18 @@
 #define EDMA_RXFILL_RING_PER_CORE_MAX	1
 #define EDMA_RXDESC_RING_PER_CORE_MAX	1
 
-#define EDMA_GET_DESC(R, i, type)	(&((((type) *)((R)->desc))[(i)]))
-#define EDMA_GET_PDESC(R, i, type)	(&((((type) *)((R)->pdesc))[(i)]))
-#define EDMA_GET_SDESC(R, i, type)	(&((((type) *)((R)->sdesc))[(i)]))
+#define EDMA_GET_DESC(R, i, type)	(&(((type *)((R)->desc))[(i)]))
+#define EDMA_GET_PDESC(R, i, type)	(&(((type *)((R)->pdesc))[(i)]))
+#define EDMA_GET_SDESC(R, i, type)	(&(((type *)((R)->sdesc))[(i)]))
 #define EDMA_RXFILL_DESC(R, i)		EDMA_GET_DESC(R, i, struct edma_rxfill_desc)
 #define EDMA_RXDESC_PRI_DESC(R, i)	EDMA_GET_PDESC(R, i, struct edma_rxdesc_desc)
 #define EDMA_RXDESC_SEC_DESC(R, i)	EDMA_GET_SDESC(R, i, struct edma_rxdesc_sec_desc)
+
+#define EDMA_RX_RING_SIZE		256
+#define EDMA_RX_RING_SIZE_MASK		(EDMA_RX_RING_SIZE - 1)
+#define EDMA_MAX_RXDESC_RINGS		24	/* Max RxDesc rings */
+#define EDMA_MAX_RXFILL_RINGS		8	/* Max RxFill rings */
+#define EDMA_RX_MAX_PRIORITY_LEVEL	1
 
 /*
  * Rx descriptor

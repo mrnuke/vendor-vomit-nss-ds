@@ -564,10 +564,14 @@ static struct mii_bus *nss_dp_mdio_attach(struct platform_device *pdev)
 		return of_mdio_find_bus(mdio_node);
 	}
 
-	mdio_node = of_find_compatible_node(NULL, NULL, "qcom,ipq40xx-mdio");
+	mdio_node = of_find_compatible_node(NULL, NULL, "qcom,qca-mdio");
 	if (!mdio_node) {
-		dev_err(&pdev->dev, "cannot find mdio node by phandle\n");
-		return NULL;
+		mdio_node = of_find_compatible_node(NULL, NULL,
+							"qcom,ipq40xx-mdio");
+		if (!mdio_node) {
+			dev_err(&pdev->dev, "cannot find mdio node by phandle\n");
+			return NULL;
+		}
 	}
 
 	mdio_plat = of_find_device_by_node(mdio_node);
