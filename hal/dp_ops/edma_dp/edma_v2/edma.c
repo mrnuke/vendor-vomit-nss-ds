@@ -866,7 +866,7 @@ int edma_irq_init(void)
 		irq_set_status_flags(edma_gbl_ctx.txcmpl_intr[i], IRQ_DISABLE_UNLAZY);
 
 		err = request_irq(edma_gbl_ctx.txcmpl_intr[i],
-				NULL, IRQF_SHARED,
+				edma_tx_handle_irq, IRQF_SHARED,
 				edma_txcmpl_irq_name[i],
 				(void *)&(edma_gbl_ctx.txcmpl_rings[i]));
 		if (err) {

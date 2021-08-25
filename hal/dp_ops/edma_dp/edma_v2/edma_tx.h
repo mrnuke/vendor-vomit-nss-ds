@@ -26,7 +26,6 @@
 
 #define EDMA_MAX_TXCMPL_RINGS		32	/* Max TxCmpl rings */
 #define EDMA_MAX_TXDESC_RINGS		32	/* Max TxDesc rings */
-
 #define EDMA_TXCMPL_RING_PER_CORE_MAX	6
 #define EDMA_TX_MAX_PRIORITY_LEVEL	1
 
@@ -34,6 +33,43 @@
 #define EDMA_TX_RING_SIZE_MASK		(EDMA_TX_RING_SIZE - 1)
 
 #define EDMA_TX_RING_PER_CORE_MAX	(EDMA_TX_MAX_PRIORITY_LEVEL * EDMA_MAX_GMACS)
+
+#define EDMA_DST_PORT_TYPE		2
+#define EDMA_DST_PORT_TYPE_SHIFT	28
+#define EDMA_DST_PORT_TYPE_MASK		(0xf << EDMA_DST_PORT_TYPE_SHIFT)
+#define EDMA_DST_PORT_ID_SHIFT		16
+#define EDMA_DST_PORT_ID_MASK		(0xfff << EDMA_DST_PORT_ID_SHIFT)
+
+#define EDMA_DST_PORT_TYPE_SET(x)	(((x) << EDMA_DST_PORT_TYPE_SHIFT) & EDMA_DST_PORT_TYPE_MASK)
+#define EDMA_DST_PORT_ID_SET(x)		(((x) << EDMA_DST_PORT_ID_SHIFT) & EDMA_DST_PORT_ID_MASK)
+#define EDMA_DST_INFO_SET(desc, x)	(desc->word4 |= (EDMA_DST_PORT_TYPE_SET(EDMA_DST_PORT_TYPE) | EDMA_DST_PORT_ID_SET(x)))
+
+#define EDMA_TXDESC_DATA_LEN_SET(desc, x)	(desc->word5 = ((x) & 0x1ffff))
+#ifdef __LP64__
+#define EDMA_TXDESC_OPAQUE_GET(desc)		(((uint64_t)desc->word3 << 32) | desc->word2)
+#define EDMA_TXCMPL_OPAQUE_GET(desc)		(((uint64_t)desc->word1 << 32) | desc->word0)
+#define EDMA_TXDESC_OPAQUE_LO_SET(desc, ptr)	(desc->word2 = (uint32_t)(uintptr_t)ptr)
+#define EDMA_TXDESC_OPAQUE_HI_SET(desc, ptr)	(desc->word3 = (uint32_t)((uint64_t)ptr >> 32))
+#define EDMA_TXDESC_OPAQUE_SET(desc, ptr)	do {	\
+	EDMA_TXDESC_OPAQUE_LO_SET(desc, ptr);		\
+	EDMA_TXDESC_OPAQUE_HI_SET(desc, ptr);		\
+} while (0)
+#else
+#define EDMA_TXCMPL_OPAQUE_GET(desc)		(desc->word0)
+#define EDMA_TXDESC_OPAQUE_GET(desc)		(desc->word2)
+#define EDMA_TXDESC_OPAQUE_LO_SET(desc, ptr)	(desc->word2 = (uint32_t)(uintptr_t)ptr)
+#define EDMA_TXDESC_OPAQUE_SET(desc, ptr)	EDMA_TXDESC_OPAQUE_LO_SET(desc, ptr)
+#endif
+
+/*
+ * edma_tx
+ *	List of return values of the TX API.
+ */
+enum edma_tx {
+	EDMA_TX_OK = 0,			/* Tx success */
+	EDMA_TX_FAIL_NO_DESC = 1,	/* Not enough descriptors */
+	EDMA_TX_FAIL = 2,		/* Tx failure */
+};
 
 /*
  * edma_pri_txdesc
@@ -105,5 +141,11 @@ struct edma_txcmpl_ring {
 	uint32_t count;			/* Number of descriptors in the ring */
 	bool napi_added;		/* Flag to indicate NAPI add status */
 };
+
+enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
+				struct edma_txdesc_ring *txdesc_ring);
+uint32_t edma_tx_complete(uint32_t work_to_do, struct edma_txcmpl_ring *txcmpl_ring);
+irqreturn_t edma_tx_handle_irq(int irq, void *ctx);
+int edma_tx_napi_poll(struct napi_struct *napi, int budget);
 
 #endif	/* __EDMA_TX_H__ */

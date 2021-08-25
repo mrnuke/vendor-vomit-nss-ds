@@ -33,9 +33,9 @@ static void edma_cfg_tx_cmpl_ring_cleanup(struct edma_gbl_ctx *egc,
 				struct edma_txcmpl_ring *txcmpl_ring)
 {
 	/*
-	 * TODO:
 	 * Free any buffers assigned to any descriptors
 	 */
+	edma_tx_complete(EDMA_TX_RING_SIZE - 1, txcmpl_ring);
 
 	/*
 	 * Free TxCmpl ring descriptors
@@ -67,14 +67,35 @@ static int edma_cfg_tx_cmpl_ring_setup(struct edma_txcmpl_ring *txcmpl_ring)
 /*
  * edma_cfg_tx_desc_ring_cleanup()
  *	Cleanup resources for one TxDesc ring
+ *
+ * This API expects ring to be disabled by caller
  */
 static void edma_cfg_tx_desc_ring_cleanup(struct edma_gbl_ctx *egc,
 				struct edma_txdesc_ring *txdesc_ring)
 {
+	struct sk_buff *skb = NULL;
+	struct edma_pri_txdesc *txdesc = NULL;
+	uint32_t prod_idx, cons_idx, data;
+
 	/*
-	 * TODO:
 	 * Free any buffers assigned to any descriptors
 	 */
+	data = edma_reg_read(EDMA_REG_TXDESC_PROD_IDX(txdesc_ring->id));
+	prod_idx = data & EDMA_TXDESC_PROD_IDX_MASK;
+
+	data = edma_reg_read(EDMA_REG_TXDESC_CONS_IDX(txdesc_ring->id));
+	cons_idx = data & EDMA_TXDESC_CONS_IDX_MASK;
+
+	/*
+	 * Walk active list, obtain skb from descriptor and free it
+	 */
+	while (cons_idx != prod_idx) {
+		txdesc = EDMA_TXDESC_PRI_DESC(txdesc_ring, cons_idx);
+		skb = (struct sk_buff *)EDMA_TXDESC_OPAQUE_GET(txdesc);
+		dev_kfree_skb_any(skb);
+
+		cons_idx = ((cons_idx + 1) & EDMA_TX_RING_SIZE_MASK);
+	}
 
 	/*
 	 * Free Tx ring descriptors
@@ -584,10 +605,10 @@ void edma_cfg_tx_napi_add(struct edma_gbl_ctx *egc, struct net_device *netdev)
 	uint32_t i;
 
 	for (i = 0; i < egc->num_txcmpl_rings; i++) {
-		struct edma_txcmpl_ring *txcmpl_ring;
+		struct edma_txcmpl_ring *txcmpl_ring = &egc->txcmpl_rings[i];
 
-		txcmpl_ring = &egc->txcmpl_rings[i];
-		netif_napi_add(netdev, &txcmpl_ring->napi, NULL, EDMA_TX_NAPI_WORK);
+		netif_napi_add(netdev, &txcmpl_ring->napi,
+				edma_tx_napi_poll, EDMA_TX_NAPI_WORK);
 		txcmpl_ring->napi_added = true;
 	}
 }

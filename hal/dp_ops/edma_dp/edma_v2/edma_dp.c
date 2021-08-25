@@ -118,6 +118,40 @@ static int edma_dp_change_mtu(struct nss_dp_data_plane_ctx *dpc, uint32_t mtu)
 static netdev_tx_t edma_dp_xmit(struct nss_dp_data_plane_ctx *dpc,
 				struct sk_buff *skb)
 {
+	struct net_device *netdev = dpc->dev;
+	struct edma_txdesc_ring *txdesc_ring;
+	struct nss_dp_dev *dp_dev;
+	uint32_t skbq;
+	int ret;
+
+	/*
+	 * Select a TX ring
+	 */
+	skbq = (skb_get_queue_mapping(skb) & (NR_CPUS - 1));
+
+	/*
+	 * Check for non-linear skb
+	 */
+	if (unlikely(skb_is_nonlinear(skb))) {
+		netdev_dbg(netdev, "cannot Tx non-linear skb:%px\n", skb);
+		goto drop;
+	}
+
+	/*
+	 * Select the tx ring to use for this packet
+	 */
+	dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+	txdesc_ring = (struct edma_txdesc_ring *)dp_dev->dp_info.txr_map[0][skbq];
+
+	/*
+	 * Transmit the packet
+	 */
+	ret = edma_tx_ring_xmit(netdev, skb, txdesc_ring);
+	if (likely(ret == EDMA_TX_OK)) {
+		return NETDEV_TX_OK;
+	}
+
+drop:
 	dev_kfree_skb_any(skb);
 
 	return NETDEV_TX_OK;
