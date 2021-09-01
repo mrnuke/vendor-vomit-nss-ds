@@ -891,7 +891,7 @@ int edma_irq_init(void)
 		irq_set_status_flags(edma_gbl_ctx.rxdesc_intr[i], IRQ_DISABLE_UNLAZY);
 
 		err = request_irq(edma_gbl_ctx.rxdesc_intr[i],
-				NULL, IRQF_SHARED,
+				edma_rx_handle_irq, IRQF_SHARED,
 				edma_rxdesc_irq_name[i],
 				(void *)&(edma_gbl_ctx.rxdesc_rings[i]));
 		if (err) {

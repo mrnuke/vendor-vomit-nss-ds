@@ -28,14 +28,48 @@
 /*
  * edma_cfg_rx_fill_ring_cleanup()
  *	Cleanup resources for one RxFill ring
+ *
+ * API expects ring to be disabled by caller
  */
 static void edma_cfg_rx_fill_ring_cleanup(struct edma_gbl_ctx *egc,
 				struct edma_rxfill_ring *rxfill_ring)
 {
+	uint16_t cons_idx, curr_idx;
+	uint32_t reg_data;
+
 	/*
-	 * TODO:
-	 * Cleanup the ring.
+	 * Get RXFILL ring producer index
 	 */
+	curr_idx = rxfill_ring->prod_idx & EDMA_RXFILL_PROD_IDX_MASK;
+
+	/*
+	 * Get RXFILL ring consumer index
+	 */
+	reg_data = edma_reg_read(EDMA_REG_RXFILL_CONS_IDX(rxfill_ring->ring_id));
+	cons_idx = reg_data & EDMA_RXFILL_CONS_IDX_MASK;
+
+	while (curr_idx != cons_idx) {
+		struct sk_buff *skb;
+		struct edma_rxfill_desc *rxfill_desc;
+
+		/*
+		 * Get RXFILL descriptor
+		 */
+		rxfill_desc = EDMA_RXFILL_DESC(rxfill_ring, cons_idx);
+
+		cons_idx = (cons_idx + 1) & EDMA_RX_RING_SIZE_MASK;
+
+		/*
+		 * Get skb from opaque
+		 */
+		skb = (struct sk_buff *)EDMA_RXFILL_OPAQUE_GET(rxfill_desc);
+		if (unlikely(!skb)) {
+			edma_warn("Empty skb reference at index:%d\n",
+					cons_idx);
+			continue;
+		}
+		dev_kfree_skb_any(skb);
+	}
 
 	/*
 	 * Free RXFILL ring descriptors
@@ -108,14 +142,46 @@ static int edma_cfg_rx_desc_ring_setup(struct edma_rxdesc_ring *rxdesc_ring)
 /*
  * edma_cfg_rx_desc_ring_cleanup()
  *	Cleanup resources for RxDesc ring
+ *
+ * API expects ring to be disabled by caller
  */
 static void edma_cfg_rx_desc_ring_cleanup(struct edma_gbl_ctx *egc,
 				struct edma_rxdesc_ring *rxdesc_ring)
 {
+	uint16_t prod_idx, cons_idx;
+
 	/*
-	 * TODO:
+	 * Get Rxdesc consumer & producer indices
+	 */
+	cons_idx = rxdesc_ring->cons_idx & EDMA_RXDESC_CONS_IDX_MASK;
+
+	prod_idx = edma_reg_read(EDMA_REG_RXDESC_PROD_IDX(rxdesc_ring->ring_id))
+					& EDMA_RXDESC_PROD_IDX_MASK;
+
+	/*
 	 * Free any buffers assigned to any descriptors
 	 */
+	while (cons_idx != prod_idx) {
+		struct sk_buff *skb;
+		struct edma_rxdesc_desc *rxdesc_desc =
+			EDMA_RXDESC_PRI_DESC(rxdesc_ring, cons_idx);
+
+		/*
+		 * Update consumer index
+		 */
+		cons_idx = (cons_idx + 1) & EDMA_RX_RING_SIZE_MASK;
+
+		/*
+		 * Get opaque from RXDESC
+		 */
+		skb = (struct sk_buff *)EDMA_RXDESC_OPAQUE_GET(rxdesc_desc);
+		if (unlikely(!skb)) {
+			edma_warn("Empty skb reference at index:%d\n",
+								cons_idx);
+			continue;
+		}
+		dev_kfree_skb_any(skb);
+	}
 
 	/*
 	 * Free RXDESC ring descriptors
@@ -182,9 +248,9 @@ static void edma_cfg_rx_fill_ring_configure(struct edma_gbl_ctx *egc,
 	edma_reg_write(EDMA_REG_RXFILL_RING_SIZE(rxfill_ring->ring_id), ring_sz);
 
 	/*
-	 * TODO:
 	 * Alloc Rx buffers
 	 */
+	edma_rx_alloc_buffer(rxfill_ring, rxfill_ring->count - 1);
 }
 
 /*
@@ -576,10 +642,9 @@ void edma_cfg_rx_napi_add(struct edma_gbl_ctx *egc, struct net_device *netdev)
 	uint32_t i;
 
 	for (i = 0; i < egc->num_rxdesc_rings; i++) {
-		struct edma_rxdesc_ring *rxdesc_ring;
-
-		rxdesc_ring = &egc->rxdesc_rings[i];
-		netif_napi_add(netdev, &rxdesc_ring->napi, NULL, EDMA_RX_NAPI_WORK);
+		struct edma_rxdesc_ring *rxdesc_ring = &egc->rxdesc_rings[i];
+		netif_napi_add(netdev, &rxdesc_ring->napi,
+				edma_rx_napi_poll, EDMA_RX_NAPI_WORK);
 		rxdesc_ring->napi_added = true;
 	}
 }
