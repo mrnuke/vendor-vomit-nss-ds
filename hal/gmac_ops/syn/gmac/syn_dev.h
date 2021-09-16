@@ -46,7 +46,6 @@
 struct syn_hal_dev {
 	struct nss_gmac_hal_dev nghd;	/* Base class */
 	struct nss_dp_gmac_stats stats;	/* Stats structure */
-	fal_mib_counter_t mib_stats;	/* Mib stats */
 };
 
 #endif /*__SYN_DEV_H__*/

@@ -20,7 +20,6 @@
 #include <linux/vmalloc.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
-#include <nss_dp_hal_if.h>
 #include <nss_dp_dev.h>
 #include "syn_dev.h"
 
@@ -123,19 +122,6 @@ static void syn_tx_flow_control(struct nss_gmac_hal_dev *nghd,
 }
 
 /*
- * syn_get_mmc_stats()
- */
-static int32_t syn_get_mmc_stats(struct nss_gmac_hal_dev *nghd)
-{
-	BUG_ON(nghd == NULL);
-
-	if (syn_get_stats(nghd))
-		return -1;
-
-	return 0;
-}
-
-/*
  * syn_get_max_frame_size()
  */
 static int32_t syn_get_max_frame_size(struct nss_gmac_hal_dev *nghd)
@@ -220,33 +206,39 @@ static uint8_t syn_get_duplex_mode(struct nss_gmac_hal_dev *nghd)
 static int syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
 		struct rtnl_link_stats64 *stats)
 {
-	struct syn_hal_dev *shd;
-	fal_xgmib_info_t *hal_stats;
+	fal_xgmib_info_t hal_stats;
 
 	BUG_ON(nghd == NULL);
 
-	shd = (struct syn_hal_dev *)nghd;
-	hal_stats = &(shd->stats);
-
-	if (syn_get_stats(nghd))
+	memset(&hal_stats, 0, sizeof(fal_xgmib_info_t));
+	if (syn_get_xmib_stats(nghd, &hal_stats)) {
 		return -1;
+	}
 
-	stats->rx_packets = hal_stats->RxUnicastGood
-		+ hal_stats->RxBroadGood + hal_stats->RxMultiGood;
-	stats->tx_packets = hal_stats->TxUnicast
-		+ hal_stats->TxBroadGood + hal_stats->TxMultiGood;
-	stats->rx_bytes = hal_stats->RxByte;
-	stats->tx_bytes = hal_stats->TxByte;
-	stats->multicast =
-		hal_stats->RxMultiGood;
-	stats->rx_dropped =
-		hal_stats->RxDropFrameGoodBad;
-	stats->rx_length_errors =
-		hal_stats->RxLengthError;
-	stats->rx_crc_errors =
-		hal_stats->RxFcsErr;
-	stats->rx_fifo_errors =
-		hal_stats->RxOverFlow;
+	stats->rx_packets = hal_stats.RxUnicastGood
+		+ hal_stats.RxBroadGood + hal_stats.RxMultiGood;
+	stats->tx_packets = hal_stats.TxUnicast
+		+ hal_stats.TxBroadGood + hal_stats.TxMultiGood;
+	stats->rx_bytes = hal_stats.RxByte;
+	stats->tx_bytes = hal_stats.TxByte;
+	stats->multicast = hal_stats.RxMultiGood;
+
+	/*
+	 * Rx error
+	 */
+	stats->rx_crc_errors = hal_stats.RxFcsErr;
+	stats->rx_frame_errors = hal_stats.RxRuntErr;
+	stats->rx_fifo_errors = hal_stats.RxOverFlow;
+	stats->rx_length_errors = hal_stats.RxLengthError;
+	stats->rx_errors = stats->rx_crc_errors + stats->rx_frame_errors
+		+ stats->rx_fifo_errors + stats->rx_length_errors;
+	stats->rx_dropped = hal_stats.RxDropFrameGoodBad + stats->rx_errors;
+
+	/*
+	 * Tx error
+	 */
+	stats->tx_fifo_errors = hal_stats.TxUnderFlowError + hal_stats.RxOverFlow;
+	stats->tx_errors = stats->tx_fifo_errors;
 
 	return 0;
 }
@@ -255,23 +247,21 @@ static int syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
  * syn_get_eth_stats()
  */
 static int32_t syn_get_eth_stats(struct nss_gmac_hal_dev *nghd,
-				   uint64_t *data)
+				   uint64_t *data, struct nss_dp_gmac_stats *stats)
 {
-	struct syn_hal_dev *shd;
-	fal_xgmib_info_t *stats;
+	fal_xgmib_info_t mib_stats;
 	uint8_t *p = NULL;
 	int i;
 
 	BUG_ON(nghd == NULL);
 
-	shd = (struct syn_hal_dev *)nghd;
-	stats = &(shd->stats);
-
-	if (syn_get_stats(nghd))
+	memset(&mib_stats, 0, sizeof(fal_xgmib_info_t));
+	if (syn_get_xmib_stats(nghd, &mib_stats)) {
 		return -1;
+	}
 
 	for (i = 0; i < SYN_STATS_LEN; i++) {
-		p = ((uint8_t *)(stats) +
+		p = ((uint8_t *)(&mib_stats) +
 				syn_gstrings_stats[i].stat_offset);
 		data[i] = *(uint32_t *)p;
 	}
@@ -449,7 +439,7 @@ static void *syn_init(struct nss_gmac_hal_platform_data *gmacpdata)
 
 	spin_lock_init(&shd->nghd.slock);
 
-	netdev_dbg(ndev, "ioremap OK.Size 0x%x Ndev base 0x%lx macbase 0x%px\n",
+	netdev_info(ndev, "ioremap OK.Size 0x%x Ndev base 0x%lx macbase 0x%px\n",
 			gmacpdata->reg_len,
 			ndev->base_addr,
 			shd->nghd.mac_base);
@@ -539,7 +529,6 @@ struct nss_gmac_hal_ops syn_gmac_ops = {
 	.getspeed = &syn_get_mac_speed,
 	.setduplex = &syn_set_duplex_mode,
 	.getduplex = &syn_get_duplex_mode,
-	.getstats = &syn_get_mmc_stats,
 	.setmaxframe = &syn_set_max_frame_size,
 	.getmaxframe = &syn_get_max_frame_size,
 	.getndostats = &syn_get_netdev_stats,

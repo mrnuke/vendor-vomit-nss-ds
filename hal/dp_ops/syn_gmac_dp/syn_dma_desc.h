@@ -82,101 +82,101 @@ enum syn_dma_desc_mode {
  *	status word of DMA descriptor
  */
 enum syn_dma_desc_status {
-	desc_own_by_dma = 0x80000000,		/* (OWN)Descriptor is
-						   owned by DMA engine        	*/
-	desc_rx_da_filter_fail = 0x40000000,	/* (AFM)Rx - DA Filter
-						   Fail for the rx frame      	*/
-	desc_rx_frame_length_mask = 0x3FFF0000,	/* (FL)Receive descriptor
-						   frame length               	*/
-	desc_rx_frame_length_shift = 16,
-	desc_rx_error = 0x00008000,		/* (ES)Error summary bit
+	DESC_OWN_BY_DMA = 0x80000000,		/* (OWN)Descriptor is
+						   owned by DMA engine */
+	DESC_RX_DA_FILTER_FAIL = 0x40000000,	/* (AFM)Rx - DA Filter
+						   Fail for the rx frame */
+	DESC_RX_FRAME_LENGTH_MASK = 0x3FFF0000,	/* (FL)Receive descriptor
+						   frame length */
+	DESC_RX_FRAME_LENGTH_SHIFT = 16,
+	DESC_RX_ERROR = 0x00008000,		/* (ES)Error summary bit
 						   - OR of the  following bits:
 						   DE || OE || IPC || GF || LC  || RWT
-						   || RE || CE                	*/
-	desc_rx_truncated = 0x00004000,		/* (DE)Rx - no more descriptors
-						   for receive frame          	*/
-	desc_sa_filter_fail = 0x00002000,	/* (SAF)Rx - SA Filter Fail for
-						   the received frame         	*/
-	desc_rx_length_error = 0x00001000,	/* (LE)Rx - frm size not
-						   matching with len field    	*/
-	desc_rx_overflow = 0x00000800,		/* (OE)Rx - frm was damaged due
-						   to buffer overflow         	*/
-	desc_rx_vlan_tag = 0x00000400,		/* (VLAN)Rx - received frame
-						   is a VLAN frame            	*/
-	desc_rx_first = 0x00000200,		/* (FS)Rx - first
-						   descriptor of the frame    	*/
-	desc_rx_last = 0x00000100,		/* (LS)Rx - last
-						   descriptor of the frame    	*/
-	desc_rx_long_frame = 0x00000080,	/* (Giant Frame)Rx - frame is
-						   longer than 1518/1522      	*/
-	desc_rx_collision = 0x00000040,		/* (LC)Rx - late collision
-						   occurred during reception  	*/
-	desc_rx_frame_ether = 0x00000020,	/* (FT)Rx - Frame type - Ether,
-						   otherwise 802.3            	*/
-	desc_rx_watchdog = 0x00000010,		/* (RWT)Rx - watchdog timer
-						   expired during reception   	*/
-	desc_rx_mii_error = 0x00000008,		/* (RE)Rx - error reported
-						   by MII interface           	*/
-	desc_rx_dribbling = 0x00000004,		/* (DE)Rx - frame contains non
-						   int multiple of 8 bits     	*/
-	desc_rx_crc = 0x00000002,		/* (CE)Rx - CRC error         	*/
-	desc_rx_ext_sts = 0x00000001,		/* Extended Status Available
-						   in RDES4			*/
-	desc_tx_error = 0x00008000,		/* (ES)Error summary Bits	*/
-	desc_tx_int_enable = 0x40000000,	/* (IC)Tx - interrupt on
-						   completion			*/
-	desc_tx_last = 0x20000000,		/* (LS)Tx - Last segment of the
-						   frame			*/
-	desc_tx_first = 0x10000000,		/* (FS)Tx - First segment of the
-						   frame			*/
-	desc_tx_disable_crc = 0x08000000,	/* (DC)Tx - Add CRC disabled
-						   (first segment only)       	*/
-	desc_tx_disable_padd = 0x04000000,	/* (DP)disable padding,
-						   added by - reyaz		*/
-	desc_tx_cis_mask = 0x00c00000,		/* Tx checksum offloading
-						   control mask			*/
-	desc_tx_cis_bypass = 0x00000000,	/* Checksum bypass            	*/
-	desc_tx_cis_ipv4_hdr_cs = 0x00400000,	/* IPv4 header checksum       	*/
-	desc_tx_cis_tcp_only_cs = 0x00800000,	/* TCP/UDP/ICMP checksum.
+						   || RE || CE */
+	DESC_RX_TRUNCATED = 0x00004000,		/* (DE)Rx - no more descriptors
+						   for receive frame */
+	DESC_SA_FILTER_FAIL = 0x00002000,	/* (SAF)Rx - SA Filter Fail for
+						   the received frame */
+	DESC_RX_LENGTH_ERROR = 0x00001000,	/* (LE)Rx - frm size not
+						   matching with len field */
+	DESC_RX_OVERFLOW = 0x00000800,		/* (OE)Rx - frm was damaged due
+						   to buffer overflow */
+	DESC_RX_VLAN_TAG = 0x00000400,		/* (VLAN)Rx - received frame
+						   is a VLAN frame */
+	DESC_RX_FIRST = 0x00000200,		/* (FS)Rx - first
+						   descriptor of the frame */
+	DESC_RX_LAST = 0x00000100,		/* (LS)Rx - last
+						   descriptor of the frame */
+	DESC_RX_LONG_FRAME = 0x00000080,	/* (Giant Frame)Rx - frame is
+						   longer than 1518/1522 */
+	DESC_RX_COLLISION = 0x00000040,		/* (LC)Rx - late collision
+						   occurred during reception */
+	DESC_RX_FRAME_ETHER = 0x00000020,	/* (FT)Rx - Frame type - Ether,
+						   otherwise 802.3 */
+	DESC_RX_WATCHDOG = 0x00000010,		/* (RWT)Rx - watchdog timer
+						   expired during reception */
+	DESC_RX_MII_ERROR = 0x00000008,		/* (RE)Rx - error reported
+						   by MII interface */
+	DESC_RX_DRIBBLING = 0x00000004,		/* (DE)Rx - frame contains non
+						   int multiple of 8 bits */
+	DESC_RX_CRC = 0x00000002,		/* (CE)Rx - CRC error */
+	DESC_RX_EXT_STS = 0x00000001,		/* Extended Status Available
+						   in RDES4 */
+	DESC_TX_ERROR = 0x00008000,		/* (ES)Error summary Bits */
+	DESC_TX_INT_ENABLE = 0x40000000,	/* (IC)Tx - interrupt on
+						   completion */
+	DESC_TX_LAST = 0x20000000,		/* (LS)Tx - Last segment of the
+						   frame */
+	DESC_TX_FIRST = 0x10000000,		/* (FS)Tx - First segment of the
+						   frame */
+	DESC_TX_DISABLE_CRC = 0x08000000,	/* (DC)Tx - Add CRC disabled
+						   (first segment only) */
+	DESC_TX_DISABLE_PADD = 0x04000000,	/* (DP)disable padding,
+						   added by - reyaz */
+	DESC_TX_CIS_MASK = 0x00c00000,		/* Tx checksum offloading
+						   control mask */
+	DESC_TX_CIS_BYPASS = 0x00000000,	/* Checksum bypass */
+	DESC_TX_CIS_IPV4_HDR_CS = 0x00400000,	/* IPv4 header checksum */
+	DESC_TX_CIS_TCP_ONLY_CS = 0x00800000,	/* TCP/UDP/ICMP checksum.
 						   Pseudo header  checksum
-						   is assumed to be present   	*/
-	desc_tx_cis_tcp_pseudo_cs = 0x00c00000,	/* TCP/UDP/ICMP checksum fully
+						   is assumed to be present */
+	DESC_TX_CIS_TCP_PSEUDO_CS = 0x00c00000,	/* TCP/UDP/ICMP checksum fully
 						   in hardware  including
-						   pseudo header              	*/
-	desc_tx_desc_end_of_ring = 0x00200000,	/* (TER)End of descriptor ring*/
-	desc_tx_desc_chain = 0x00100000,	/* (TCH)Second buffer address
-						   is chain address           	*/
-	desc_rx_chk_bit0 = 0x00000001,		/* Rx Payload Checksum Error  	*/
-	desc_rx_chk_bit7 = 0x00000080,		/* (IPC CS ERROR)Rx - Ipv4
-						   header checksum error      	*/
-	desc_rx_chk_bit5 = 0x00000020,		/* (FT)Rx - Frame type - Ether,
-						   otherwise 802.3 		*/
-	desc_rx_ts_avail = 0x00000080,		/* Time stamp available 	*/
-	desc_rx_frame_type = 0x00000020,	/* (FT)Rx - Frame type - Ether,
-						   otherwise 802.3		*/
-	desc_tx_ipv4_chk_error = 0x00010000,	/* (IHE) Tx Ip header error	*/
-	desc_tx_timeout = 0x00004000,		/* (JT)Tx - Transmit
-						   jabber timeout		*/
-	desc_tx_frame_flushed = 0x00002000,	/* (FF)Tx - DMA/MTL flushed
-						   the frame  due to SW flush 	*/
-	desc_tx_pay_chk_error = 0x00001000,	/* (PCE) Tx Payload checksum
-						   Error		      	*/
-	desc_tx_lost_carrier = 0x00000800,	/* (LC)Tx - carrier lost
-						   during tramsmission        	*/
-	desc_tx_no_carrier = 0x00000400,	/* (NC)Tx - no carrier signal
-						   from the tranceiver        	*/
-	desc_tx_late_collision = 0x00000200,	/* (LC)Tx - transmission aborted
-						   due to collision           	*/
-	desc_tx_exc_collisions = 0x00000100,	/* (EC)Tx - transmission aborted
-						   after 16 collisions        	*/
-	desc_tx_vlan_frame = 0x00000080,	/* (VF)Tx - VLAN-type frame   	*/
-	desc_tx_coll_mask = 0x00000078,		/* (CC)Tx - Collision count   	*/
-	desc_tx_coll_shift = 3,
-	desc_tx_exc_deferral = 0x00000004,	/* (ED)Tx - excessive deferral 	*/
-	desc_tx_underflow = 0x00000002,		/* (UF)Tx - late data arrival
-						   from the memory            	*/
-	desc_tx_deferred = 0x00000001,		/* (DB)Tx - frame
-						   transmision deferred       	*/
+						   pseudo header */
+	DESC_TX_DESC_END_OF_RING = 0x00200000,	/* (TER)End of descriptor ring */
+	DESC_TX_DESC_CHAIN = 0x00100000,	/* (TCH)Second buffer address
+						   is chain address */
+	DESC_RX_CHK_BIT0 = 0x00000001,		/* Rx Payload Checksum Error */
+	DESC_RX_CHK_BIT7 = 0x00000080,		/* (IPC CS ERROR)Rx - Ipv4
+						   header checksum error */
+	DESC_RX_CHK_BIT5 = 0x00000020,		/* (FT)Rx - Frame type - Ether,
+						   otherwise 802.3 */
+	DESC_RX_TS_AVAIL = 0x00000080,		/* Time stamp available */
+	DESC_RX_FRAME_TYPE = 0x00000020,	/* (FT)Rx - Frame type - Ether,
+						   otherwise 802.3 */
+	DESC_TX_IPV4_CHK_ERROR = 0x00010000,	/* (IHE) Tx Ip header error */
+	DESC_TX_TIMEOUT = 0x00004000,		/* (JT)Tx - Transmit
+						   jabber timeout */
+	DESC_TX_FRAME_FLUSHED = 0x00002000,	/* (FF)Tx - DMA/MTL flushed
+						   the frame  due to SW flush */
+	DESC_TX_PAY_CHK_ERROR = 0x00001000,	/* (PCE) Tx Payload checksum
+						   Error */
+	DESC_TX_LOST_CARRIER = 0x00000800,	/* (LC)Tx - carrier lost
+						   during tramsmission */
+	DESC_TX_NO_CARRIER = 0x00000400,	/* (NC)Tx - no carrier signal
+						   from the tranceiver */
+	DESC_TX_LATE_COLLISION = 0x00000200,	/* (LC)Tx - transmission aborted
+						   due to collision */
+	DESC_TX_EXC_COLLISIONS = 0x00000100,	/* (EC)Tx - transmission aborted
+						   after 16 collisions */
+	DESC_TX_VLAN_FRAME = 0x00000080,	/* (VF)Tx - VLAN-type frame */
+	DESC_TX_COLL_MASK = 0x00000078,		/* (CC)Tx - Collision count */
+	DESC_TX_COLL_SHIFT = 3,
+	DESC_TX_EXC_DEFERRAL = 0x00000004,	/* (ED)Tx - excessive deferral */
+	DESC_TX_UNDERFLOW = 0x00000002,		/* (UF)Tx - late data arrival
+						   from the memory */
+	DESC_TX_DEFERRED = 0x00000001,		/* (DB)Tx - frame
+						   transmision deferred */
 
 	/*
 	 * This explains the RDES1/TDES1 bits layout
@@ -186,14 +186,14 @@ enum syn_dma_desc_status {
 	 */
 
 	/* dma_descriptor_length */	/* length word of DMA descriptor */
-	desc_rx_dis_int_compl = 0x80000000,	/* (Disable Rx int on completion) */
-	desc_rx_desc_end_of_ring = 0x00008000,	/* (RER)End of descriptor ring 	*/
-	desc_rx_desc_chain = 0x00004000,	/* (RCH)Second buffer address
-						    is chain address 		*/
-	desc_size2_mask = 0x1FFF0000,		/* (RBS2/TBS2) Buffer 2 size 	*/
-	desc_size2_shift = 16,
-	desc_size1_mask = 0x00001FFF,		/* (RBS1/TBS1) Buffer 1 size 	*/
-	desc_size1_shift = 0,
+	DESC_RX_DIS_INT_COMPL = 0x80000000,	/* (Disable Rx int on completion) */
+	DESC_RX_DESC_END_OF_RING = 0x00008000,	/* (RER)End of descriptor ring */
+	DESC_RX_DESC_CHAIN = 0x00004000,	/* (RCH)Second buffer address
+						    is chain address */
+	DESC_SIZE2_MASK = 0x1FFF0000,		/* (RBS2/TBS2) Buffer 2 size */
+	DESC_SIZE2_SHIFT = 16,
+	DESC_SIZE1_MASK = 0x00001FFF,		/* (RBS1/TBS1) Buffer 1 size */
+	DESC_SIZE1_SHIFT = 0,
 
 	/*
 	 * This explains the RDES4 Extended Status bits layout
@@ -201,151 +201,191 @@ enum syn_dma_desc_status {
 	 *   RDES4      |                 Extended Status                      |
 	 *              --------------------------------------------------------
 	 */
-	desc_rx_ts_dropped = 0x00004000,	/* PTP snapshot available     	*/
-	desc_rx_ptp_ver = 0x00002000,		/* When set indicates IEEE1584
-						   Version 2 (else Ver1)      	*/
-	desc_rx_ptp_frame_type = 0x00001000,	/* PTP frame type Indicates PTP
-						   sent over ethernet         	*/
-	desc_rx_ptp_message_type = 0x00000F00,	/* Message Type               	*/
-	desc_rx_ptp_no = 0x00000000,		/* 0000 => No PTP message rcvd 	*/
-	desc_rx_ptp_sync = 0x00000100,		/* 0001 => Sync (all clock
-						   types) received            	*/
-	desc_rx_ptp_follow_up = 0x00000200,	/* 0010 => Follow_Up (all clock
-						   types) received            	*/
-	desc_rx_ptp_delay_req = 0x00000300,	/* 0011 => Delay_Req (all clock
-						   types) received            	*/
-	desc_rx_ptp_delay_resp = 0x00000400,	/* 0100 => Delay_Resp (all clock
-						   types) received            	*/
-	desc_rx_ptp_pdelay_req = 0x00000500,	/* 0101 => Pdelay_Req (in P
+	DESC_RX_TS_DROPPED = 0x00004000,	/* PTP snapshot available */
+	DESC_RX_PTP_VER = 0x00002000,		/* When set indicates IEEE1584
+						   Version 2 (else Ver1) */
+	DESC_RX_PTP_FRAME_TYPE = 0x00001000,	/* PTP frame type Indicates PTP
+						   sent over ethernet */
+	DESC_RX_PTP_MESSAGE_TYPE = 0x00000F00,	/* Message Type */
+	DESC_RX_PTP_NO = 0x00000000,		/* 0000 => No PTP message rcvd */
+	DESC_RX_PTP_SYNC = 0x00000100,		/* 0001 => Sync (all clock
+						   types) received */
+	DESC_RX_PTP_FOLLOW_UP = 0x00000200,	/* 0010 => Follow_Up (all clock
+						   types) received */
+	DESC_RX_PTP_DELAY_REQ = 0x00000300,	/* 0011 => Delay_Req (all clock
+						   types) received */
+	DESC_RX_PTP_DELAY_RESP = 0x00000400,	/* 0100 => Delay_Resp (all clock
+						   types) received */
+	DESC_RX_PTP_PDELAY_REQ = 0x00000500,	/* 0101 => Pdelay_Req (in P
 						   to P tras clk)  or Announce
-						   in Ord and Bound clk       	*/
-	desc_rx_ptp_pdelay_resp = 0x00000600,	/* 0110 => Pdealy_Resp(in P to
+						   in Ord and Bound clk */
+	DESC_RX_PTP_PDELAY_RESP = 0x00000600,	/* 0110 => Pdealy_Resp(in P to
 						   P trans clk) or Management in
-						   Ord and Bound clk          	*/
-	desc_rx_ptp_pdelay_resp_fp = 0x00000700,/* 0111 => Pdelay_Resp_Follow_Up
+						   Ord and Bound clk */
+	DESC_RX_PTP_PDELAY_RESP_FP = 0x00000700,/* 0111 => Pdelay_Resp_Follow_Up
 						   (in P to P trans clk) or
 						   Signaling in Ord and Bound
-						   clk			      	*/
-	desc_rx_ptp_ipv6 = 0x00000080,		/* Received Packet is in IPV6 	*/
-	desc_rx_ptp_ipv4 = 0x00000040,		/* Received Packet is in IPV4 	*/
-	desc_rx_chk_sum_bypass = 0x00000020,	/* When set indicates checksum
-						   offload engine is bypassed 	*/
-	desc_rx_ip_payload_error = 0x00000010,	/* When set indicates 16bit IP
-						   payload CS is in error     	*/
-	desc_rx_ip_header_error = 0x00000008,	/* When set indicates 16bit IPV4
+						   clk */
+	DESC_RX_PTP_IPV6 = 0x00000080,		/* Received Packet is in IPV6 */
+	DESC_RX_PTP_IPV4 = 0x00000040,		/* Received Packet is in IPV4 */
+	DESC_RX_CHK_SUM_BYPASS = 0x00000020,	/* When set indicates checksum
+						   offload engine is bypassed */
+	DESC_RX_IP_PAYLOAD_ERROR = 0x00000010,	/* When set indicates 16bit IP
+						   payload CS is in error */
+	DESC_RX_IP_HEADER_ERROR = 0x00000008,	/* When set indicates 16bit IPV4
 						   hdr CS is err or IP datagram
 						   version is not consistent
-						   with Ethernet type value   	*/
-	desc_rx_ip_payload_type = 0x00000007,	/* Indicate the type of payload
+						   with Ethernet type value */
+	DESC_RX_IP_PAYLOAD_TYPE = 0x00000007,	/* Indicate the type of payload
 						   encapsulated in IPdatagram
-						   processed by COE (Rx)      	*/
-	desc_rx_ip_payload_unknown = 0x00000000,/* Unknown or didnot process
-						   IP payload                 	*/
-	desc_rx_ip_payload_udp = 0x00000001,	/* UDP                        	*/
-	desc_rx_ip_payload_tcp = 0x00000002,	/* TCP                        	*/
-	desc_rx_ip_payload_icmp = 0x00000003,	/* ICMP                       	*/
+						   processed by COE (Rx) */
+	DESC_RX_IP_PAYLOAD_UNKNOWN = 0x00000000,/* Unknown or didnot process
+						   IP payload */
+	DESC_RX_IP_PAYLOAD_UDP = 0x00000001,	/* UDP */
+	DESC_RX_IP_PAYLOAD_TCP = 0x00000002,	/* TCP */
+	DESC_RX_IP_PAYLOAD_ICMP = 0x00000003,	/* ICMP */
 };
 
 /*
- * dma_desc
- *	DMA Descriptor Structure
+ * dma_desc_rx
+ *	Rx DMA Descriptor Structure
  *
- * The structure is common for both receive and transmit descriptors.
+ * Enhanced descriptor format for receive.
  */
-struct dma_desc {
-	uint32_t status;	/* Status                             */
-	uint32_t length;	/* Buffer 1  and Buffer 2 length      */
-	uint32_t buffer1;	/* Network Buffer 1 pointer (DMA-able)*/
-	uint32_t data1;		/* This holds virtual address of
-				   buffer1, not used by DMA	      */
-
+struct dma_desc_rx {
+	uint32_t status;	/* Status */
+	uint32_t length;	/* Buffer 1  and Buffer 2 length */
+	uint32_t buffer1;	/* Network Buffer 1 pointer (DMA-able) */
+	uint32_t buffer2;	/* Network Buffer 2 pointer (DMA-able) */
 	/* This data below is used only by driver */
 	uint32_t extstatus;	/* Extended status of a Rx Descriptor */
-	uint32_t reserved1;	/* Reserved word                      */
+	uint32_t reserved1;	/* Reserved word */
 	uint32_t timestamplow;	/* Lower 32 bits of the 64
-				   bit timestamp value                */
+				   bit timestamp value */
 	uint32_t timestamphigh;	/* Higher 32 bits of the 64
-					   bit timestamp value        */
+					   bit timestamp value */
+	uint32_t padding[8];	/* Pad 32 byte to align to 64B cacheline size */
 };
 
 /*
- * syn_dp_gmac_tx_checksum_offload_tcp_pseudo
+ * dma_desc_tx
+ *	Tx DMA Descriptor Structure
+ *
+ * Enhanced descriptor format for transmit.
+ */
+struct dma_desc_tx {
+	uint32_t status;	/* Status */
+	uint32_t length;	/* Buffer 1  and Buffer 2 length */
+	uint32_t buffer1;	/* Network Buffer 1 pointer (DMA-able) */
+	uint32_t buffer2;	/* Network Buffer 2 pointer (DMA-able) */
+	uint32_t reserved1;	/* Reserved word */
+	uint32_t reserved2;	/* Reserved word */
+	uint32_t timestamplow;	/* Lower 32 bits of the 64
+				   bit timestamp value */
+	uint32_t timestamphigh;	/* Higher 32 bits of the 64
+					   bit timestamp value */
+	uint32_t padding[8];	/* Pad 32 byte to align to 64B cacheline size */
+};
+
+/*
+ * syn_dp_gmac_tx_checksum_offload_tcp_pseudo()
  *	The checksum offload engine is enabled to do complete checksum computation.
  */
-static inline void syn_dp_gmac_tx_checksum_offload_tcp_pseudo(struct dma_desc *desc)
+static inline void syn_dp_gmac_tx_checksum_offload_tcp_pseudo(struct dma_desc_tx *desc)
 {
-	desc->status = ((desc->status & (~desc_tx_cis_mask)) | desc_tx_cis_tcp_pseudo_cs);
+	desc->status = ((desc->status & (~DESC_TX_CIS_MASK)) | DESC_TX_CIS_TCP_PSEUDO_CS);
 }
 
 /*
- * syn_dp_gmac_tx_desc_init_ring
- *	Initialize the tx descriptors for ring or chain mode operation.
+ * syn_dp_gmac_tx_desc_init_ring()
+ *	Initialize the tx descriptors for ring mode operation.
  */
-static inline void syn_dp_gmac_tx_desc_init_ring(struct dma_desc *desc, uint32_t no_of_desc)
+static inline void syn_dp_gmac_tx_desc_init_ring(struct dma_desc_tx *desc, uint32_t no_of_desc)
 {
-	struct dma_desc *last_desc = desc + no_of_desc - 1;
-	memset(desc, 0, no_of_desc * sizeof(struct dma_desc));
-	last_desc->status = desc_tx_desc_end_of_ring;
+	struct dma_desc_tx *last_desc = desc + no_of_desc - 1;
+	memset(desc, 0, no_of_desc * sizeof(struct dma_desc_tx));
+	last_desc->status = DESC_TX_DESC_END_OF_RING;
 }
 
 /*
- * syn_dp_gmac_rx_desc_init_ring
- *	Initialize the rx descriptors for ring or chain mode operation.
+ * syn_dp_gmac_rx_desc_init_ring()
+ *	Initialize the rx descriptors for ring mode operation.
  */
-static inline void syn_dp_gmac_rx_desc_init_ring(struct dma_desc *desc, uint32_t no_of_desc)
+static inline void syn_dp_gmac_rx_desc_init_ring(struct dma_desc_rx *desc, uint32_t no_of_desc)
 {
-	struct dma_desc *last_desc = desc + no_of_desc - 1;
-	memset(desc, 0, no_of_desc * sizeof(struct dma_desc));
-	last_desc->length = desc_rx_desc_end_of_ring;
+	struct dma_desc_rx *last_desc = desc + no_of_desc - 1;
+	memset(desc, 0, no_of_desc * sizeof(struct dma_desc_rx));
+	last_desc->length = DESC_RX_DESC_END_OF_RING;
 }
 
 /*
- * syn_dp_gmac_is_rx_desc_valid
+ * syn_dp_gmac_is_rx_desc_valid()
  *	Checks whether the rx descriptor is valid.
  */
 static inline bool syn_dp_gmac_is_rx_desc_valid(uint32_t status)
 {
-	return (status & (desc_rx_error | desc_rx_first | desc_rx_last)) ==
-		(desc_rx_first | desc_rx_last);
+	return (status & (DESC_RX_ERROR | DESC_RX_FIRST | DESC_RX_LAST)) ==
+		(DESC_RX_FIRST | DESC_RX_LAST);
 }
 
 /*
- * syn_dp_gmac_get_rx_desc_frame_length
+ * syn_dp_gmac_get_rx_desc_frame_length()
  *	Returns the byte length of received frame including CRC.
  */
 static inline uint32_t syn_dp_gmac_get_rx_desc_frame_length(uint32_t status)
 {
-	return (status & desc_rx_frame_length_mask) >> desc_rx_frame_length_shift;
+	return (status & DESC_RX_FRAME_LENGTH_MASK) >> DESC_RX_FRAME_LENGTH_SHIFT;
 }
 
 /*
- * syn_dp_gmac_is_desc_owned_by_dma
- *	Checks whether the descriptor is owned by DMA.
+ * syn_dp_gmac_is_rx_desc_owned_by_dma()
+ *	Checks whether the Rx descriptor is owned by DMA.
  */
-static inline bool syn_dp_gmac_is_desc_owned_by_dma(struct dma_desc *desc)
+static inline bool syn_dp_gmac_is_rx_desc_owned_by_dma(struct dma_desc_rx *desc)
 {
-	return (desc->status & desc_own_by_dma) == desc_own_by_dma;
+	return (desc->status & DESC_OWN_BY_DMA) == DESC_OWN_BY_DMA;
 }
 
 /*
- * syn_dp_gmac_is_desc_empty
+ * syn_dp_gmac_is_tx_desc_owned_by_dma()
+ *	Checks whether the Tx descriptor is owned by DMA.
+ */
+static inline bool syn_dp_gmac_is_tx_desc_owned_by_dma(struct dma_desc_tx *desc)
+{
+	return (desc->status & DESC_OWN_BY_DMA) == DESC_OWN_BY_DMA;
+}
+
+/*
+ * syn_dp_gmac_is_rx_desc_empty()
  *	Checks whether the descriptor is empty.
  */
-static inline bool syn_dp_gmac_is_desc_empty(struct dma_desc *desc)
+static inline bool syn_dp_gmac_is_rx_desc_empty(struct dma_desc_rx *desc)
 {
 	/*
 	 * If length of both buffer1 & buffer2 are zero then desc is empty
 	 */
-	return (desc->length & desc_size1_mask) == 0;
+	return (desc->length & DESC_SIZE1_MASK) == 0;
 }
 
 /*
- * syn_dp_gmac_get_tx_collision_count
+ * syn_dp_gmac_is_tx_desc_empty()
+ *	Checks whether the descriptor is empty.
+ */
+static inline bool syn_dp_gmac_is_tx_desc_empty(struct dma_desc_tx *desc)
+{
+	/*
+	 * If length of both buffer1 & buffer2 are zero then desc is empty
+	 */
+	return (desc->length & DESC_SIZE1_MASK) == 0;
+}
+
+/*
+ * syn_dp_gmac_get_tx_collision_count()
  *	Gives the transmission collision count.
  */
 static inline uint32_t syn_dp_gmac_get_tx_collision_count(uint32_t status)
 {
-	return (status & desc_tx_coll_mask) >> desc_tx_coll_shift;
+	return (status & DESC_TX_COLL_MASK) >> DESC_TX_COLL_SHIFT;
 }
 
 #endif /*  __SYN_DMA_DESC__ */

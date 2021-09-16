@@ -41,14 +41,14 @@
 #define TCSR_GMAC_AXI_CACHE_OVERRIDE_VALUE	0x05050505
 
 /**
- * nss_dp_hal_gmac_stats
- *	The per-GMAC statistics structure.
+ * nss_dp_hal_gmac_stats_rx
+ *	Per-GMAC Rx statistics
  */
-struct nss_dp_hal_gmac_stats {
+struct nss_dp_hal_gmac_stats_rx {
 	uint64_t rx_bytes;		/**< Number of RX bytes */
 	uint64_t rx_packets;		/**< Number of RX packets */
 	uint64_t rx_errors;		/**< Number of RX errors */
-	uint64_t rx_receive_errors;	/**< Number of RX receive errors */
+	uint64_t rx_missed;		/**< Number of RX packets missed by the DMA */
 	uint64_t rx_descriptor_errors;	/**< Number of RX descriptor errors */
 	uint64_t rx_late_collision_errors;
 					/**< Number of RX late collision errors */
@@ -59,6 +59,17 @@ struct nss_dp_hal_gmac_stats {
 	uint64_t rx_no_buffer_errors;	/**< Number of RX no-buffer errors */
 	uint64_t rx_transport_csum_bypassed;
 					/**< Number of RX packets where the transport checksum was bypassed */
+	uint64_t rx_scatter_errors;	/**< Number of scattered frames received by the DMA */
+	uint64_t rx_fifo_overflows;	/**< Number of RX FIFO overflows signalled by the DMA */
+	uint64_t rx_overflow_errors;	/**< Number of Rx Overflow errors received from Rx descriptors */
+	uint64_t rx_crc_errors;		/**< Number of Rx CRC errors */
+};
+
+/**
+ * nss_dp_hal_gmac_stats_tx
+ *	Per-GMAC Tx statistics
+ */
+struct nss_dp_hal_gmac_stats_tx {
 	uint64_t tx_bytes;		/**< Number of TX bytes */
 	uint64_t tx_packets;		/**< Number of TX packets */
 	uint64_t tx_collisions;		/**< Number of TX collisions */
@@ -80,15 +91,19 @@ struct nss_dp_hal_gmac_stats {
 	uint64_t tx_ip_header_errors;	/**< Number of TX IP header errors */
 	uint64_t tx_ip_payload_errors;	/**< Number of TX IP payload errors */
 	uint64_t tx_dropped;		/**< Number of TX dropped packets */
-	uint64_t hw_errs[10];		/**< GMAC DMA error counters */
-	uint64_t rx_missed;		/**< Number of RX packets missed by the DMA */
-	uint64_t fifo_overflows;	/**< Number of RX FIFO overflows signalled by the DMA */
-	uint64_t rx_scatter_errors;	/**< Number of scattered frames received by the DMA */
 	uint64_t tx_ts_create_errors;	/**< Number of tx timestamp creation errors */
-	uint64_t gmac_total_ticks;	/**< Total clock ticks spend inside the GMAC */
-	uint64_t gmac_worst_case_ticks;	/**< Worst case iteration of the GMAC in ticks */
-	uint64_t gmac_iterations;	/**< Number of iterations around the GMAC */
-	uint64_t tx_pause_frames;	/**< Number of pause frames sent by the GMAC */
+};
+
+/**
+ * nss_dp_hal_gmac_stats
+ *	The per-GMAC statistics structure.
+ */
+struct nss_dp_hal_gmac_stats {
+	struct nss_dp_hal_gmac_stats_rx rx_stats;
+					/**< GMAC Rx statistics */
+	struct nss_dp_hal_gmac_stats_tx tx_stats;
+					/**< GMAC Tx statistics */
+	uint64_t hw_errs[10];		/**< GMAC DMA error counters */
 };
 
 extern struct nss_dp_data_plane_ops nss_dp_gmac_ops;

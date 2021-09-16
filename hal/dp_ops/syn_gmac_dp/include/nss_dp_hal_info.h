@@ -17,11 +17,14 @@
 #ifndef __NSS_DP_HAL_INFO_H__
 #define __NSS_DP_HAL_INFO_H__
 
+#include "../syn_dp.h"
+
 /*
  * nss_dp_hal_info
  *	Data plane specific information wrapper
  */
 struct nss_dp_hal_info {
+	struct syn_dp_info syn_info;
 };
 
 #endif	/* __NSS_DP_HAL_INFO_H__ */

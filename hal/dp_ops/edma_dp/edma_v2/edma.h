@@ -19,6 +19,7 @@
 
 #include <linux/netdevice.h>
 #include <nss_dp_arch.h>
+#include <nss_dp_api_if.h>
 #include <nss_dp_hal_if.h>
 #include "edma_rx.h"
 #include "edma_tx.h"

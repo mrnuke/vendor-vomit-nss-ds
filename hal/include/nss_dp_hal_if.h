@@ -94,7 +94,7 @@ struct nss_gmac_hal_ops {
 	void (*stoppause)(struct nss_gmac_hal_dev *);
 	int32_t (*getssetcount)(struct nss_gmac_hal_dev *, int32_t);
 	int32_t (*getstrings)(struct nss_gmac_hal_dev *, int32_t, uint8_t *);
-	int32_t (*getethtoolstats)(struct nss_gmac_hal_dev *, uint64_t *);
+	int32_t (*getethtoolstats)(struct nss_gmac_hal_dev *, uint64_t *, struct nss_dp_gmac_stats *);
 };
 
 extern struct nss_gmac_hal_ops qcom_gmac_ops;
@@ -142,31 +142,27 @@ static inline void hal_write_relaxed_reg(void __iomem *regbase,
 /*
  * hal_set_reg_bits()
  */
-static inline void hal_set_reg_bits(struct nss_gmac_hal_dev *nghd,
+static inline void hal_set_reg_bits(void __iomem *regbase,
 				    uint32_t regoffset,
 				    uint32_t bitpos)
 {
 	uint32_t data;
 
-	spin_lock(&nghd->slock);
-	data = bitpos | hal_read_relaxed_reg(nghd->mac_base, regoffset);
-	hal_write_relaxed_reg(nghd->mac_base, regoffset, data);
-	spin_unlock(&nghd->slock);
+	data = bitpos | hal_read_relaxed_reg(regbase, regoffset);
+	hal_write_relaxed_reg(regbase, regoffset, data);
 }
 
 /*
  * hal_clear_reg_bits()
  */
-static inline void hal_clear_reg_bits(struct nss_gmac_hal_dev *nghd,
+static inline void hal_clear_reg_bits(void __iomem *regbase,
 				      uint32_t regoffset,
 				      uint32_t bitpos)
 {
 	uint32_t data;
 
-	spin_lock(&nghd->slock);
-	data = ~bitpos & hal_read_relaxed_reg(nghd->mac_base, regoffset);
-	hal_write_relaxed_reg(nghd->mac_base, regoffset, data);
-	spin_unlock(&nghd->slock);
+	data = ~bitpos & hal_read_relaxed_reg(regbase, regoffset);
+	hal_write_relaxed_reg(regbase, regoffset, data);
 }
 
 /*

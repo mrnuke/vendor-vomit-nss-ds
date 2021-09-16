@@ -37,10 +37,12 @@ ccflags-y += -DNSS_DP_IPQ60XX
 endif
 
 ifeq ($(SoC),$(filter $(SoC),ipq50xx))
-qca-nss-dp-objs += hal/gmac_ops/syn/gmac/syn_if.o \
-		   hal/dp_ops/syn_gmac_dp/syn_data_plane.o \
-		   hal/dp_ops/syn_gmac_dp/syn_dp_tx_rx.o \
-		   hal/dp_ops/syn_gmac_dp/syn_dp_cfg.o
+qca-nss-dp-objs += hal/dp_ops/syn_gmac_dp/syn_dp_cfg_rx.o \
+		   hal/dp_ops/syn_gmac_dp/syn_dp_cfg_tx.o \
+		   hal/dp_ops/syn_gmac_dp/syn_dp_rx.o \
+		   hal/dp_ops/syn_gmac_dp/syn_dp_tx.o \
+		   hal/dp_ops/syn_gmac_dp/syn_dp.o \
+		   hal/gmac_ops/syn/gmac/syn_if.o
 NSS_DP_INCLUDE += -I$(obj)/hal/dp_ops/syn_gmac_dp/include
 ccflags-y += -DNSS_DP_IPQ50XX
 endif

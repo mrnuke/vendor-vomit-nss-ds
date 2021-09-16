@@ -165,7 +165,6 @@ static struct rtnl_link_stats64 *nss_dp_get_stats64(struct net_device *netdev,
 					     struct rtnl_link_stats64 *stats)
 {
 	struct nss_dp_dev *dp_priv;
-	struct nss_dp_gmac_stats dp_stats;
 
 	if (!netdev)
 		return stats;
@@ -173,33 +172,16 @@ static struct rtnl_link_stats64 *nss_dp_get_stats64(struct net_device *netdev,
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
 	/*
-	 * Check if data plane init has been done
+	 * Get the GMAC MIB statistics
 	 */
-	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE))) {
-		return stats;
-	}
-
-	/*
-	 * Retrieve the statistics from the dataplane.
-	 * Some SoCs like IPQ807x/IPQ60xx do not support
-	 * statistics in dataplane. We workaround by
-	 * retrieving the statistics from GMAC ops (MIB stats)
-	 * temporarily until this is fixed for these SoCs.
-	 */
-	if (!dp_priv->data_plane_ops->get_stats) {
-		dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
-		return stats;
-	}
-
-	dp_priv->data_plane_ops->get_stats(dp_priv->dpc, &dp_stats);
-	return nss_dp_hal_get_ndo_stats(&dp_stats.stats, stats);
+	dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
+	return stats;
 }
 #else
 static void nss_dp_get_stats64(struct net_device *netdev,
 					     struct rtnl_link_stats64 *stats)
 {
 	struct nss_dp_dev *dp_priv;
-	struct nss_dp_gmac_stats dp_stats;
 
 	if (!netdev)
 		return;
@@ -207,25 +189,9 @@ static void nss_dp_get_stats64(struct net_device *netdev,
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
 	/*
-	 * Check if data plane init has been done
+	 * Get the GMAC MIB statistics
 	 */
-	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE))) {
-		return;
-	}
-
-	/*
-	 * Retrieve the statistics from the dataplane.
-	 * Some SoCs like IPQ807x/IPQ60xx do not support
-	 * statistics in dataplane. We workaround by
-	 * retrieving the statistics from GMAC ops (MIB stats)
-	 * temporarily until this is fixed for these SoCs.
-	 */
-	if (!dp_priv->data_plane_ops->get_stats) {
-		dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
-		return;
-	}
-	dp_priv->data_plane_ops->get_stats(dp_priv->dpc, &dp_stats);
-	nss_dp_hal_get_ndo_stats(&dp_stats.stats, stats);
+	dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
 }
 #endif
 
@@ -282,6 +248,14 @@ static int nss_dp_close(struct net_device *netdev)
 		}
 	}
 #endif
+
+	/*
+	 * Notify GMAC to stop
+	 */
+	if (dp_priv->gmac_hal_ops->stop(dp_priv->gmac_hal_ctx)) {
+		netdev_dbg(netdev, "GMAC stop failed\n");
+		return -EAGAIN;
+	}
 
 	/*
 	 * Notify data plane to close
@@ -357,6 +331,14 @@ static int nss_dp_open(struct net_device *netdev)
 
 	if (dp_priv->data_plane_ops->open(dp_priv->dpc, 0, 0, 0)) {
 		netdev_dbg(netdev, "Data plane open failed\n");
+		return -EAGAIN;
+	}
+
+	/*
+	 * Notify GMAC to start receive/transmit
+	 */
+	if (dp_priv->gmac_hal_ops->start(dp_priv->gmac_hal_ctx)) {
+		netdev_dbg(netdev, "GMAC start failed\n");
 		return -EAGAIN;
 	}
 
@@ -467,10 +449,10 @@ static int nss_dp_rx_flow_steer(struct net_device *netdev, const struct sk_buff 
  *	Select tx queue
  */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-static u16 nss_dp_select_queue(struct net_device *netdev, struct sk_buff *skb,
+static u16 __attribute__((unused)) nss_dp_select_queue(struct net_device *netdev, struct sk_buff *skb,
 				void *accel_priv, select_queue_fallback_t fallback)
 #else
-static u16 nss_dp_select_queue(struct net_device *netdev, struct sk_buff *skb,
+static u16 __attribute__((unused)) nss_dp_select_queue(struct net_device *netdev, struct sk_buff *skb,
 				struct net_device *sb_dev)
 #endif
 {
@@ -502,7 +484,9 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 	.ndo_bridge_getlink = switchdev_port_bridge_getlink,
 	.ndo_bridge_dellink = switchdev_port_bridge_dellink,
 #endif
+#ifndef NSS_DP_IPQ50XX
 	.ndo_select_queue = nss_dp_select_queue,
+#endif
 
 #ifdef CONFIG_RFS_ACCEL
 	.ndo_rx_flow_steer = nss_dp_rx_flow_steer,
@@ -745,6 +729,13 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
+	if (dp_priv->data_plane_ops->init(dp_priv->dpc)) {
+		netdev_dbg(netdev, "Data plane init failed\n");
+		goto data_plane_init_fail;
+	}
+
+	dp_priv->drv_flags |= NSS_DP_PRIV_FLAG(INIT_DONE);
+
 	if (dp_priv->link_poll) {
 		dp_priv->miibus = nss_dp_mdio_attach(pdev);
 		if (!dp_priv->miibus) {
@@ -815,6 +806,8 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	return 0;
 
 phy_setup_fail:
+	dp_priv->data_plane_ops->deinit(dp_priv->dpc);
+data_plane_init_fail:
 	dp_priv->gmac_hal_ops->exit(dp_priv->gmac_hal_ctx);
 fail:
 	free_netdev(netdev);
@@ -848,8 +841,8 @@ static int nss_dp_remove(struct platform_device *pdev)
 		 */
 		fal_port_vsi_set(0, dp_priv->macid, 0xFFFF);
 #endif
-		dp_ops->deinit(dp_priv->dpc);
 		hal_ops->exit(dp_priv->gmac_hal_ctx);
+		dp_ops->deinit(dp_priv->dpc);
 		unregister_netdev(dp_priv->netdev);
 		free_netdev(dp_priv->netdev);
 		dp_global_ctx.nss_dp[i] = NULL;

@@ -24,7 +24,7 @@
 #include <linux/io.h>
 #include <nss_dp_arch.h>
 #include "syn_dev.h"
-#include "syn_reg.h"
+#include "syn_mac_reg.h"
 
 #define SYN_STAT(m)	offsetof(struct nss_dp_hal_gmac_stats, m)
 #define SYN_MIB_STAT(m)	offsetof(fal_mib_counter_t, m)
@@ -42,37 +42,38 @@ struct syn_ethtool_stats {
  * Array of strings describing statistics
  */
 static const struct syn_ethtool_stats syn_gstrings_stats[] = {
-	{"rx_bytes", SYN_STAT(rx_bytes)},
-	{"rx_packets", SYN_STAT(rx_packets)},
-	{"rx_errors", SYN_STAT(rx_errors)},
-	{"rx_receive_errors", SYN_STAT(rx_receive_errors)},
-	{"rx_descriptor_errors", SYN_STAT(rx_descriptor_errors)},
-	{"rx_late_collision_errors", SYN_STAT(rx_late_collision_errors)},
-	{"rx_dribble_bit_errors", SYN_STAT(rx_dribble_bit_errors)},
-	{"rx_length_errors", SYN_STAT(rx_length_errors)},
-	{"rx_ip_header_errors", SYN_STAT(rx_ip_header_errors)},
-	{"rx_ip_payload_errors", SYN_STAT(rx_ip_payload_errors)},
-	{"rx_no_buffer_errors", SYN_STAT(rx_no_buffer_errors)},
-	{"rx_transport_csum_bypassed", SYN_STAT(rx_transport_csum_bypassed)},
-	{"tx_bytes", SYN_STAT(tx_bytes)},
-	{"tx_packets", SYN_STAT(tx_packets)},
-	{"tx_collisions", SYN_STAT(tx_collisions)},
-	{"tx_errors", SYN_STAT(tx_errors)},
-	{"tx_jabber_timeout_errors", SYN_STAT(tx_jabber_timeout_errors)},
-	{"tx_frame_flushed_errors", SYN_STAT(tx_frame_flushed_errors)},
-	{"tx_loss_of_carrier_errors", SYN_STAT(tx_loss_of_carrier_errors)},
-	{"tx_no_carrier_errors", SYN_STAT(tx_no_carrier_errors)},
-	{"tx_late_collision_errors", SYN_STAT(tx_late_collision_errors)},
-	{"tx_excessive_collision_errors", SYN_STAT(tx_excessive_collision_errors)},
-	{"tx_excessive_deferral_errors", SYN_STAT(tx_excessive_deferral_errors)},
-	{"tx_underflow_errors", SYN_STAT(tx_underflow_errors)},
-	{"tx_ip_header_errors", SYN_STAT(tx_ip_header_errors)},
-	{"tx_ip_payload_errors", SYN_STAT(tx_ip_payload_errors)},
-	{"tx_dropped", SYN_STAT(tx_dropped)},
-	{"rx_missed", SYN_STAT(rx_missed)},
-	{"fifo_overflows", SYN_STAT(fifo_overflows)},
-	{"rx_scatter_errors", SYN_STAT(rx_scatter_errors)},
-	{"tx_ts_create_errors", SYN_STAT(tx_ts_create_errors)},
+	{"rx_bytes", SYN_STAT(rx_stats.rx_bytes)},
+	{"rx_packets", SYN_STAT(rx_stats.rx_packets)},
+	{"rx_errors", SYN_STAT(rx_stats.rx_errors)},
+	{"rx_missed", SYN_STAT(rx_stats.rx_missed)},
+	{"rx_descriptor_errors", SYN_STAT(rx_stats.rx_descriptor_errors)},
+	{"rx_late_collision_errors", SYN_STAT(rx_stats.rx_late_collision_errors)},
+	{"rx_dribble_bit_errors", SYN_STAT(rx_stats.rx_dribble_bit_errors)},
+	{"rx_length_errors", SYN_STAT(rx_stats.rx_length_errors)},
+	{"rx_ip_header_errors", SYN_STAT(rx_stats.rx_ip_header_errors)},
+	{"rx_ip_payload_errors", SYN_STAT(rx_stats.rx_ip_payload_errors)},
+	{"rx_no_buffer_errors", SYN_STAT(rx_stats.rx_no_buffer_errors)},
+	{"rx_transport_csum_bypassed", SYN_STAT(rx_stats.rx_transport_csum_bypassed)},
+	{"rx_scatter_errors", SYN_STAT(rx_stats.rx_scatter_errors)},
+	{"rx_fifo_overflows", SYN_STAT(rx_stats.rx_fifo_overflows)},
+	{"rx_overflow_errors", SYN_STAT(rx_stats.rx_overflow_errors)},
+	{"rx_crc_errors", SYN_STAT(rx_stats.rx_crc_errors)},
+	{"tx_bytes", SYN_STAT(tx_stats.tx_bytes)},
+	{"tx_packets", SYN_STAT(tx_stats.tx_packets)},
+	{"tx_collisions", SYN_STAT(tx_stats.tx_collisions)},
+	{"tx_errors", SYN_STAT(tx_stats.tx_errors)},
+	{"tx_jabber_timeout_errors", SYN_STAT(tx_stats.tx_jabber_timeout_errors)},
+	{"tx_frame_flushed_errors", SYN_STAT(tx_stats.tx_frame_flushed_errors)},
+	{"tx_loss_of_carrier_errors", SYN_STAT(tx_stats.tx_loss_of_carrier_errors)},
+	{"tx_no_carrier_errors", SYN_STAT(tx_stats.tx_no_carrier_errors)},
+	{"tx_late_collision_errors", SYN_STAT(tx_stats.tx_late_collision_errors)},
+	{"tx_excessive_collision_errors", SYN_STAT(tx_stats.tx_excessive_collision_errors)},
+	{"tx_excessive_deferral_errors", SYN_STAT(tx_stats.tx_excessive_deferral_errors)},
+	{"tx_underflow_errors", SYN_STAT(tx_stats.tx_underflow_errors)},
+	{"tx_ip_header_errors", SYN_STAT(tx_stats.tx_ip_header_errors)},
+	{"tx_ip_payload_errors", SYN_STAT(tx_stats.tx_ip_payload_errors)},
+	{"tx_dropped", SYN_STAT(tx_stats.tx_dropped)},
+	{"tx_ts_create_errors", SYN_STAT(tx_stats.tx_ts_create_errors)},
 	{"pmt_interrupts", SYN_STAT(hw_errs[0])},
 	{"mmc_interrupts", SYN_STAT(hw_errs[0]) + (1 * HW_ERR_SIZE)},
 	{"line_interface_interrupts", SYN_STAT(hw_errs[0]) + (2 * HW_ERR_SIZE)},
@@ -83,10 +84,6 @@ static const struct syn_ethtool_stats syn_gstrings_stats[] = {
 	{"rx_overflow_interrupts", SYN_STAT(hw_errs[0]) + (7 * HW_ERR_SIZE)},
 	{"tx_jabber_timeout_interrutps", SYN_STAT(hw_errs[0]) + (8 * HW_ERR_SIZE)},
 	{"tx_process_stopped_interrutps", SYN_STAT(hw_errs[0]) + (9 * HW_ERR_SIZE)},
-	{"gmac_total_ticks", SYN_STAT(gmac_total_ticks)},
-	{"gmac_worst_case_ticks", SYN_STAT(gmac_worst_case_ticks)},
-	{"gmac_iterations", SYN_STAT(gmac_iterations)},
-	{"tx_pause_frames", SYN_STAT(tx_pause_frames)},
 };
 
 /*
@@ -95,7 +92,6 @@ static const struct syn_ethtool_stats syn_gstrings_stats[] = {
 static const struct syn_ethtool_stats syn_gstrings_mib_stats[] = {
 	{"rx_broadcast", SYN_MIB_STAT(RxBroad)},
 	{"rx_pause", SYN_MIB_STAT(RxPause)},
-	{"rx_unicast", SYN_MIB_STAT(RxUniCast)},
 	{"rx_multicast", SYN_MIB_STAT(RxMulti)},
 	{"rx_fcserr", SYN_MIB_STAT(RxFcsErr)},
 	{"rx_alignerr", SYN_MIB_STAT(RxAllignErr)},
@@ -112,9 +108,7 @@ static const struct syn_ethtool_stats syn_gstrings_mib_stats[] = {
 	{"rx_pktgoodbyte", SYN_MIB_STAT(RxGoodByte)},
 	{"rx_pktbadbyte", SYN_MIB_STAT(RxBadByte)},
 	{"rx_overflow", SYN_MIB_STAT(RxOverFlow)},
-	{"rx_14to63", SYN_MIB_STAT(Rx14To63)},
-	{"rx_toolongbyte", SYN_MIB_STAT(RxTooLongByte)},
-	{"rx_runtbyte", SYN_MIB_STAT(RxRuntByte)},
+	{"filtered", SYN_MIB_STAT(Filtered)},
 	{"tx_broadcast", SYN_MIB_STAT(TxBroad)},
 	{"tx_pause", SYN_MIB_STAT(TxPause)},
 	{"tx_multicast", SYN_MIB_STAT(TxMulti)},
@@ -135,11 +129,16 @@ static const struct syn_ethtool_stats syn_gstrings_mib_stats[] = {
 	{"tx_exesdeffer", SYN_MIB_STAT(TxExcDefer)},
 	{"tx_deffer", SYN_MIB_STAT(TxDefer)},
 	{"tx_latecol", SYN_MIB_STAT(TxLateCol)},
+	{"rx_unicast", SYN_MIB_STAT(RxUniCast)},
 	{"tx_unicast", SYN_MIB_STAT(TxUniCast)},
-	{"filtered", SYN_MIB_STAT(Filtered)},
+	{"rx_jumbofcserr", SYN_MIB_STAT(RxJumboFcsErr)},
+	{"rx_jumboalignerr", SYN_MIB_STAT(RxJumboAligenErr)},
+	{"rx_14to63", SYN_MIB_STAT(Rx14To63)},
+	{"rx_toolongbyte", SYN_MIB_STAT(RxTooLongByte)},
+	{"rx_runtbyte", SYN_MIB_STAT(RxRuntByte)},
 };
 
-#define SYN_STATS_LEN		ARRAY_SIZE(syn_gstrings_stats)
+#define SYN_STATS_LEN	ARRAY_SIZE(syn_gstrings_stats)
 #define SYN_STATS_MIB_STATS_LEN	ARRAY_SIZE(syn_gstrings_mib_stats)
 
 /*
@@ -147,7 +146,7 @@ static const struct syn_ethtool_stats syn_gstrings_mib_stats[] = {
  */
 static inline void syn_set_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, SYN_MAC_FLOW_CONTROL,
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
 			SYN_MAC_FC_RX_FLOW_CONTROL);
 }
 
@@ -156,7 +155,7 @@ static inline void syn_set_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_clear_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, SYN_MAC_FLOW_CONTROL,
+	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
 			SYN_MAC_FC_RX_FLOW_CONTROL);
 
 }
@@ -166,7 +165,7 @@ static inline void syn_clear_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_set_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, SYN_MAC_FLOW_CONTROL,
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
 			SYN_MAC_FC_TX_FLOW_CONTROL);
 }
 
@@ -176,7 +175,7 @@ static inline void syn_set_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 static inline void syn_send_tx_pause_frame(struct nss_gmac_hal_dev *nghd)
 {
 	syn_set_tx_flow_ctrl(nghd);
-	hal_set_reg_bits(nghd, SYN_MAC_FLOW_CONTROL,
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
 			SYN_MAC_FC_SEND_PAUSE_FRAME);
 }
 
@@ -185,7 +184,7 @@ static inline void syn_send_tx_pause_frame(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_clear_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, SYN_MAC_FLOW_CONTROL,
+	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
 			SYN_MAC_FC_TX_FLOW_CONTROL);
 }
 
@@ -194,8 +193,8 @@ static inline void syn_clear_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_rx_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, SYN_MAC_CONFIGURATION, SYN_MAC_RX);
-	hal_set_reg_bits(nghd, SYN_MAC_FRAME_FILTER, SYN_MAC_FILTER_OFF);
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_RX);
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_FILTER_OFF);
 }
 
 /*
@@ -203,7 +202,23 @@ static inline void syn_rx_enable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_tx_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, SYN_MAC_CONFIGURATION, SYN_MAC_TX);
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_TX);
+}
+
+/*
+ * syn_rx_disable()
+ */
+static inline void syn_rx_disable(struct nss_gmac_hal_dev *nghd)
+{
+	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_RX);
+}
+
+/*
+ * syn_tx_disable()
+ */
+static inline void syn_tx_disable(struct nss_gmac_hal_dev *nghd)
+{
+	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_TX);
 }
 
 /************Ip checksum offloading APIs*************/
@@ -214,7 +229,7 @@ static inline void syn_tx_enable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_enable_rx_chksum_offload(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd,
+	hal_set_reg_bits(nghd->mac_base,
 			      SYN_MAC_CONFIGURATION, SYN_MAC_RX_IPC_OFFLOAD);
 }
 
@@ -224,22 +239,8 @@ static inline void syn_enable_rx_chksum_offload(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_disable_rx_chksum_offload(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd,
+	hal_clear_reg_bits(nghd->mac_base,
 				SYN_MAC_CONFIGURATION, SYN_MAC_RX_IPC_OFFLOAD);
-}
-
-/*
- * syn_rx_tcpip_chksum_drop_enable()
- *	Instruct the DMA to drop the packets that fail TCP/IP checksum.
- *
- * This is to instruct the receive DMA engine to drop the recevied
- * packet if they fails the tcp/ip checksum in hardware. Valid only when
- * full checksum offloading is enabled(type-2).
- */
-static inline void syn_rx_tcpip_chksum_drop_enable(struct nss_gmac_hal_dev *nghd)
-{
-	hal_clear_reg_bits(nghd,
-				SYN_DMA_OPERATION_MODE, SYN_DMA_DISABLE_DROP_TCP_CS);
 }
 
 /*******************Ip checksum offloading APIs**********************/
@@ -258,12 +259,6 @@ static inline void syn_ipc_offload_init(struct nss_gmac_hal_dev *nghd)
 		 * Enable the offload engine in the receive path
 		 */
 		syn_enable_rx_chksum_offload(nghd);
-
-		/*
-		 * DMA drops the packets if error in encapsulated ethernet
-		 * payload.
-		 */
-		syn_rx_tcpip_chksum_drop_enable(nghd);
 		netdev_dbg(nghd->netdev, "%s: enable Rx checksum\n", __func__);
 	} else {
 		syn_disable_rx_chksum_offload(nghd);
@@ -289,7 +284,7 @@ static inline void syn_disable_mac_interrupt(struct nss_gmac_hal_dev *nghd)
 static inline void syn_disable_mmc_tx_interrupt(struct nss_gmac_hal_dev *nghd,
 						uint32_t mask)
 {
-	hal_set_reg_bits(nghd, SYN_MMC_TX_INTERRUPT_MASK, mask);
+	hal_set_reg_bits(nghd->mac_base, SYN_MMC_TX_INTERRUPT_MASK, mask);
 }
 
 /*
@@ -301,7 +296,7 @@ static inline void syn_disable_mmc_tx_interrupt(struct nss_gmac_hal_dev *nghd,
 static inline void syn_disable_mmc_rx_interrupt(struct nss_gmac_hal_dev *nghd,
 						uint32_t mask)
 {
-	hal_set_reg_bits(nghd, SYN_MMC_RX_INTERRUPT_MASK, mask);
+	hal_set_reg_bits(nghd->mac_base, SYN_MMC_RX_INTERRUPT_MASK, mask);
 }
 
 /*
@@ -314,7 +309,7 @@ static inline void syn_disable_mmc_rx_interrupt(struct nss_gmac_hal_dev *nghd,
 static inline void syn_disable_mmc_ipc_rx_interrupt(struct nss_gmac_hal_dev *nghd,
 					   uint32_t mask)
 {
-	hal_set_reg_bits(nghd, SYN_MMC_IPC_RX_INTR_MASK, mask);
+	hal_set_reg_bits(nghd->mac_base, SYN_MMC_IPC_RX_INTR_MASK, mask);
 }
 
 /*
@@ -330,34 +325,6 @@ static inline void syn_disable_interrupt_all(struct nss_gmac_hal_dev *nghd)
 }
 
 /*
- * syn_dma_bus_mode_init()
- *	Function to program DMA bus mode register.
- */
-static inline void syn_dma_bus_mode_init(struct nss_gmac_hal_dev *nghd)
-{
-	hal_write_relaxed_reg(nghd->mac_base, SYN_DMA_BUS_MODE, SYN_DMA_BUS_MODE_VAL);
-}
-
-/*
- * syn_dma_axi_bus_mode_init()
- *	Function to program DMA AXI bus mode register.
- */
-static inline void syn_dma_axi_bus_mode_init(struct nss_gmac_hal_dev *nghd)
-{
-	hal_write_relaxed_reg(nghd->mac_base, SYN_DMA_AXI_BUS_MODE,
-					SYN_DMA_AXI_BUS_MODE_VAL);
-}
-
-/*
- * syn_dma_operation_mode_init()
- *	Function to program DMA Operation Mode register.
- */
-static inline void syn_dma_operation_mode_init(struct nss_gmac_hal_dev *nghd)
-{
-	hal_write_relaxed_reg(nghd->mac_base, SYN_DMA_OPERATION_MODE, SYN_DMA_OMR);
-}
-
-/*
  * syn_broadcast_enable()
  *	Enables Broadcast frames.
  *
@@ -365,7 +332,7 @@ static inline void syn_dma_operation_mode_init(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_broadcast_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, SYN_MAC_FRAME_FILTER, SYN_MAC_BROADCAST);
+	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_BROADCAST);
 }
 
 /*
@@ -376,7 +343,7 @@ static inline void syn_broadcast_enable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_multicast_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, SYN_MAC_FRAME_FILTER, SYN_MAC_MULTICAST_FILTER);
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_MULTICAST_FILTER);
 }
 
 /*
@@ -388,32 +355,9 @@ static inline void syn_multicast_enable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void syn_promisc_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, SYN_MAC_FRAME_FILTER, SYN_MAC_FILTER_OFF);
-	hal_set_reg_bits(nghd, SYN_MAC_FRAME_FILTER,
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_FILTER_OFF);
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER,
 				SYN_MAC_PROMISCUOUS_MODE_ON);
-}
-
-/*
- * syn_get_stats()
- */
-static int syn_get_stats(struct nss_gmac_hal_dev *nghd)
-{
-	struct syn_hal_dev *shd;
-	fal_mib_counter_t *mib_stats;
-
-	BUG_ON(nghd == NULL);
-
-	shd = (struct syn_hal_dev *)nghd;
-
-	/*
-	 * Get mib stats.
-	 */
-	mib_stats = &(shd->mib_stats);
-	if (fal_mib_counter_get(0, nghd->mac_id, mib_stats) < 0) {
-		return -1;
-	}
-
-	return 0;
 }
 
 /*
@@ -424,10 +368,11 @@ static void syn_rx_flow_control(struct nss_gmac_hal_dev *nghd,
 {
 	BUG_ON(nghd == NULL);
 
-	if (enabled)
+	if (enabled) {
 		syn_set_rx_flow_ctrl(nghd);
-	else
+	} else {
 		syn_clear_rx_flow_ctrl(nghd);
+	}
 }
 
 /*
@@ -438,10 +383,11 @@ static void syn_tx_flow_control(struct nss_gmac_hal_dev *nghd,
 {
 	BUG_ON(nghd == NULL);
 
-	if (enabled)
+	if (enabled) {
 		syn_set_tx_flow_ctrl(nghd);
-	else
+	} else {
 		syn_clear_tx_flow_ctrl(nghd);
+	}
 }
 
 /*
@@ -456,8 +402,9 @@ static int32_t syn_get_max_frame_size(struct nss_gmac_hal_dev *nghd)
 
 	ret = fal_port_max_frame_size_get(0, nghd->mac_id, &mtu);
 
-	if (!ret)
+	if (!ret) {
 		return mtu;
+	}
 
 	return ret;
 }
@@ -539,43 +486,59 @@ static uint8_t syn_get_duplex_mode(struct nss_gmac_hal_dev *nghd)
 }
 
 /*
+ * syn_get_mib_stats()
+ */
+int syn_get_mib_stats(struct nss_gmac_hal_dev *nghd, fal_mib_counter_t *stats)
+{
+	if (fal_mib_counter_get(0, nghd->mac_id, stats) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  * syn_get_netdev_stats()
  */
-static int syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
-				struct rtnl_link_stats64 *stats)
+static int32_t syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
+		struct rtnl_link_stats64 *stats)
 {
-	struct syn_hal_dev *shd;
-	struct nss_dp_hal_gmac_stats *ndo_stats;
-	fal_mib_counter_t *mib_stats;
+	fal_mib_counter_t hal_stats;
 
 	BUG_ON(nghd == NULL);
 
-	shd = (struct syn_hal_dev *)nghd;
-	ndo_stats = &(shd->stats.stats);
-	mib_stats = &(shd->mib_stats);
+	memset(&hal_stats, 0, sizeof(fal_mib_counter_t));
+	if (syn_get_mib_stats(nghd, &hal_stats)) {
+		return -1;
+	}
+
+	stats->rx_packets = hal_stats.RxUniCast + hal_stats.RxBroad
+				+ hal_stats.RxMulti;
+	stats->tx_packets = hal_stats.TxUniCast + hal_stats.TxBroad
+				+ hal_stats.TxMulti;
+	stats->rx_bytes = hal_stats.RxGoodByte;
+	stats->tx_bytes = hal_stats.TxByte;
+	stats->collisions = hal_stats.TxCollision;
+	stats->multicast = hal_stats.RxMulti;
 
 	/*
-	 * Read stats from the registered dataplane.
+	 * RX errors
 	 */
-	if (syn_get_stats(nghd))
-		return -1;
+	stats->rx_crc_errors = hal_stats.RxFcsErr + hal_stats.RxJumboFcsErr;
+	stats->rx_frame_errors = hal_stats.RxAllignErr +
+				 hal_stats.RxJumboAligenErr + hal_stats.RxRunt;
+	stats->rx_fifo_errors = hal_stats.RxOverFlow;
+	stats->rx_errors = stats->rx_crc_errors + stats->rx_frame_errors +
+			   stats->rx_fifo_errors;
 
-	stats->rx_packets = ndo_stats->rx_packets;
-	stats->rx_bytes = ndo_stats->rx_bytes;
-	stats->rx_errors = ndo_stats->rx_errors;
-	stats->rx_dropped = ndo_stats->rx_errors;
-	stats->rx_length_errors = ndo_stats->rx_length_errors;
-	stats->rx_frame_errors = ndo_stats->rx_dribble_bit_errors;
-	stats->rx_fifo_errors = ndo_stats->fifo_overflows;
-	stats->rx_missed_errors = ndo_stats->rx_missed;
-	stats->collisions = ndo_stats->tx_collisions + ndo_stats->rx_late_collision_errors;
-	stats->tx_packets = ndo_stats->tx_packets;
-	stats->tx_bytes = ndo_stats->tx_bytes;
-	stats->tx_errors = ndo_stats->tx_errors;
-	stats->tx_dropped = ndo_stats->tx_dropped;
-	stats->tx_carrier_errors = ndo_stats->tx_loss_of_carrier_errors + ndo_stats->tx_no_carrier_errors;
-	stats->tx_fifo_errors = ndo_stats->tx_underflow_errors;
-	stats->tx_window_errors = ndo_stats->tx_late_collision_errors;
+	stats->rx_dropped = hal_stats.RxTooLong + stats->rx_errors;
+
+	/*
+	 * TX errors
+	 */
+	stats->tx_fifo_errors = hal_stats.TxUnderRun + hal_stats.RxOverFlow;
+	stats->tx_aborted_errors = hal_stats.TxAbortCol;
+	stats->tx_errors = stats->tx_fifo_errors + stats->tx_aborted_errors;
 
 	return 0;
 }
@@ -583,39 +546,40 @@ static int syn_get_netdev_stats(struct nss_gmac_hal_dev *nghd,
 /*
  * syn_get_eth_stats()
  */
-static int32_t syn_get_eth_stats(struct nss_gmac_hal_dev *nghd, uint64_t *data)
+static int32_t syn_get_eth_stats(struct nss_gmac_hal_dev *nghd,
+					uint64_t *data,
+					struct nss_dp_gmac_stats *stats)
 {
-	struct syn_hal_dev *shd;
-	struct nss_dp_gmac_stats *stats;
-	fal_mib_counter_t *mib_stats;
-	uint8_t *p = NULL;
 	int i, i_mib;
+	fal_mib_counter_t mib_stats;
+	uint8_t *p = NULL;
 
 	BUG_ON(nghd == NULL);
 
-	shd = (struct syn_hal_dev *)nghd;
-	stats = &(shd->stats);
-
 	/*
-	 * Read stats from the registered dataplane.
+	 * Populate data plane statistics.
 	 */
-	if (syn_get_stats(nghd))
-		return -1;
-
 	for (i = 0; i < SYN_STATS_LEN; i++) {
 		p = ((uint8_t *)(stats) + syn_gstrings_stats[i].stat_offset);
-		data[i] = *(uint32_t *)p;
+		data[i] = *(uint64_t *)p;
 	}
 
 	/*
-	 * Fill in the mib stats from the mib stats collected from FAL layer
+	 * Get MIB statistics
 	 */
-	mib_stats = &(shd->mib_stats);
+	memset(&mib_stats, 0, sizeof(fal_mib_counter_t));
+	if (syn_get_mib_stats(nghd, &mib_stats)) {
+		return -1;
+	}
+
+	/*
+	 * Populate MIB statistics
+	 */
 	for (i_mib = 0; i_mib < SYN_STATS_MIB_STATS_LEN; i_mib++) {
-		p = ((uint8_t *)(mib_stats) +
+		p = ((uint8_t *)(&mib_stats) +
 				syn_gstrings_mib_stats[i_mib].stat_offset);
 		i = SYN_STATS_LEN + i_mib;
-		data[i] = *(uint32_t *)p;
+		data[i] = *(uint64_t *)p;
 	}
 
 	return 0;
@@ -625,9 +589,10 @@ static int32_t syn_get_eth_stats(struct nss_gmac_hal_dev *nghd, uint64_t *data)
  * syn_get_strset_count()
  */
 static int32_t syn_get_strset_count(struct nss_gmac_hal_dev *nghd,
-							int32_t sset)
+					int32_t sset)
 {
 	struct net_device *netdev;
+
 	BUG_ON(nghd == NULL);
 
 	netdev = nghd->netdev;
@@ -658,13 +623,13 @@ static int32_t syn_get_strings(struct nss_gmac_hal_dev *nghd,
 	case ETH_SS_STATS:
 		for (i = 0; i < SYN_STATS_LEN; i++) {
 			memcpy(data, syn_gstrings_stats[i].stat_string,
-				ETH_GSTRING_LEN);
+					ETH_GSTRING_LEN);
 			data += ETH_GSTRING_LEN;
 		}
 
 		for (i = 0; i < SYN_STATS_MIB_STATS_LEN; i++) {
 			memcpy(data, syn_gstrings_mib_stats[i].stat_string,
-				ETH_GSTRING_LEN);
+					ETH_GSTRING_LEN);
 			data += ETH_GSTRING_LEN;
 		}
 
@@ -767,17 +732,37 @@ static void syn_gmac_clk_enable(struct nss_gmac_hal_dev *nghd)
 }
 
 /*
- * syn_dma_init()
- *	Initialize settings for GMAC DMA and AXI bus.
+ * syn_start()
  */
-static void syn_dma_init(struct nss_gmac_hal_dev *nghd)
+static int32_t syn_start(struct nss_gmac_hal_dev *nghd)
 {
-	/*
-	 * Configure DMA registers.
-	 */
-	syn_dma_bus_mode_init(nghd);
-	syn_dma_axi_bus_mode_init(nghd);
-	syn_dma_operation_mode_init(nghd);
+	BUG_ON(nghd == NULL);
+
+	syn_tx_enable(nghd);
+	syn_rx_enable(nghd);
+
+	netdev_dbg(nghd->netdev, "%s: mac_base:0x%px MAC Config:0x%x\n",
+		__func__, nghd->mac_base,
+		hal_read_relaxed_reg(nghd->mac_base, SYN_MAC_CONFIGURATION));
+
+	return 0;
+}
+
+/*
+ * syn_stop()
+ */
+static int32_t syn_stop(struct nss_gmac_hal_dev *nghd)
+{
+	BUG_ON(nghd == NULL);
+
+	syn_tx_disable(nghd);
+	syn_rx_disable(nghd);
+
+	netdev_dbg(nghd->netdev, "%s: mac_base:0x%px MAC Config:0x%x\n",
+		__func__, nghd->mac_base,
+		hal_read_relaxed_reg(nghd->mac_base, SYN_MAC_CONFIGURATION));
+
+	return 0;
 }
 
 /*
@@ -849,25 +834,17 @@ static void *syn_init(struct nss_gmac_hal_platform_data *gmacpdata)
 			ndev->base_addr,
 			shd->nghd.mac_base);
 
+	syn_disable_interrupt_all(&shd->nghd);
+
 	/*
 	 * Enable SoC specific GMAC clocks.
 	 */
 	syn_gmac_clk_enable(&shd->nghd);
 
-	syn_disable_interrupt_all(&shd->nghd);
-	syn_dma_init(&shd->nghd);
 	syn_ipc_offload_init(&shd->nghd);
 	syn_promisc_enable(&shd->nghd);
 	syn_broadcast_enable(&shd->nghd);
 	syn_multicast_enable(&shd->nghd);
-
-	/*
-	 * TODO: Move Rx/Tx enable to GMAC start op
-	 * which enables Rx/Tx after DMA rings are
-	 * setup during netdev open.
-	 */
-	syn_rx_enable(&shd->nghd);
-	syn_tx_enable(&shd->nghd);
 
 	/*
 	 * Reset MIB Stats
@@ -907,8 +884,8 @@ static void syn_exit(struct nss_gmac_hal_dev *nghd)
  */
 struct nss_gmac_hal_ops syn_gmac_ops = {
 	.init = &syn_init,
-	.start =  NULL,
-	.stop = NULL,
+	.start =  &syn_start,
+	.stop = &syn_stop,
 	.exit = &syn_exit,
 	.setmacaddr = &syn_set_mac_address,
 	.getmacaddr = &syn_get_mac_address,

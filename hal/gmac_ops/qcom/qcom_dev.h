@@ -36,7 +36,7 @@ struct qcom_hal_dev {
  */
 static inline void qcom_set_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_RX_FLOW_ENABLE);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_RX_FLOW_ENABLE);
 }
 
 /*
@@ -44,7 +44,7 @@ static inline void qcom_set_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_clear_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_RX_FLOW_ENABLE);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_RX_FLOW_ENABLE);
 }
 
 /*
@@ -52,7 +52,7 @@ static inline void qcom_clear_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_TX_FLOW_ENABLE);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_TX_FLOW_ENABLE);
 }
 
 /*
@@ -60,7 +60,7 @@ static inline void qcom_set_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_clear_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_TX_FLOW_ENABLE);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_TX_FLOW_ENABLE);
 }
 
 /*
@@ -76,7 +76,7 @@ static inline void qcom_clear_mac_ctrl0(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_rx_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_RX_MAC_ENABLE);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_RX_MAC_ENABLE);
 }
 
 /*
@@ -87,7 +87,7 @@ static inline void qcom_rx_enable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_rx_disable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_RX_MAC_ENABLE);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_RX_MAC_ENABLE);
 }
 
 /*
@@ -95,7 +95,7 @@ static inline void qcom_rx_disable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_tx_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_TX_MAC_ENABLE);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_TX_MAC_ENABLE);
 }
 
 /*
@@ -106,7 +106,7 @@ static inline void qcom_tx_enable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_tx_disable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_TX_MAC_ENABLE);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_TX_MAC_ENABLE);
 }
 
 /*
@@ -114,7 +114,7 @@ static inline void qcom_tx_disable(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_full_duplex(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_DUPLEX);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_DUPLEX);
 }
 
 /*
@@ -122,7 +122,7 @@ static inline void qcom_set_full_duplex(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_half_duplex(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_ENABLE, QCOM_DUPLEX);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_ENABLE, QCOM_DUPLEX);
 }
 
 /*
@@ -158,7 +158,7 @@ static inline void qcom_set_ipgr(struct nss_gmac_hal_dev *nghd, uint32_t ipgr)
  */
 static inline void qcom_set_half_thdf_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_HALF_THDF_CTRL);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_HALF_THDF_CTRL);
 }
 
 /*
@@ -166,7 +166,7 @@ static inline void qcom_set_half_thdf_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_half_thdf_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_HALF_THDF_CTRL);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_HALF_THDF_CTRL);
 }
 
 /*
@@ -174,7 +174,7 @@ static inline void qcom_reset_half_thdf_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_frame_len_chk(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_FLCHK);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_FLCHK);
 }
 
 /*
@@ -182,7 +182,7 @@ static inline void qcom_set_frame_len_chk(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_frame_len_chk(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_FLCHK);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_FLCHK);
 }
 
 /*
@@ -190,7 +190,7 @@ static inline void qcom_reset_frame_len_chk(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_abebe(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_ABEBE);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_ABEBE);
 }
 
 /*
@@ -198,7 +198,7 @@ static inline void qcom_set_abebe(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_abebe(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_ABEBE);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_ABEBE);
 }
 
 /*
@@ -206,7 +206,7 @@ static inline void qcom_reset_abebe(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_amaxe(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_AMAXE);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_AMAXE);
 }
 
 /*
@@ -214,7 +214,7 @@ static inline void qcom_set_amaxe(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_amaxe(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_AMAXE);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_AMAXE);
 }
 
 /*
@@ -222,7 +222,7 @@ static inline void qcom_reset_amaxe(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_bpnb(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_BPNB);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_BPNB);
 }
 
 /*
@@ -230,7 +230,7 @@ static inline void qcom_set_bpnb(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_bpnb(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_BPNB);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_BPNB);
 }
 
 /*
@@ -238,7 +238,7 @@ static inline void qcom_reset_bpnb(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_nobo(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_NOBO);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_NOBO);
 }
 
 /*
@@ -246,7 +246,7 @@ static inline void qcom_set_nobo(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_nobo(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_NOBO);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_NOBO);
 }
 
 /*
@@ -254,7 +254,7 @@ static inline void qcom_reset_nobo(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_drbnib_rxok(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_DRBNIB_RXOK);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_DRBNIB_RXOK);
 }
 
 /*
@@ -262,7 +262,7 @@ static inline void qcom_set_drbnib_rxok(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_drbnib_rxok(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL0, QCOM_DRBNIB_RXOK);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL0, QCOM_DRBNIB_RXOK);
 }
 
 /*
@@ -285,7 +285,7 @@ static inline void qcom_set_jam_ipg(struct nss_gmac_hal_dev *nghd,
  */
 static inline void qcom_set_ctrl1_test_pause(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_TPAUSE);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_TPAUSE);
 }
 
 /*
@@ -293,7 +293,7 @@ static inline void qcom_set_ctrl1_test_pause(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_ctrl1_test_pause(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_TPAUSE);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_TPAUSE);
 }
 
 /*
@@ -301,7 +301,7 @@ static inline void qcom_reset_ctrl1_test_pause(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_tctl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_TCTL);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_TCTL);
 }
 
 /*
@@ -309,7 +309,7 @@ static inline void qcom_set_tctl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_tctl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_TCTL);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_TCTL);
 }
 
 /*
@@ -317,7 +317,7 @@ static inline void qcom_reset_tctl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_sstct(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_SSTCT);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_SSTCT);
 }
 
 /*
@@ -325,7 +325,7 @@ static inline void qcom_set_sstct(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_sstct(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_SSTCT);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_SSTCT);
 }
 
 /*
@@ -333,7 +333,7 @@ static inline void qcom_reset_sstct(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_simr(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_SIMR);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_SIMR);
 }
 
 /*
@@ -341,7 +341,7 @@ static inline void qcom_set_simr(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_simr(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_SIMR);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_SIMR);
 }
 
 /*
@@ -377,7 +377,7 @@ static inline void qcom_set_prlen(struct nss_gmac_hal_dev *nghd, uint32_t prlen)
  */
 static inline void qcom_set_ppad(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_PPAD);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_PPAD);
 }
 
 /*
@@ -385,7 +385,7 @@ static inline void qcom_set_ppad(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_ppad(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_PPAD);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_PPAD);
 }
 
 /*
@@ -393,7 +393,7 @@ static inline void qcom_reset_ppad(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_povr(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_POVR);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_POVR);
 }
 
 /*
@@ -401,7 +401,7 @@ static inline void qcom_set_povr(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_povr(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_POVR);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_POVR);
 }
 
 /*
@@ -409,7 +409,7 @@ static inline void qcom_reset_povr(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_phug(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_PHUG);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_PHUG);
 }
 
 /*
@@ -417,7 +417,7 @@ static inline void qcom_set_phug(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_phug(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_PHUG);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_PHUG);
 }
 
 /*
@@ -425,7 +425,7 @@ static inline void qcom_reset_phug(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_mbof(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_MBOF);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_MBOF);
 }
 
 /*
@@ -433,7 +433,7 @@ static inline void qcom_set_mbof(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_mbof(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_MBOF);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_MBOF);
 }
 
 /*
@@ -455,7 +455,7 @@ static inline void qcom_set_lcol(struct nss_gmac_hal_dev *nghd, uint32_t lcol)
  */
 static inline void qcom_set_long_jam(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_LONG_JAM);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_LONG_JAM);
 }
 
 /*
@@ -463,7 +463,7 @@ static inline void qcom_set_long_jam(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_long_jam(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL1, QCOM_LONG_JAM);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL1, QCOM_LONG_JAM);
 }
 
 /*
@@ -471,7 +471,7 @@ static inline void qcom_reset_long_jam(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_ipg_dec_len(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_IPG_DEC_LEN);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_IPG_DEC_LEN);
 }
 
 /*
@@ -479,7 +479,7 @@ static inline void qcom_set_ipg_dec_len(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_ipg_dec_len(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_IPG_DEC_LEN);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_IPG_DEC_LEN);
 }
 
 /*
@@ -487,7 +487,7 @@ static inline void qcom_reset_ipg_dec_len(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_ctrl2_test_pause(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_TEST_PAUSE);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_TEST_PAUSE);
 }
 
 /*
@@ -495,7 +495,7 @@ static inline void qcom_set_ctrl2_test_pause(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_ctrl2_test_pause(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_TEST_PAUSE);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_TEST_PAUSE);
 }
 
 /*
@@ -503,7 +503,7 @@ static inline void qcom_reset_ctrl2_test_pause(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_mac_loopback(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_MAC_LOOPBACK);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_MAC_LOOPBACK);
 }
 
 /*
@@ -511,7 +511,7 @@ static inline void qcom_set_mac_loopback(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_mac_loopback(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_MAC_LOOPBACK);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_MAC_LOOPBACK);
 }
 
 /*
@@ -519,7 +519,7 @@ static inline void qcom_reset_mac_loopback(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_ipg_dec(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_IPG_DEC);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_IPG_DEC);
 }
 
 /*
@@ -527,7 +527,7 @@ static inline void qcom_set_ipg_dec(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_ipg_dec(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_IPG_DEC);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_IPG_DEC);
 }
 
 /*
@@ -535,7 +535,7 @@ static inline void qcom_reset_ipg_dec(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_crs_sel(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_SRS_SEL);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_SRS_SEL);
 }
 
 /*
@@ -543,7 +543,7 @@ static inline void qcom_set_crs_sel(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_crs_sel(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_SRS_SEL);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_SRS_SEL);
 }
 
 /*
@@ -551,7 +551,7 @@ static inline void qcom_reset_crs_sel(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_crc_rsv(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_CRC_RSV);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_CRC_RSV);
 }
 
 /*
@@ -559,7 +559,7 @@ static inline void qcom_set_crc_rsv(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_crc_rsv(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_CTRL2, QCOM_CRC_RSV);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_CTRL2, QCOM_CRC_RSV);
 }
 
 /*
@@ -609,7 +609,7 @@ static inline void qcom_set_mac_ipg_ctrl(struct nss_gmac_hal_dev *nghd,
  */
 static inline void qcom_set_mac_len_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_DBG_CTRL, QCOM_DBG_MAC_LEN_CTRL);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_DBG_CTRL, QCOM_DBG_MAC_LEN_CTRL);
 }
 
 /*
@@ -617,7 +617,7 @@ static inline void qcom_set_mac_len_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_mac_len_ctrl(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_DBG_CTRL, QCOM_DBG_MAC_LEN_CTRL);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_DBG_CTRL, QCOM_DBG_MAC_LEN_CTRL);
 }
 
 /*
@@ -625,7 +625,7 @@ static inline void qcom_reset_mac_len_ctrl(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_set_edxsdfr_transmit(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_DBG_CTRL, QCOM_DBG_EDxSDFR_TRANS);
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_DBG_CTRL, QCOM_DBG_EDxSDFR_TRANS);
 }
 
 /*
@@ -633,7 +633,7 @@ static inline void qcom_set_edxsdfr_transmit(struct nss_gmac_hal_dev *nghd)
  */
 static inline void qcom_reset_edxsdfr_transmit(struct nss_gmac_hal_dev *nghd)
 {
-	hal_clear_reg_bits(nghd, QCOM_MAC_DBG_CTRL, QCOM_DBG_EDxSDFR_TRANS);
+	hal_clear_reg_bits(nghd->mac_base, QCOM_MAC_DBG_CTRL, QCOM_DBG_EDxSDFR_TRANS);
 }
 
 /*
@@ -677,7 +677,7 @@ static inline void qcom_clear_mib_ctrl(struct nss_gmac_hal_dev *nghd)
 static inline void qcom_set_mib_ctrl(struct nss_gmac_hal_dev *nghd,
 						int mib_settings)
 {
-	hal_set_reg_bits(nghd, QCOM_MAC_MIB_CTRL,
+	hal_set_reg_bits(nghd->mac_base, QCOM_MAC_MIB_CTRL,
 			mib_settings);
 }
 

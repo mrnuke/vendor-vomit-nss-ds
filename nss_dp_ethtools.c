@@ -30,8 +30,21 @@ static void nss_dp_get_ethtool_stats(struct net_device *netdev,
 				struct ethtool_stats *stats, uint64_t *data)
 {
 	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+	struct nss_dp_gmac_stats dp_stats;
 
-	dp_priv->gmac_hal_ops->getethtoolstats(dp_priv->gmac_hal_ctx, data);
+	/*
+	 * Get the DMA Driver statistics from the data plane if available
+	 */
+	memset(&dp_stats, 0, sizeof(struct nss_dp_gmac_stats));
+	if (dp_priv->data_plane_ops->get_stats) {
+		dp_priv->data_plane_ops->get_stats(dp_priv->dpc, &dp_stats);
+	}
+
+	/*
+	 * Get and print the GMAC MIB statistics along with the
+	 * DMA driver statistics.
+	 */
+	dp_priv->gmac_hal_ops->getethtoolstats(dp_priv->gmac_hal_ctx, data, &dp_stats);
 }
 
 /*

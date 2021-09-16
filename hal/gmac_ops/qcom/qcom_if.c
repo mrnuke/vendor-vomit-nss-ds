@@ -21,7 +21,6 @@
 #include <linux/vmalloc.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
-#include <nss_dp_hal_if.h>
 #include <nss_dp_dev.h>
 #include "qcom_dev.h"
 
@@ -302,10 +301,10 @@ int32_t qcom_get_strings(struct nss_gmac_hal_dev *nghd, int32_t sset,
 /*
  * qcom_get_eth_stats()
  */
-static int32_t qcom_get_eth_stats(struct nss_gmac_hal_dev *nghd, uint64_t *data)
+static int32_t qcom_get_eth_stats(struct nss_gmac_hal_dev *nghd, uint64_t *data, struct nss_dp_gmac_stats *stats)
 {
 	struct qcom_hal_dev *qhd = (struct qcom_hal_dev *)nghd;
-	fal_mib_counter_t *stats = &(qhd->stats);
+	fal_mib_counter_t *mib_stats = &(qhd->stats);
 	uint8_t *p;
 	int i;
 
@@ -313,7 +312,7 @@ static int32_t qcom_get_eth_stats(struct nss_gmac_hal_dev *nghd, uint64_t *data)
 		return -1;
 
 	for (i = 0; i < QCOM_STATS_LEN; i++) {
-		p = (uint8_t *)stats + qcom_gstrings_stats[i].stat_offset;
+		p = (uint8_t *)mib_stats + qcom_gstrings_stats[i].stat_offset;
 		data[i] = *(uint32_t *)p;
 	}
 
