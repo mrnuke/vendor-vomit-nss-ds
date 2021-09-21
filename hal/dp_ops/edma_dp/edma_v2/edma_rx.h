@@ -33,6 +33,7 @@
 
 #define EDMA_RX_RING_SIZE		256
 #define EDMA_RX_RING_SIZE_MASK		(EDMA_RX_RING_SIZE - 1)
+#define EDMA_RX_RING_ID_MASK		0x1F
 #define EDMA_MAX_RXDESC_RINGS		24	/* Max RxDesc rings */
 #define EDMA_MAX_RXFILL_RINGS		8	/* Max RxFill rings */
 #define EDMA_RX_MAX_PRIORITY_LEVEL	1

@@ -21,6 +21,8 @@
 #include <linux/of_platform.h>
 #include <linux/irq.h>
 #include <linux/reset.h>
+#include <fal/fal_qm.h>
+#include <fal/fal_rss_hash.h>
 #include "edma.h"
 #include "edma_cfg_tx.h"
 #include "edma_cfg_rx.h"
@@ -636,6 +638,72 @@ static void edma_init_ring_maps(void)
 }
 
 /*
+ * edma_configure_rps_hash_map()
+ *	Configure RPS hash map
+ *
+ * Map all possible hash values to queues used by the EDMA
+ * Rx rings in a round robin fashion. These queues are expected
+ * to be mapped to different Rx rings which are assigned to different
+ * cores using IRQ affinity configuration.
+ *
+ * TODO: Move hash map configuration to PPE driver.
+ */
+static void edma_configure_rps_hash_map(struct edma_gbl_ctx *egc)
+{
+	uint32_t hash, q_off = 0;
+	fal_rss_hash_config_t hash_cfg = {0};
+	sw_error_t error;
+
+	/*
+	 * Initialize the store
+	 */
+	for (hash = 0; hash < EDMA_RSS_HASH_MAX; hash++) {
+		fal_ucast_hash_map_set(0, EDMA_PORT_PROFILE_ID, hash, q_off);
+		edma_info("profile_id: %u, hash: %u, q_off: %u\n", EDMA_PORT_PROFILE_ID, hash, q_off);
+
+		q_off += EDMA_PORT_QUEUE_PER_CORE;
+		q_off %= EDMA_PORT_QUEUE_NUM;
+	}
+
+	/*
+	 * Configure initial seed and mask for hash.
+	 *
+	 * NOTE: In the event when the following RPS hash
+	 * configuration fails, all the traffic will go to
+	 * the Rx descriptor ring mapped to QID 0.
+	 */
+	hash_cfg.hash_seed = PPE_HASH_SEED_DEFAULT;
+	hash_cfg.hash_mask = PPE_HASH_MASK;
+	hash_cfg.hash_sip_mix = PPE_HASH_MIX_V4_SIP;
+	hash_cfg.hash_dip_mix = PPE_HASH_MIX_V4_DIP;
+	hash_cfg.hash_protocol_mix = PPE_HASH_MIX_V4_PROTO;
+	hash_cfg.hash_dport_mix = PPE_HASH_MIX_V4_DPORT;
+	hash_cfg.hash_sport_mix = PPE_HASH_MIX_V4_SPORT;
+
+	hash_cfg.hash_fin_inner = PPE_HASH_FIN_INNER;
+	hash_cfg.hash_fin_outer = PPE_HASH_FIN_OUTER;
+
+	/*
+	 * Configure IPv4 RSS hash seed initialization
+	 */
+	error = fal_rss_hash_config_set(0, FAL_RSS_HASH_IPV4ONLY, &hash_cfg);
+	if (error != SW_OK) {
+		edma_err("IPv4 RSS hash initialization failed. ret: %d\n", error);
+	}
+
+	hash_cfg.hash_sip_mix = PPE_HASH_MIX_V6_SIP;
+	hash_cfg.hash_dip_mix = PPE_HASH_MIX_V6_DIP;
+
+	/*
+	 * Configure IPv6 RSS hash seed initialization
+	 */
+	error = fal_rss_hash_config_set(0, FAL_RSS_HASH_IPV6ONLY, &hash_cfg);
+	if (error != SW_OK) {
+		edma_err("IPv6 RSS hash initialization failed. ret: %d\n", error);
+	}
+}
+
+/*
  * edma_hw_init()
  *	EDMA hardware initialization
  */
@@ -717,6 +785,11 @@ static int edma_hw_init(struct edma_gbl_ctx *egc)
 	 */
 	data = EDMA_PORT_PAD_EN | EDMA_PORT_EDMA_EN;
 	edma_reg_write(EDMA_REG_PORT_CTRL, data);
+
+	/*
+	 * Initialize RPS hash map table
+	 */
+	edma_configure_rps_hash_map(egc);
 
 	egc->edma_initialized = true;
 

@@ -259,21 +259,31 @@ static void edma_cfg_rx_fill_ring_configure(struct edma_gbl_ctx *egc,
  */
 static void edma_cfg_rx_ring_to_qid_mapping(struct edma_gbl_ctx *egc)
 {
-	uint32_t desc_index, data;
+	uint32_t desc_index, i;
 
 	/*
 	 * Set PPE QID to EDMA Rx ring mapping.
-	 * When coming up use only queue 0.
-	 * HOST EDMA rings. FW EDMA comes up and overwrites as required.
-	 * Each entry can hold mapping for 8 PPE queues and entry size is
-	 * 4 bytes
+	 * Each entry can hold mapping for 4 PPE queues and
+	 * entry size is 4 bytes.
 	 */
-	desc_index = egc->rxdesc_ring_start;
-	data = 0;
-	data |= (desc_index & 0x1F);
-	edma_reg_write(EDMA_QID2RID_TABLE_MEM(0), data);
-	edma_debug("Configure QID2RID reg:0x%x to 0x%x\n",
-			EDMA_QID2RID_TABLE_MEM(0), data);
+	desc_index = (egc->rxdesc_ring_start & EDMA_RX_RING_ID_MASK);
+
+	for (i = EDMA_PORT_QUEUE_START;
+		i <= EDMA_PORT_QUEUE_END;
+			i += EDMA_QID2RID_NUM_PER_REG) {
+		uint32_t reg_index, data;
+		reg_index = i/EDMA_QID2RID_NUM_PER_REG;
+		data = EDMA_RX_RING_ID_QUEUE0_SET(desc_index) |
+			EDMA_RX_RING_ID_QUEUE1_SET(desc_index + 1) |
+			EDMA_RX_RING_ID_QUEUE2_SET(desc_index + 2) |
+			EDMA_RX_RING_ID_QUEUE3_SET(desc_index + 3);
+
+		edma_reg_write(EDMA_QID2RID_TABLE_MEM(reg_index), data);
+
+		desc_index += EDMA_QID2RID_NUM_PER_REG;
+		edma_debug("Configure QID2RID(%d) reg:0x%x to 0x%x\n",
+				i, EDMA_QID2RID_TABLE_MEM(reg_index), data);
+	}
 }
 
 /*
@@ -294,33 +304,31 @@ static void edma_cfg_rx_rings_to_rx_fill_mapping(struct edma_gbl_ctx *egc)
 	edma_reg_write(EDMA_REG_RXDESC2FILL_MAP_1, 0);
 	edma_reg_write(EDMA_REG_RXDESC2FILL_MAP_2, 0);
 
-	for (i = egc->rxdesc_ring_start; i < egc->rxdesc_ring_end; i++) {
-		uint32_t data, reg;
-		struct edma_rxdesc_ring *rxdesc_ring;
+	for (i = 0; i < egc->num_rxdesc_rings; i++) {
+		uint32_t data, reg, ring_id;
+		struct edma_rxdesc_ring *rxdesc_ring = &egc->rxdesc_rings[i];
 
-		if ((i >= 0) && (i <= 9)) {
+		ring_id = rxdesc_ring->ring_id;
+		if ((ring_id >= 0) && (ring_id <= 9)) {
 			reg = EDMA_REG_RXDESC2FILL_MAP_0;
-		} else if ((i >= 10) && (i <= 19)) {
+		} else if ((ring_id >= 10) && (ring_id <= 19)) {
 			reg = EDMA_REG_RXDESC2FILL_MAP_1;
 		} else {
 			reg = EDMA_REG_RXDESC2FILL_MAP_2;
 		}
 
-		rxdesc_ring = &egc->rxdesc_rings[i - egc->rxdesc_ring_start];
 		edma_debug("Configure RXDESC:%u to use RXFILL:%u\n",
-						rxdesc_ring->ring_id,
+						ring_id,
 						rxdesc_ring->rxfill->ring_id);
 
 		/*
-		 * Set the Rx fill descriptor ring number in the mapping register.
-		 * E.g. If (rxfill ring)rxdesc_ring->rxfill->id = 7, (rxdesc ring)i = 13.
-		 * 	reg = EDMA_REG_RXDESC2FILL_MAP_1
-		 * 	data |= (rxdesc_ring->rxfill->id & 0x7) << ((i % 10) * 3);
-		 * 	data |= (0x7 << 9); -
-		 * 	This sets 111 at 9th bit of register EDMA_REG_RXDESC2FILL_MAP_1
+		 * Set the Rx fill ring number in the
+		 * mapping register.
 		 */
 		data = edma_reg_read(reg);
-		data |= (rxdesc_ring->rxfill->ring_id & EDMA_RXDESC2FILL_MAP_RXDESC_MASK) << ((i % 10) * 3);
+		data |= (rxdesc_ring->rxfill->ring_id &
+				EDMA_RXDESC2FILL_MAP_RXDESC_MASK) <<
+				((ring_id % 10) * 3);
 		edma_reg_write(reg, data);
 	}
 
