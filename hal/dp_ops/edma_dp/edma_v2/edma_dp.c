@@ -120,6 +120,8 @@ static netdev_tx_t edma_dp_xmit(struct nss_dp_data_plane_ctx *dpc,
 {
 	struct net_device *netdev = dpc->dev;
 	struct edma_txdesc_ring *txdesc_ring;
+	struct edma_pcpu_stats *pcpu_stats;
+	struct edma_tx_stats *stats;
 	struct nss_dp_dev *dp_dev;
 	uint32_t skbq;
 	int ret;
@@ -129,30 +131,36 @@ static netdev_tx_t edma_dp_xmit(struct nss_dp_data_plane_ctx *dpc,
 	 */
 	skbq = (skb_get_queue_mapping(skb) & (NR_CPUS - 1));
 
+	dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+	txdesc_ring = (struct edma_txdesc_ring *)dp_dev->dp_info.txr_map[0][skbq];
+
+	pcpu_stats = &dp_dev->dp_info.pcpu_stats;
+	stats = this_cpu_ptr(pcpu_stats->tx_stats);
+
 	/*
 	 * Check for non-linear skb
 	 */
 	if (unlikely(skb_is_nonlinear(skb))) {
 		netdev_dbg(netdev, "cannot Tx non-linear skb:%px\n", skb);
+		u64_stats_update_begin(&stats->syncp);
+		++stats->tx_non_linear_pkts;
+		u64_stats_update_end(&stats->syncp);
 		goto drop;
 	}
 
 	/*
-	 * Select the tx ring to use for this packet
-	 */
-	dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
-	txdesc_ring = (struct edma_txdesc_ring *)dp_dev->dp_info.txr_map[0][skbq];
-
-	/*
 	 * Transmit the packet
 	 */
-	ret = edma_tx_ring_xmit(netdev, skb, txdesc_ring);
+	ret = edma_tx_ring_xmit(netdev, skb, txdesc_ring, stats);
 	if (likely(ret == EDMA_TX_OK)) {
 		return NETDEV_TX_OK;
 	}
 
 drop:
 	dev_kfree_skb_any(skb);
+	u64_stats_update_begin(&stats->syncp);
+	++stats->tx_drops;
+	u64_stats_update_end(&stats->syncp);
 
 	return NETDEV_TX_OK;
 }
@@ -182,6 +190,51 @@ static int edma_dp_pause_on_off(struct nss_dp_data_plane_ctx *dpc,
 	return NSS_DP_SUCCESS;
 }
 
+/*
+ * edma_dp_get_ndo_stats
+ *	Get EDMA data plane stats
+ */
+static void edma_dp_get_ndo_stats(struct nss_dp_data_plane_ctx *dpc,
+					struct nss_dp_gmac_stats *stats)
+{
+	struct nss_dp_dev *dp_dev = netdev_priv(dpc->dev);
+	struct nss_dp_hal_info *dp_info = &dp_dev->dp_info;
+	struct edma_rx_stats *pcpu_rx_stats;
+	struct edma_tx_stats *pcpu_tx_stats;
+	int i;
+
+	memset(&stats->stats, 0, sizeof(struct nss_dp_hal_gmac_stats));
+
+	for_each_possible_cpu(i) {
+		struct edma_rx_stats rxp;
+		struct edma_tx_stats txp;
+		unsigned int start;
+		pcpu_rx_stats = per_cpu_ptr(dp_info->pcpu_stats.rx_stats, i);
+
+		do {
+			start = u64_stats_fetch_begin_irq(&pcpu_rx_stats->syncp);
+			memcpy(&rxp, pcpu_rx_stats, sizeof(*pcpu_rx_stats));
+		} while (u64_stats_fetch_retry_irq(&pcpu_rx_stats->syncp, start));
+
+		stats->stats.rx_packets += rxp.rx_pkts;
+		stats->stats.rx_bytes += rxp.rx_bytes;
+		stats->stats.rx_dropped += rxp.rx_drops;
+
+		pcpu_tx_stats = per_cpu_ptr(dp_info->pcpu_stats.tx_stats, i);
+
+		do {
+			start = u64_stats_fetch_begin_irq(&pcpu_tx_stats->syncp);
+			memcpy(&txp, pcpu_tx_stats, sizeof(*pcpu_tx_stats));
+		} while (u64_stats_fetch_retry_irq(&pcpu_tx_stats->syncp, start));
+
+		stats->stats.tx_packets += txp.tx_pkts;
+		stats->stats.tx_bytes += txp.tx_bytes;
+		stats->stats.tx_dropped += txp.tx_drops;
+		stats->stats.tx_no_desc_avail += txp.tx_no_desc_avail;
+		stats->stats.tx_non_linear_packets += txp.tx_non_linear_pkts;
+	}
+}
+
 #ifdef CONFIG_RFS_ACCEL
 /*
  * edma_dp_rx_flow_steer()
@@ -202,6 +255,12 @@ static int edma_dp_rx_flow_steer(struct nss_dp_data_plane_ctx *dpc, struct sk_bu
  */
 static int edma_dp_deinit(struct nss_dp_data_plane_ctx *dpc)
 {
+	struct net_device *netdev = dpc->dev;
+	struct nss_dp_dev *dp_dev = (struct nss_dp_dev *)netdev_priv(netdev);
+
+	free_percpu(dp_dev->dp_info.pcpu_stats.rx_stats);
+	free_percpu(dp_dev->dp_info.pcpu_stats.tx_stats);
+
 	/*
 	 * Free up resources used by EDMA if all the
 	 * interfaces have been overridden
@@ -278,12 +337,34 @@ static int edma_dp_init(struct nss_dp_data_plane_ctx *dpc)
 	int ret = 0;
 
 	/*
+	 * Allocate per-cpu stats memory
+	 */
+	dp_dev->dp_info.pcpu_stats.rx_stats =
+		netdev_alloc_pcpu_stats(struct edma_rx_stats);
+	if (!dp_dev->dp_info.pcpu_stats.rx_stats) {
+		netdev_err(netdev, "Percpu EDMA Rx stats alloc failed for %s\n",
+				netdev->name);
+		return NSS_DP_FAILURE;
+	}
+
+	dp_dev->dp_info.pcpu_stats.tx_stats =
+		netdev_alloc_pcpu_stats(struct edma_tx_stats);
+	if (!dp_dev->dp_info.pcpu_stats.tx_stats) {
+		netdev_err(netdev, "Percpu EDMA Tx stats alloc failed for %s\n",
+				netdev->name);
+		free_percpu(dp_dev->dp_info.pcpu_stats.rx_stats);
+		return NSS_DP_FAILURE;
+	}
+
+	/*
 	 * Configure the data plane
 	 */
 	ret = edma_dp_configure(netdev, dp_dev->macid);
 	if (ret) {
 		netdev_dbg(netdev, "Error configuring the data plane %s\n",
 				netdev->name);
+		free_percpu(dp_dev->dp_info.pcpu_stats.rx_stats);
+		free_percpu(dp_dev->dp_info.pcpu_stats.tx_stats);
 		return NSS_DP_FAILURE;
 	}
 
@@ -304,6 +385,7 @@ struct nss_dp_data_plane_ops nss_dp_edma_ops = {
 	.xmit		= edma_dp_xmit,
 	.set_features	= edma_dp_set_features,
 	.pause_on_off	= edma_dp_pause_on_off,
+	.get_stats	= edma_dp_get_ndo_stats,
 #ifdef CONFIG_RFS_ACCEL
 	.rx_flow_steer	= edma_dp_rx_flow_steer,
 #endif

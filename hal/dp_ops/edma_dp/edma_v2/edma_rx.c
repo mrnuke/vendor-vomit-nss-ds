@@ -178,6 +178,9 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 	while (likely(work_to_do--)) {
 		struct net_device *ndev;
 		struct sk_buff *skb;
+		struct nss_dp_dev *dp_dev;
+		struct edma_pcpu_stats *pcpu_stats;
+		struct edma_rx_stats *rx_stats;
 		uint32_t src_port_num;
 		uint32_t pkt_length;
 
@@ -261,6 +264,18 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 		edma_debug("skb:%px ring_idx:%u pktlen:%d proto:0x%x\n",
 			   skb, cons_idx, pkt_length, skb->protocol);
 #endif
+
+		dp_dev = netdev_priv(ndev);
+		pcpu_stats = &dp_dev->dp_info.pcpu_stats;
+		rx_stats = this_cpu_ptr(pcpu_stats->rx_stats);
+
+		/*
+		 * TODO: Do a batched update of the stats per netdevice.
+		 */
+		u64_stats_update_begin(&rx_stats->syncp);
+		rx_stats->rx_pkts++;
+		rx_stats->rx_bytes += pkt_length;
+		u64_stats_update_end(&rx_stats->syncp);
 
 		/*
 		 * Send packet upto network stack

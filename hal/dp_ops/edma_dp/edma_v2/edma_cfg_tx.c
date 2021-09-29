@@ -20,6 +20,7 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/reset.h>
+#include <nss_dp_dev.h>
 #include "edma.h"
 #include "edma_cfg_tx.h"
 #include "edma_regs.h"

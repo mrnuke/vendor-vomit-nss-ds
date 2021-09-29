@@ -18,10 +18,10 @@
 #define __EDMA_H__
 
 #include <linux/netdevice.h>
+#include <nss_dp_arch.h>
+#include <nss_dp_hal_if.h>
 #include "edma_rx.h"
 #include "edma_tx.h"
-#include <nss_dp_arch.h>
-#include <nss_dp_dev.h>
 
 /*
  * The driver uses kernel DMA constructs that assume an architecture
@@ -56,6 +56,17 @@
 #define EDMA_MISC_TX_CMPL_BUF_FULL_STATUS_GET(x)		(((x) & EDMA_MISC_TX_CMPL_BUF_FULL_MASK) >> 5)
 #define EDMA_MISC_DATA_LEN_ERR_STATUS_GET(x)		(((x) & EDMA_MISC_DATA_LEN_ERR_MASK) >> 6)
 #define EDMA_MISC_TX_TIMEOUT_STATUS_GET(x)		(((x) & EDMA_MISC_TX_TIMEOUT_MASK) >> 7)
+
+/*
+ * edma_pcpu_stats
+ *	EDMA per cpu stats data structure
+ */
+struct edma_pcpu_stats {
+	struct edma_rx_stats __percpu *rx_stats;
+			/* Per CPU Rx statistics */
+	struct edma_tx_stats __percpu *tx_stats;
+			/* Per CPU Tx statistics */
+};
 
 /*
  * EDMA private data structure

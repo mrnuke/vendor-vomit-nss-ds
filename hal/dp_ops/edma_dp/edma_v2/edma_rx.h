@@ -70,6 +70,17 @@
 #define EDMA_RXFILL_BUFFER_ADDR_SET(desc, addr)	(((desc)->word0) = (uint32_t)(addr))
 
 /*
+ * edma_rx_stats
+ *	EDMA RX per cpu stats
+ */
+struct edma_rx_stats {
+	uint64_t rx_pkts;
+	uint64_t rx_bytes;
+	uint64_t rx_drops;
+	struct u64_stats_sync syncp;
+};
+
+/*
  * Rx descriptor
  */
 struct edma_rxdesc_desc {

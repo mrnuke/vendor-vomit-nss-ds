@@ -85,6 +85,13 @@ static int32_t nss_dp_change_mtu(struct net_device *netdev, int32_t newmtu)
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
 	/*
+	 * Check if data plane init has been done
+	 */
+	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE))) {
+		return ret;
+	}
+
+	/*
 	 * Configure the new MTU value to underlying HW.
 	 */
 	if (dp_priv->gmac_hal_ops->setmaxframe(dp_priv->gmac_hal_ctx, newmtu)) {
@@ -120,6 +127,13 @@ static int32_t nss_dp_set_mac_address(struct net_device *netdev, void *macaddr)
 		return -EINVAL;
 
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+
+	/*
+	 * Check if data plane init has been done
+	 */
+	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE))) {
+		return -EINVAL;
+	}
 
 	netdev_dbg(netdev, "AddrFamily: %d, %0x:%0x:%0x:%0x:%0x:%0x\n",
 			addr->sa_family, addr->sa_data[0], addr->sa_data[1],
@@ -159,6 +173,13 @@ static struct rtnl_link_stats64 *nss_dp_get_stats64(struct net_device *netdev,
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
 
 	/*
+	 * Check if data plane init has been done
+	 */
+	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE))) {
+		return stats;
+	}
+
+	/*
 	 * Retrieve the statistics from the dataplane.
 	 * Some SoCs like IPQ807x/IPQ60xx do not support
 	 * statistics in dataplane. We workaround by
@@ -184,6 +205,13 @@ static void nss_dp_get_stats64(struct net_device *netdev,
 		return;
 
 	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+
+	/*
+	 * Check if data plane init has been done
+	 */
+	if (!(dp_priv->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE))) {
+		return;
+	}
 
 	/*
 	 * Retrieve the statistics from the dataplane.

@@ -26,6 +26,15 @@ struct rtnl_link_stats64 *nss_dp_hal_get_ndo_stats(
 				struct nss_dp_hal_gmac_stats *gmac_stats,
 				struct rtnl_link_stats64 *ndo_stats)
 {
+	ndo_stats->rx_packets = gmac_stats->rx_packets;
+	ndo_stats->rx_bytes = gmac_stats->rx_bytes;
+	ndo_stats->rx_dropped = gmac_stats->rx_dropped;
+	ndo_stats->tx_packets = gmac_stats->tx_packets;
+	ndo_stats->tx_bytes = gmac_stats->tx_bytes;
+	ndo_stats->tx_dropped = gmac_stats->tx_dropped;
+	ndo_stats->tx_errors = gmac_stats->tx_no_desc_avail +
+				gmac_stats->tx_non_linear_packets;
+
 	return ndo_stats;
 }
 

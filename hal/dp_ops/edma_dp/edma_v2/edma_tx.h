@@ -72,7 +72,20 @@ enum edma_tx {
 };
 
 /*
- * edma_pri_txdesc
+ * edma_tx_stats
+ *	EDMA TX per cpu stats
+ */
+struct edma_tx_stats {
+	uint64_t tx_pkts;
+	uint64_t tx_bytes;
+	uint64_t tx_drops;
+	uint64_t tx_no_desc_avail;
+	uint64_t tx_non_linear_pkts;
+	struct u64_stats_sync syncp;
+};
+
+/*
+ * edma_pri_tx_desc
  *	EDMA primary TX descriptor.
  */
 struct edma_pri_txdesc {
@@ -143,8 +156,10 @@ struct edma_txcmpl_ring {
 };
 
 enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
-				struct edma_txdesc_ring *txdesc_ring);
-uint32_t edma_tx_complete(uint32_t work_to_do, struct edma_txcmpl_ring *txcmpl_ring);
+				struct edma_txdesc_ring *txdesc_ring,
+				struct edma_tx_stats *stats);
+uint32_t edma_tx_complete(uint32_t work_to_do,
+				struct edma_txcmpl_ring *txcmpl_ring);
 irqreturn_t edma_tx_handle_irq(int irq, void *ctx);
 int edma_tx_napi_poll(struct napi_struct *napi, int budget);
 

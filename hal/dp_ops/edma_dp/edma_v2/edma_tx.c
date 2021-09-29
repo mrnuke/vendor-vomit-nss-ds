@@ -174,7 +174,8 @@ irqreturn_t edma_tx_handle_irq(int irq, void *ctx)
  *	API to transmit a packet.
  */
 enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
-				struct edma_txdesc_ring *txdesc_ring)
+				struct edma_txdesc_ring *txdesc_ring,
+				struct edma_tx_stats *stats)
 {
 	struct nss_dp_dev *dp_dev = netdev_priv(netdev);
 	struct edma_pri_txdesc *txdesc;
@@ -190,6 +191,9 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 		if (unlikely(!avail)) {
 			edma_debug("No available descriptors are present at %d ring\n",
 					txdesc_ring->id);
+			u64_stats_update_begin(&stats->syncp);
+			++stats->tx_no_desc_avail;
+			u64_stats_update_end(&stats->syncp);
 			return EDMA_TX_FAIL_NO_DESC;
 		}
 		txdesc_ring->avail_desc = avail;
@@ -240,5 +244,10 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 
 	edma_reg_write(EDMA_REG_TXDESC_PROD_IDX(txdesc_ring->id),
 			hw_next_to_use & EDMA_TXDESC_PROD_IDX_MASK);
+
+	u64_stats_update_begin(&stats->syncp);
+	++stats->tx_pkts;
+	stats->tx_bytes += skb->len;
+	u64_stats_update_end(&stats->syncp);
 	return EDMA_TX_OK;
 }
