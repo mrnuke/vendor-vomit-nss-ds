@@ -94,6 +94,27 @@ struct edma_rx_stats {
 };
 
 /*
+ * edma_rx_desc_stats
+ *	RX descriptor ring stats data structure
+ */
+struct edma_rx_desc_stats {
+	uint64_t src_port_inval;		/* Invalid source port number */
+	uint64_t src_port_inval_type;		/* Source type is not PORT ID */
+	uint64_t src_port_inval_netdev;		/* Invalid net device for the source port */
+	struct u64_stats_sync syncp;		/* Synchronization pointer */
+};
+
+/*
+ * edma_rx_fill_stats
+ *	Rx fill descriptor ring stats data structure
+ */
+struct edma_rx_fill_stats {
+	uint64_t alloc_failed;			/* Buffer allocation failure count */
+	uint64_t page_alloc_failed;		/* Page allocation failure count for page mode */
+	struct u64_stats_sync syncp;		/* Synchronization pointer */
+};
+
+/*
  * Rx descriptor
  */
 struct edma_rxdesc_desc {
@@ -143,6 +164,8 @@ struct edma_rxfill_ring {
 	dma_addr_t dma;			/* descriptor ring physical address */
 	uint32_t buf_len;		/* Buffer length for rxfill descriptor */
 	bool page_mode;			/* Page mode for Rx processing */
+	struct edma_rx_fill_stats rx_fill_stats;
+					/* Rx fill ring statistics */
 };
 
 /*
@@ -158,6 +181,8 @@ struct edma_rxdesc_ring {
 					/* Primary descriptor ring virtual address */
 	struct edma_rxdesc_sec_desc *sdesc;
 					/* Secondary descriptor ring virtual address */
+	struct edma_rx_desc_stats rx_desc_stats;
+					/* Rx descriptor ring statistics */
 	struct edma_rxfill_ring *rxfill;
 					/* RXFILL ring used */
 	bool napi_added;		/* Flag to indicate NAPI add status */

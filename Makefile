@@ -51,6 +51,7 @@ ifeq ($(SoC),$(filter $(SoC),ipq95xx))
 qca-nss-dp-objs += hal/dp_ops/edma_dp/edma_v2/edma.o \
 		   hal/dp_ops/edma_dp/edma_v2/edma_cfg_rx.o \
 		   hal/dp_ops/edma_dp/edma_v2/edma_cfg_tx.o \
+		   hal/dp_ops/edma_dp/edma_v2/edma_debugfs.o \
 		   hal/dp_ops/edma_dp/edma_v2/edma_dp.o \
 		   hal/dp_ops/edma_dp/edma_v2/edma_misc.o \
 		   hal/dp_ops/edma_dp/edma_v2/edma_rx.o \

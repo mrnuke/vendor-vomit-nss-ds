@@ -35,10 +35,12 @@
 uint32_t edma_tx_complete(uint32_t work_to_do, struct edma_txcmpl_ring *txcmpl_ring)
 {
 	struct edma_txcmpl_desc *txcmpl;
+	struct edma_tx_cmpl_stats *txcmpl_stats = &txcmpl_ring->tx_cmpl_stats;
 	uint32_t prod_idx;
 	uint32_t cons_idx;
 	uint32_t data;
 	struct sk_buff *skb;
+	uint32_t txcmpl_errors;
 	uint32_t avail, count;
 	uint32_t end_idx;
 	uint32_t more_bit = 0;
@@ -61,6 +63,9 @@ uint32_t edma_tx_complete(uint32_t work_to_do, struct edma_txcmpl_ring *txcmpl_r
 		if (unlikely(!avail)) {
 			edma_debug("No available descriptors are pending for %d txcmpl ring\n",
 					txcmpl_ring->id);
+			u64_stats_update_begin(&txcmpl_stats->syncp);
+			++txcmpl_stats->no_pending_desc;
+			u64_stats_update_end(&txcmpl_stats->syncp);
 			return 0;
 		}
 
@@ -94,6 +99,9 @@ uint32_t edma_tx_complete(uint32_t work_to_do, struct edma_txcmpl_ring *txcmpl_r
 		 */
 		more_bit = EDMA_TXCMPL_MORE_BIT_GET(txcmpl);
 		if (unlikely(more_bit)) {
+			u64_stats_update_begin(&txcmpl_stats->syncp);
+			++txcmpl_stats->desc_with_more_bit;
+			u64_stats_update_end(&txcmpl_stats->syncp);
 			cons_idx = ((cons_idx + 1) & EDMA_TX_RING_SIZE_MASK);
 			txcmpl = EDMA_TXCMPL_DESC(txcmpl_ring, cons_idx);
 			continue;
@@ -106,9 +114,21 @@ uint32_t edma_tx_complete(uint32_t work_to_do, struct edma_txcmpl_ring *txcmpl_r
 		if (unlikely(!skb)) {
 			edma_warn("Invalid skb: cons_idx:%u prod_idx:%u word2:%x word3:%x\n",
 					cons_idx, prod_idx, txcmpl->word2, txcmpl->word3);
+			u64_stats_update_begin(&txcmpl_stats->syncp);
+			++txcmpl_stats->invalid_buffer;
+			u64_stats_update_end(&txcmpl_stats->syncp);
 		} else {
 			edma_debug("skb:%px, skb->len %d, skb->data_len %d, cons_idx:%d prod_idx:%d word2:0x%x word3:0x%x\n",
 					skb, skb->len, skb->data_len, cons_idx, prod_idx, txcmpl->word2, txcmpl->word3);
+
+			txcmpl_errors = EDMA_TXCOMP_RING_ERROR_GET(txcmpl->word3);
+			if (unlikely(txcmpl_errors)) {
+				edma_err("Error 0x%0x observed in tx complete %d ring\n",
+						txcmpl_errors, txcmpl_ring->id);
+				u64_stats_update_begin(&txcmpl_stats->syncp);
+				++txcmpl_stats->errors;
+				u64_stats_update_end(&txcmpl_stats->syncp);
+			}
 
 			dev_kfree_skb_any(skb);
 		}
@@ -508,6 +528,7 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 				struct edma_tx_stats *stats)
 {
 	struct nss_dp_dev *dp_dev = netdev_priv(netdev);
+	struct edma_tx_desc_stats *txdesc_stats = &txdesc_ring->tx_desc_stats;
 	uint32_t hw_next_to_use = 0;
 	uint32_t num_tx_desc_needed = 0, num_desc_filled = 0;
 	struct edma_pri_txdesc *txdesc = NULL;
@@ -519,9 +540,17 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 		if (unlikely(!txdesc_ring->avail_desc)) {
 			edma_debug("No available descriptors are present at %d ring\n",
 					txdesc_ring->id);
+			/*
+			 * TODO:
+			 * Remove this statistic from EDMA TX stats
+			 */
 			u64_stats_update_begin(&stats->syncp);
 			++stats->tx_no_desc_avail;
 			u64_stats_update_end(&stats->syncp);
+
+			u64_stats_update_begin(&txdesc_stats->syncp);
+			++txdesc_stats->no_desc_avail;
+			u64_stats_update_end(&txdesc_stats->syncp);
 			return EDMA_TX_FAIL_NO_DESC;
 		}
 	}
@@ -540,9 +569,17 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 		if (unlikely(num_tx_desc_needed > txdesc_ring->avail_desc)) {
 			txdesc_ring->avail_desc = edma_tx_avail_desc(txdesc_ring, hw_next_to_use);
 			if (num_tx_desc_needed > txdesc_ring->avail_desc) {
+				/*
+				 * TODO:
+				 * Remove this statistic from EDMA TX stats
+				 */
 				u64_stats_update_begin(&stats->syncp);
 				++stats->tx_no_desc_avail;
 				u64_stats_update_end(&stats->syncp);
+
+				u64_stats_update_begin(&txdesc_stats->syncp);
+				++txdesc_stats->no_desc_avail;
+				u64_stats_update_end(&txdesc_stats->syncp);
 				edma_debug("Not enough available descriptors are present at %d ring for SG packet. Needed %d, currently available %d\n",
 					txdesc_ring->id, num_tx_desc_needed, txdesc_ring->avail_desc);
 				return EDMA_TX_FAIL_NO_DESC;
@@ -584,8 +621,9 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 			txdesc_ring->prod_idx);
 
 	u64_stats_update_begin(&stats->syncp);
-	stats->tx_pkts += 1;
+	stats->tx_pkts++;
 	stats->tx_bytes += skb->len;
 	u64_stats_update_end(&stats->syncp);
+
 	return EDMA_TX_OK;
 }

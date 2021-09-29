@@ -183,6 +183,9 @@ struct edma_gbl_ctx {
 	int32_t txcmpl_map[EDMA_TXCMPL_RING_PER_CORE_MAX][NR_CPUS];
 			/* Tx complete ring to core mapping */
 
+	struct dentry *root_dentry;	/* Root debugfs entry */
+	struct dentry *stats_dentry;	/* Statistics debugfs entry */
+
 	uint32_t tx_priority_level;
 			/* Tx priority level per port */
 	uint32_t rx_priority_level;

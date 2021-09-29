@@ -31,6 +31,7 @@
 int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 {
 	struct edma_rxfill_desc *rxfill_desc;
+	struct edma_rx_fill_stats *rxfill_stats = &rxfill_ring->rx_fill_stats;
 	uint16_t prod_idx, start_idx;
 	uint16_t num_alloc = 0;
 	uint32_t rx_alloc_size = rxfill_ring->alloc_size;
@@ -54,6 +55,9 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 		 */
 		skb = dev_alloc_skb(rx_alloc_size);
 		if (unlikely(!skb)) {
+			u64_stats_update_begin(&rxfill_stats->syncp);
+			++rxfill_stats->alloc_failed;
+			u64_stats_update_end(&rxfill_stats->syncp);
 			break;
 		}
 
@@ -70,6 +74,9 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 		} else {
 			pg = alloc_page(GFP_ATOMIC);
 			if (unlikely(!pg)) {
+				u64_stats_update_begin(&rxfill_stats->syncp);
+				++rxfill_stats->page_alloc_failed;
+				u64_stats_update_end(&rxfill_stats->syncp);
 				dev_kfree_skb_any(skb);
 				edma_debug("edma_gbl_ctx:%px Unable to allocate page", &edma_gbl_ctx);
 				break;
@@ -435,6 +442,7 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 				struct edma_rxdesc_ring *rxdesc_ring)
 {
 	struct edma_rxdesc_desc *rxdesc_desc;
+	struct edma_rx_desc_stats *rxdesc_stats = &rxdesc_ring->rx_desc_stats;
 	uint32_t work_to_do, work_done = 0;
 	uint32_t work_leftover;
 	uint16_t prod_idx, cons_idx, end_idx;
@@ -507,6 +515,9 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 						(src_port_num &
 						EDMA_RXDESC_SRCINFO_TYPE_MASK),
 						skb);
+				u64_stats_update_begin(&rxdesc_stats->syncp);
+				++rxdesc_stats->src_port_inval_type;
+				u64_stats_update_end(&rxdesc_stats->syncp);
 				dev_kfree_skb_any(skb);
 				goto next_rx_desc;
 			}
@@ -516,6 +527,9 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 				edma_warn("Port number error :%d. \
 						Drop skb:%px\n",
 						src_port_num, skb);
+				u64_stats_update_begin(&rxdesc_stats->syncp);
+				++rxdesc_stats->src_port_inval;
+				u64_stats_update_end(&rxdesc_stats->syncp);
 				dev_kfree_skb_any(skb);
 				goto next_rx_desc;
 			}
@@ -531,6 +545,9 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 				edma_warn("Netdev Null src_info_type:0x%x. \
 						Drop skb:%px\n",
 						src_port_num, skb);
+				u64_stats_update_begin(&rxdesc_stats->syncp);
+				++rxdesc_stats->src_port_inval_netdev;
+				u64_stats_update_end(&rxdesc_stats->syncp);
 				dev_kfree_skb_any(skb);
 				goto next_rx_desc;
 			}
