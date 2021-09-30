@@ -142,9 +142,27 @@ static const struct syn_ethtool_stats syn_gstrings_mib_stats[] = {
 #define SYN_STATS_MIB_STATS_LEN	ARRAY_SIZE(syn_gstrings_mib_stats)
 
 /*
+ * syn_enable_mac_cst()
+ *	Enable stripping of MAC padding/FCS
+ */
+static void syn_enable_mac_cst(struct nss_gmac_hal_dev *nghd)
+{
+	hal_set_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_CST_ENABLE);
+}
+
+/*
+ * syn_disable_mac_cst()
+ *	Disable stripping of MAC padding/FCS
+ */
+static void syn_disable_mac_cst(struct nss_gmac_hal_dev *nghd)
+{
+	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_CST_DISABLE);
+}
+
+/*
  * syn_set_rx_flow_ctrl()
  */
-static inline void syn_set_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
+static void syn_set_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
 			SYN_MAC_FC_RX_FLOW_CONTROL);
@@ -153,7 +171,7 @@ static inline void syn_set_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_clear_rx_flow_ctrl()
  */
-static inline void syn_clear_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
+static void syn_clear_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
 	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
 			SYN_MAC_FC_RX_FLOW_CONTROL);
@@ -163,7 +181,7 @@ static inline void syn_clear_rx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_set_tx_flow_ctrl()
  */
-static inline void syn_set_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
+static void syn_set_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
 			SYN_MAC_FC_TX_FLOW_CONTROL);
@@ -172,7 +190,7 @@ static inline void syn_set_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_send_tx_pause_frame()
  */
-static inline void syn_send_tx_pause_frame(struct nss_gmac_hal_dev *nghd)
+static void syn_send_tx_pause_frame(struct nss_gmac_hal_dev *nghd)
 {
 	syn_set_tx_flow_ctrl(nghd);
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
@@ -182,7 +200,7 @@ static inline void syn_send_tx_pause_frame(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_clear_tx_flow_ctrl()
  */
-static inline void syn_clear_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
+static void syn_clear_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 {
 	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_FLOW_CONTROL,
 			SYN_MAC_FC_TX_FLOW_CONTROL);
@@ -191,7 +209,7 @@ static inline void syn_clear_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_rx_enable()
  */
-static inline void syn_rx_enable(struct nss_gmac_hal_dev *nghd)
+static void syn_rx_enable(struct nss_gmac_hal_dev *nghd)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_RX);
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_FILTER_OFF);
@@ -200,7 +218,7 @@ static inline void syn_rx_enable(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_tx_enable()
  */
-static inline void syn_tx_enable(struct nss_gmac_hal_dev *nghd)
+static void syn_tx_enable(struct nss_gmac_hal_dev *nghd)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_TX);
 }
@@ -208,7 +226,7 @@ static inline void syn_tx_enable(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_rx_disable()
  */
-static inline void syn_rx_disable(struct nss_gmac_hal_dev *nghd)
+static void syn_rx_disable(struct nss_gmac_hal_dev *nghd)
 {
 	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_RX);
 }
@@ -216,7 +234,7 @@ static inline void syn_rx_disable(struct nss_gmac_hal_dev *nghd)
 /*
  * syn_tx_disable()
  */
-static inline void syn_tx_disable(struct nss_gmac_hal_dev *nghd)
+static void syn_tx_disable(struct nss_gmac_hal_dev *nghd)
 {
 	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_TX);
 }
@@ -227,7 +245,7 @@ static inline void syn_tx_disable(struct nss_gmac_hal_dev *nghd)
  * syn_enable_rx_chksum_offload()
  *	Enable IPv4 header and IPv4/IPv6 TCP/UDP checksum calculation by GMAC.
  */
-static inline void syn_enable_rx_chksum_offload(struct nss_gmac_hal_dev *nghd)
+static void syn_enable_rx_chksum_offload(struct nss_gmac_hal_dev *nghd)
 {
 	hal_set_reg_bits(nghd->mac_base,
 			      SYN_MAC_CONFIGURATION, SYN_MAC_RX_IPC_OFFLOAD);
@@ -237,7 +255,7 @@ static inline void syn_enable_rx_chksum_offload(struct nss_gmac_hal_dev *nghd)
  * syn_disable_rx_chksum_offload()
  *	Disable the IP checksum offloading in receive path.
  */
-static inline void syn_disable_rx_chksum_offload(struct nss_gmac_hal_dev *nghd)
+static void syn_disable_rx_chksum_offload(struct nss_gmac_hal_dev *nghd)
 {
 	hal_clear_reg_bits(nghd->mac_base,
 				SYN_MAC_CONFIGURATION, SYN_MAC_RX_IPC_OFFLOAD);
@@ -249,7 +267,7 @@ static inline void syn_disable_rx_chksum_offload(struct nss_gmac_hal_dev *nghd)
  * syn_ipc_offload_init()
  *	Initialize IPC Checksum offloading.
  */
-static inline void syn_ipc_offload_init(struct nss_gmac_hal_dev *nghd)
+static void syn_ipc_offload_init(struct nss_gmac_hal_dev *nghd)
 {
 	struct nss_dp_dev *dp_priv;
 	dp_priv = netdev_priv(nghd->netdev);
@@ -270,7 +288,7 @@ static inline void syn_ipc_offload_init(struct nss_gmac_hal_dev *nghd)
  * syn_disable_mac_interrupt()
  *	Disable all the interrupts.
  */
-static inline void syn_disable_mac_interrupt(struct nss_gmac_hal_dev *nghd)
+static void syn_disable_mac_interrupt(struct nss_gmac_hal_dev *nghd)
 {
 	hal_write_relaxed_reg(nghd->mac_base, SYN_INTERRUPT_MASK, 0xffffffff);
 }
@@ -281,7 +299,7 @@ static inline void syn_disable_mac_interrupt(struct nss_gmac_hal_dev *nghd)
  *
  * The MMC tx interrupts are masked out as per the mask specified.
  */
-static inline void syn_disable_mmc_tx_interrupt(struct nss_gmac_hal_dev *nghd,
+static void syn_disable_mmc_tx_interrupt(struct nss_gmac_hal_dev *nghd,
 						uint32_t mask)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MMC_TX_INTERRUPT_MASK, mask);
@@ -293,7 +311,7 @@ static inline void syn_disable_mmc_tx_interrupt(struct nss_gmac_hal_dev *nghd,
  *
  * The MMC rx interrupts are masked out as per the mask specified.
  */
-static inline void syn_disable_mmc_rx_interrupt(struct nss_gmac_hal_dev *nghd,
+static void syn_disable_mmc_rx_interrupt(struct nss_gmac_hal_dev *nghd,
 						uint32_t mask)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MMC_RX_INTERRUPT_MASK, mask);
@@ -306,7 +324,7 @@ static inline void syn_disable_mmc_rx_interrupt(struct nss_gmac_hal_dev *nghd,
  * The MMC ipc rx checksum offload interrupts are masked out as
  * per the mask specified.
  */
-static inline void syn_disable_mmc_ipc_rx_interrupt(struct nss_gmac_hal_dev *nghd,
+static void syn_disable_mmc_ipc_rx_interrupt(struct nss_gmac_hal_dev *nghd,
 					   uint32_t mask)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MMC_IPC_RX_INTR_MASK, mask);
@@ -316,7 +334,7 @@ static inline void syn_disable_mmc_ipc_rx_interrupt(struct nss_gmac_hal_dev *ngh
  * syn_disable_interrupt_all()
  *	Disable all the interrupts.
  */
-static inline void syn_disable_interrupt_all(struct nss_gmac_hal_dev *nghd)
+static void syn_disable_interrupt_all(struct nss_gmac_hal_dev *nghd)
 {
 	syn_disable_mac_interrupt(nghd);
 	syn_disable_mmc_tx_interrupt(nghd, 0xFFFFFFFF);
@@ -330,7 +348,7 @@ static inline void syn_disable_interrupt_all(struct nss_gmac_hal_dev *nghd)
  *
  * When enabled Address filtering module passes all incoming broadcast frames.
  */
-static inline void syn_broadcast_enable(struct nss_gmac_hal_dev *nghd)
+static void syn_broadcast_enable(struct nss_gmac_hal_dev *nghd)
 {
 	hal_clear_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_BROADCAST);
 }
@@ -341,7 +359,7 @@ static inline void syn_broadcast_enable(struct nss_gmac_hal_dev *nghd)
  *
  * When enabled all multicast frames are passed.
  */
-static inline void syn_multicast_enable(struct nss_gmac_hal_dev *nghd)
+static void syn_multicast_enable(struct nss_gmac_hal_dev *nghd)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_MULTICAST_FILTER);
 }
@@ -353,7 +371,7 @@ static inline void syn_multicast_enable(struct nss_gmac_hal_dev *nghd)
  * When enabled Address filter modules pass all incoming frames
  * regardless of their Destination and source addresses.
  */
-static inline void syn_promisc_enable(struct nss_gmac_hal_dev *nghd)
+static void syn_promisc_enable(struct nss_gmac_hal_dev *nghd)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_FILTER_OFF);
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER,
@@ -736,10 +754,21 @@ static void syn_gmac_clk_enable(struct nss_gmac_hal_dev *nghd)
  */
 static int32_t syn_start(struct nss_gmac_hal_dev *nghd)
 {
+	struct nss_dp_dev *dp_dev;
+
 	BUG_ON(nghd == NULL);
 
 	syn_tx_enable(nghd);
 	syn_rx_enable(nghd);
+	dp_dev = (struct nss_dp_dev *)netdev_priv(nghd->netdev);
+
+	/*
+	 * TODO: Enable MAC CST stripping for NSS mode as well. We need
+	 * NSS change for that.
+	 */
+	if (!(dp_dev->drv_flags & NSS_DP_PRIV_FLAG(INIT_OVERRIDE))) {
+		syn_enable_mac_cst(nghd);
+	}
 
 	netdev_dbg(nghd->netdev, "%s: mac_base:0x%px MAC Config:0x%x\n",
 		__func__, nghd->mac_base,
@@ -753,10 +782,22 @@ static int32_t syn_start(struct nss_gmac_hal_dev *nghd)
  */
 static int32_t syn_stop(struct nss_gmac_hal_dev *nghd)
 {
+	struct nss_dp_dev *dp_dev;
+
 	BUG_ON(nghd == NULL);
 
 	syn_tx_disable(nghd);
 	syn_rx_disable(nghd);
+	dp_dev = (struct nss_dp_dev *)netdev_priv(nghd->netdev);
+
+	/*
+	 * TODO: Disable MAC CST stripping for NSS mode as well. We need
+	 * NSS change for that.
+	 */
+	if (!(dp_dev->drv_flags & NSS_DP_PRIV_FLAG(INIT_OVERRIDE))) {
+		syn_disable_mac_cst(nghd);
+	}
+
 
 	netdev_dbg(nghd->netdev, "%s: mac_base:0x%px MAC Config:0x%x\n",
 		__func__, nghd->mac_base,

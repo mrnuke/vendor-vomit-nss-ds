@@ -16,6 +16,7 @@
  */
 
 #include <nss_dp_dev.h>
+#include <linux/irq.h>
 #include "syn_dma_reg.h"
 
 /*
@@ -166,9 +167,13 @@ static int syn_dp_if_init(struct nss_dp_data_plane_ctx *dpc)
 		netif_napi_add(netdev, &tx_info->napi_tx, syn_dp_napi_poll_tx, SYN_DP_NAPI_BUDGET_TX);
 
 		/*
-		 * Requesting irq
+		 * Requesting irq. Set IRQ_DISABLE_UNLAZY flag, this flag
+		 * can be used for devices which cannot disable the interrupt
+		 * at the device level under certain circumstances
+		 * and have to use disable_irq[_nosync] instead.
 		 */
 		netdev->irq = platform_get_irq(gmac_dev->pdev, 0);
+		irq_set_status_flags(netdev->irq, IRQ_DISABLE_UNLAZY);
 		err = request_irq(netdev->irq, syn_dp_handle_irq, 0, "nss-dp-gmac", &gmac_dev->dp_info.syn_info);
 		if (unlikely(err)) {
 			netif_napi_del(&rx_info->napi_rx);

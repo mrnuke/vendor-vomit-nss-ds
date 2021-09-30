@@ -20,6 +20,7 @@
 
 #define SYN_DP_NAPI_BUDGET_TX		32
 #define SYN_DP_TX_DESC_SIZE		1024	/* Rx Descriptors needed in the descriptor pool/queue */
+#define SYN_DP_TX_DESC_MAX_INDEX	(SYN_DP_TX_DESC_SIZE - 1)
 
 /*
  * syn_dp_tx_buf

@@ -115,6 +115,7 @@ enum nss_dp_state {
 enum nss_dp_priv_flags {
 	__NSS_DP_PRIV_FLAG_INIT_DONE,
 	__NSS_DP_PRIV_FLAG_IRQ_REQUESTED,
+	__NSS_DP_PRIV_FLAG_INIT_OVERRIDE,
 	__NSS_DP_PRIV_FLAG_MAX,
 };
 #define NSS_DP_PRIV_FLAG(x)	(1 << __NSS_DP_PRIV_FLAG_ ## x)

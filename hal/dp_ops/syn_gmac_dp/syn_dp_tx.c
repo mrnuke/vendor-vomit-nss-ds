@@ -15,6 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <asm/cacheflush.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
 #include <linux/netdevice.h>
@@ -53,7 +54,7 @@ static inline void syn_dp_tx_reset_qptr(struct syn_dp_info_tx *tx_info)
  *	Populate the tx desc structure with the buffer address.
  */
 static inline struct dma_desc_tx *syn_dp_tx_set_qptr(struct syn_dp_info_tx *tx_info,
-					   uint32_t Buffer1, uint32_t Length1, struct sk_buff *skb, uint32_t offload_needed,
+					   uint32_t buffer1, uint32_t length1, struct sk_buff *skb, uint32_t offload_needed,
 					   uint32_t tx_cntl, uint32_t set_dma)
 {
 	uint32_t txnext = tx_info->tx_idx;
@@ -67,22 +68,22 @@ static inline struct dma_desc_tx *syn_dp_tx_set_qptr(struct syn_dp_info_tx *tx_i
 	BUG_ON(syn_dp_gmac_is_tx_desc_owned_by_dma(txdesc));
 #endif
 
-	if (Length1 > SYN_DP_MAX_DESC_BUFF) {
-		txdesc->length = (SYN_DP_MAX_DESC_BUFF << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK;
+	if (length1 > SYN_DP_MAX_DESC_BUFF_LEN) {
+		txdesc->length = (SYN_DP_MAX_DESC_BUFF_LEN << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK;
 		txdesc->length |=
-		    ((Length1 - SYN_DP_MAX_DESC_BUFF) << DESC_SIZE2_SHIFT) & DESC_SIZE2_MASK;
+		    ((length1 - SYN_DP_MAX_DESC_BUFF_LEN) << DESC_SIZE2_SHIFT) & DESC_SIZE2_MASK;
 	} else {
-		txdesc->length = ((Length1 << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK);
+		txdesc->length = ((length1 << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK);
 	}
 
 	txdesc->status |= tx_cntl;
-	txdesc->buffer1 = Buffer1;
+	txdesc->buffer1 = buffer1;
 
 	tx_info->tx_buf_pool[tx_skb_index].skb = skb;
 
 	/* Program second buffer address if using two buffers. */
-	if (Length1 > SYN_DP_MAX_DESC_BUFF)
-		txdesc->buffer2 = Buffer1 + SYN_DP_MAX_DESC_BUFF;
+	if (length1 > SYN_DP_MAX_DESC_BUFF_LEN)
+		txdesc->buffer2 = buffer1 + SYN_DP_MAX_DESC_BUFF_LEN;
 	else
 		txdesc->buffer2 = 0;
 

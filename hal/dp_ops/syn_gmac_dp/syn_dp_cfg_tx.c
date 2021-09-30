@@ -74,7 +74,7 @@ int syn_dp_cfg_tx_setup_rings(struct syn_dp_info *dev_info)
  * syn_dp_cfg_tx_cleanup_rings
  *	Cleanup Synopsys GMAC Tx rings
  */
-int syn_dp_cfg_tx_cleanup_rings(struct syn_dp_info *dev_info)
+void syn_dp_cfg_tx_cleanup_rings(struct syn_dp_info *dev_info)
 {
 	struct syn_dp_info_tx *tx_info = &dev_info->dp_info_tx;
 	uint32_t tx_skb_index;
@@ -103,6 +103,4 @@ int syn_dp_cfg_tx_cleanup_rings(struct syn_dp_info *dev_info)
 
 	dma_free_coherent(tx_info->dev, (sizeof(struct dma_desc_tx) * SYN_DP_TX_DESC_SIZE),
 				tx_info->tx_desc, dev_info->tx_desc_dma_addr);
-
-	return NSS_DP_SUCCESS;
 }

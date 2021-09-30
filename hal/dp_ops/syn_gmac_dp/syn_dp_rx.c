@@ -15,6 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <asm/cacheflush.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
 #include <linux/netdevice.h>
@@ -24,86 +25,45 @@
 #include "syn_dma_reg.h"
 
 /*
- * syn_dp_rx_reset_qptr()
+ * syn_dp_rx_reset_one_desc()
  *	Reset the descriptor after Rx is over.
  */
-static inline void syn_dp_rx_reset_qptr(struct syn_dp_info_rx *rx_info)
+static inline void syn_dp_rx_reset_one_desc(struct dma_desc_rx *rx_desc)
 {
-	uint32_t rxnext = rx_info->rx_idx;
-	struct dma_desc_rx *rxdesc = rx_info->rx_desc + rxnext;
-
-#ifdef SYN_DP_DEBUG
-	BUG_ON(syn_dp_gmac_is_rx_desc_owned_by_dma(rx_info->rx_desc + rxnext));
-#endif
-	rx_info->rx_idx = (rxnext + 1) & (SYN_DP_RX_DESC_SIZE - 1);
-
-	rx_info->rx_buf_pool[rxnext].skb = NULL;
-	rxdesc->status = 0;
-	rxdesc->length &= DESC_RX_DESC_END_OF_RING;
-	rxdesc->buffer1 = 0;
-	rxdesc->buffer2 = 0;
-	rxdesc->reserved1 = 0;
-
-	/*
-	 * This returns one descriptor to processor. So busy count will be decremented by one.
-	 */
-	atomic_dec((atomic_t *)&rx_info->busy_rx_desc_cnt);
+	rx_desc->status = 0;
+	rx_desc->length &= DESC_RX_DESC_END_OF_RING;
+	rx_desc->buffer1 = 0;
+	rx_desc->buffer2 = 0;
+	rx_desc->extstatus = 0;
 }
 
 /*
- * syn_dp_rx_set_qptr()
+ * syn_dp_rx_refill_one_desc()
  *	Prepares the descriptor to receive packets.
  */
-static inline int32_t syn_dp_rx_set_qptr(struct syn_dp_info_rx *rx_info,
-					uint32_t Buffer1, uint32_t Length1, struct sk_buff *skb)
+static inline void syn_dp_rx_refill_one_desc(struct dma_desc_rx *rx_desc,
+					uint32_t buffer1, uint32_t length1)
 {
-	uint32_t rxnext = rx_info->rx_refill_idx;
-	struct dma_desc_rx *rxdesc = rx_info->rx_desc + rxnext;
-
 #ifdef SYN_DP_DEBUG
-	BUG_ON(atomic_read((atomic_t *)&rx_info->busy_rx_desc_cnt) >= SYN_DP_RX_DESC_SIZE);
-	BUG_ON(rxdesc != (rx_info->rx_desc + rxnext));
-	BUG_ON(!syn_dp_gmac_is_rx_desc_empty(rxdesc));
-	BUG_ON(syn_dp_gmac_is_rx_desc_owned_by_dma(rxdesc));
+	BUG_ON(!syn_dp_gmac_is_rx_desc_empty(rx_desc));
+	BUG_ON(syn_dp_gmac_is_rx_desc_owned_by_dma(rx_desc->status));
 #endif
 
-	if (Length1 > SYN_DP_MAX_DESC_BUFF) {
-		rxdesc->length |= (SYN_DP_MAX_DESC_BUFF << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK;
-		rxdesc->length |= ((Length1 - SYN_DP_MAX_DESC_BUFF) << DESC_SIZE2_SHIFT) & DESC_SIZE2_MASK;
+	if (likely(length1 <= SYN_DP_MAX_DESC_BUFF_LEN)) {
+		rx_desc->length |= ((length1 << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK);
+		rx_desc->buffer2 = 0;
 	} else {
-		rxdesc->length |= ((Length1 << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK);
+		rx_desc->length |= (SYN_DP_MAX_DESC_BUFF_LEN << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK;
+		rx_desc->length |= ((length1 - SYN_DP_MAX_DESC_BUFF_LEN) << DESC_SIZE2_SHIFT) & DESC_SIZE2_MASK;
+
+		/*
+		 * Program second buffer address if using two buffers.
+		 */
+		rx_desc->buffer2 = buffer1 + SYN_DP_MAX_DESC_BUFF_LEN;
 	}
 
-	rxdesc->buffer1 = Buffer1;
-	rx_info->rx_buf_pool[rxnext].skb = skb;
-
-	/*
-	 * Program second buffer address if using two buffers.
-	 */
-	if (Length1 > SYN_DP_MAX_DESC_BUFF)
-		rxdesc->buffer2 = Buffer1 + SYN_DP_MAX_DESC_BUFF;
-	else
-		rxdesc->buffer2 = 0;
-
-	rxdesc->extstatus = 0;
-	rxdesc->timestamplow = 0;
-	rxdesc->timestamphigh = 0;
-
-	/*
-	 * Ensure all write completed before setting own by dma bit so when gmac
-	 * HW takeover this descriptor, all the fields are filled correctly
-	 */
-	wmb();
-	rxdesc->status = DESC_OWN_BY_DMA;
-
-	rx_info->rx_refill_idx = (rxnext + 1) & (SYN_DP_RX_DESC_SIZE - 1);
-
-	/*
-	 * 1 descriptor will be given to HW. So busy count incremented by 1.
-	 */
-	atomic_inc((atomic_t *)&rx_info->busy_rx_desc_cnt);
-
-	return rxnext;
+	rx_desc->buffer1 = buffer1;
+	rx_desc->status = DESC_OWN_BY_DMA;
 }
 
 /*
@@ -112,30 +72,51 @@ static inline int32_t syn_dp_rx_set_qptr(struct syn_dp_info_rx *rx_info,
  */
 void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
 {
-	struct net_device *netdev = rx_info->netdev;
 	int empty_count = SYN_DP_RX_DESC_SIZE - atomic_read((atomic_t *)&rx_info->busy_rx_desc_cnt);
-	int i;
 
+	struct net_device *netdev = rx_info->netdev;
+	int i;
 	dma_addr_t dma_addr;
+	struct dma_desc_rx *rx_desc;
 	struct sk_buff *skb;
+	uint32_t rx_refill_idx;
+	uint32_t start, end;
+
+	start = rx_info->rx_refill_idx;
+	end = (start + empty_count) & SYN_DP_RX_DESC_MAX_INDEX;
 
 	for (i = 0; i < empty_count; i++) {
-		skb = __netdev_alloc_skb(netdev, SYN_DP_MINI_JUMBO_FRAME_MTU, GFP_ATOMIC);
+		skb = __netdev_alloc_skb(netdev, SYN_DP_SKB_ALLOC_SIZE, GFP_ATOMIC);
 		if (unlikely(skb == NULL)) {
 			netdev_dbg(netdev, "Unable to allocate skb, will try next time\n");
+			atomic64_inc((atomic64_t *)&rx_info->rx_stats.rx_skb_alloc_errors);
 			break;
 		}
 
-		skb_reserve(skb, NET_IP_ALIGN);
+		skb_reserve(skb, SYN_DP_SKB_HEADROOM + NET_IP_ALIGN);
 
-		dma_addr = dma_map_single(rx_info->dev, skb->data, SYN_DP_MINI_JUMBO_FRAME_MTU, DMA_FROM_DEVICE);
-		if (unlikely(dma_mapping_error(rx_info->dev, dma_addr))) {
-			dev_kfree_skb(skb);
-			netdev_dbg(netdev, "DMA mapping failed for empty buffer\n");
-			break;
-		}
+		dma_addr = (dma_addr_t)virt_to_phys(skb->data);
+		dmac_inv_range((void *)skb->data, (void *)(skb->data + SYN_DP_SKB_DATA_INVAL_SIZE));
+		rx_refill_idx = rx_info->rx_refill_idx;
+		rx_desc = rx_info->rx_desc + rx_refill_idx;
 
-		syn_dp_rx_set_qptr(rx_info, dma_addr, SYN_DP_MINI_JUMBO_FRAME_MTU, skb);
+		/*
+		 * Set Rx descriptor variables
+		 */
+		syn_dp_rx_refill_one_desc(rx_desc, dma_addr, SYN_DP_SKB_DATA_INVAL_SIZE);
+		rx_info->rx_buf_pool[rx_refill_idx].skb = skb;
+		rx_info->rx_refill_idx = (rx_refill_idx + 1) & SYN_DP_RX_DESC_MAX_INDEX;
+		atomic_inc((atomic_t *)&rx_info->busy_rx_desc_cnt);
+	}
+
+	/*
+	 * Batched flush and invalidation of the rx descriptors
+	 */
+	if (end > start) {
+		dmac_flush_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
+	} else {
+		dmac_flush_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
+		dmac_flush_range((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
 	}
 
 	syn_resume_dma_rx(rx_info->mac_base);
@@ -147,56 +128,63 @@ void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
  */
 int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 {
-	struct dma_desc_rx *desc = NULL;
-	int frame_length, busy;
+	struct dma_desc_rx *rx_desc = NULL;
+	int frame_length, busy, rx_idx;
 	uint32_t status, extstatus;
 	struct sk_buff *rx_skb;
 	struct net_device *netdev = rx_info->netdev;
-	void __iomem *mac_base = rx_info->mac_base;
 	uint32_t rx_packets = 0, rx_bytes = 0;
-
-	atomic64_add(syn_get_rx_missed(mac_base), (atomic64_t *)&rx_info->rx_stats.rx_missed);
-	atomic64_add(syn_get_fifo_overflows(mac_base), (atomic64_t *)&rx_info->rx_stats.rx_fifo_overflows);
+	uint32_t start, end;
 
 	busy = atomic_read((atomic_t *)&rx_info->busy_rx_desc_cnt);
-	if (!busy) {
+	if (unlikely(!busy)) {
 		/*
-		 * No desc are held by gmac dma, we are done
+		 * No desc are held by GMAC DMA, we are done
 		 */
+		atomic64_inc((atomic64_t *)&rx_info->rx_stats.rx_no_buffer_errors);
 		return 0;
 	}
 
-	if (busy > budget) {
+	if (likely(busy > budget)) {
 		busy = budget;
 	}
 
+	/*
+	 * Invalidate all the descriptors we can read in one go.
+	 * This could mean we re invalidating more than what we could
+	 * have got from hardware, but that should be ok.
+	 *
+	 * It is expected that speculative prefetches are disabled while
+	 * this code is executing.
+	 */
+	start = rx_info->rx_idx;
+	end = (rx_info->rx_idx + busy) & SYN_DP_RX_DESC_MAX_INDEX;
+	if (end > start) {
+		dmac_inv_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
+	} else {
+		dmac_inv_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
+		dmac_inv_range((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
+	}
+
 	do {
-		desc = rx_info->rx_desc + rx_info->rx_idx;
-		if (syn_dp_gmac_is_rx_desc_owned_by_dma(desc)) {
+		rx_idx = rx_info->rx_idx;
+		rx_desc = rx_info->rx_desc + rx_idx;
+		status = rx_desc->status;
+		if (syn_dp_gmac_is_rx_desc_owned_by_dma(status)) {
+
 			/*
-			 * Desc still hold by gmac dma, so we are done
+			 * Rx descriptor still hold by GMAC DMA, so we are done
 			 */
 			break;
 		}
 
-		status = desc->status;
-
-		rx_skb = rx_info->rx_buf_pool[rx_info->rx_idx].skb;
-
-		dma_unmap_single(rx_info->dev, desc->buffer1,
-				SYN_DP_MINI_JUMBO_FRAME_MTU, DMA_FROM_DEVICE);
-
-		extstatus = desc->extstatus;
+		rx_skb = rx_info->rx_buf_pool[rx_idx].skb;
+		extstatus = rx_desc->extstatus;
 		if (likely(syn_dp_gmac_is_rx_desc_valid(status) && !(extstatus & (DESC_RX_IP_HEADER_ERROR | DESC_RX_IP_PAYLOAD_ERROR)))) {
 			/*
 			 * We have a pkt to process get the frame length
 			 */
 			frame_length = syn_dp_gmac_get_rx_desc_frame_length(status);
-
-			/*
-			 * Get rid of FCS: 4
-			 */
-			frame_length -= ETH_FCS_LEN;
 
 			/*
 			 * Valid packet, collect stats
@@ -211,14 +199,15 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 			rx_skb->protocol = eth_type_trans(rx_skb, netdev);
 			if (likely(!(extstatus & DESC_RX_CHK_SUM_BYPASS))) {
 				rx_skb->ip_summed = CHECKSUM_UNNECESSARY;
-			} else {
-				skb_checksum_none_assert(rx_skb);
 			}
 
-			netif_receive_skb(rx_skb);
+			/*
+			 * Deliver the packet to linux
+			 */
+			napi_gro_receive(&rx_info->napi_rx, rx_skb);
 		} else {
-			atomic64_inc((atomic64_t *)&rx_info->rx_stats.rx_errors);
 			dev_kfree_skb_any(rx_skb);
+			atomic64_inc((atomic64_t *)&rx_info->rx_stats.rx_errors);
 
 			if (status & (DESC_RX_CRC | DESC_RX_COLLISION |
 					DESC_RX_OVERFLOW | DESC_RX_DRIBBLING |
@@ -228,10 +217,18 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 				(status & DESC_RX_LENGTH_ERROR) ? atomic64_inc((atomic64_t *)&rx_info->rx_stats.rx_length_errors) : NULL;
 				(status & DESC_RX_CRC) ? atomic64_inc((atomic64_t *)&rx_info->rx_stats.rx_crc_errors) : NULL;
 				(status & DESC_RX_OVERFLOW) ? atomic64_inc((atomic64_t *)&rx_info->rx_stats.rx_overflow_errors) : NULL;
+				(status & DESC_RX_IP_HEADER_ERROR) ? atomic64_inc((atomic64_t *)&rx_info->rx_stats.rx_ip_header_errors) : NULL;
+				(status & DESC_RX_IP_PAYLOAD_ERROR) ? atomic64_inc((atomic64_t *)&rx_info->rx_stats.rx_ip_payload_errors) : NULL;
 			}
 		}
 
-		syn_dp_rx_reset_qptr(rx_info);
+		/*
+		 * Reset Rx descriptor and update rx_info information
+		 */
+		syn_dp_rx_reset_one_desc(rx_desc);
+		rx_info->rx_buf_pool[rx_idx].skb = NULL;
+		rx_info->rx_idx = (rx_idx + 1) & SYN_DP_RX_DESC_MAX_INDEX;
+		atomic_dec((atomic_t *)&rx_info->busy_rx_desc_cnt);
 		busy--;
 	} while (likely(busy > 0));
 

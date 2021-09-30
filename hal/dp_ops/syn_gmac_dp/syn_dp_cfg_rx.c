@@ -31,23 +31,25 @@ static int syn_dp_cfg_rx_setup_desc_queue(struct syn_dp_info *dev_info)
 
 	netdev_dbg(netdev, "Total size of memory required for Rx Descriptors in Ring Mode = %u\n", (uint32_t)((sizeof(struct dma_desc_rx) * SYN_DP_RX_DESC_SIZE)));
 
-	first_desc = dma_alloc_coherent(rx_info->dev, sizeof(struct dma_desc_rx) * SYN_DP_RX_DESC_SIZE, &dma_addr, GFP_KERNEL);
+	/*
+	 * Allocate cacheable descriptors for Rx
+	 */
+	first_desc = kzalloc(sizeof(struct dma_desc_rx) * SYN_DP_RX_DESC_SIZE, GFP_KERNEL);
 	if (!first_desc) {
 		netdev_dbg(netdev, "Error in Rx Descriptor Memory allocation in Ring mode\n");
 		return -ENOMEM;
 	}
 
-	dev_info->rx_desc_dma_addr = dma_addr;
+	dev_info->rx_desc_dma_addr = (dma_addr_t)virt_to_phys(first_desc);
 	rx_info->rx_desc = first_desc;
-
-	netdev_dbg(netdev, "Rx Descriptors in Ring Mode: No. of descriptors = %d base = 0x%px dma = 0x%px\n",
-			SYN_DP_RX_DESC_SIZE, first_desc, (void *)dma_addr);
-
 	syn_dp_gmac_rx_desc_init_ring(rx_info->rx_desc, SYN_DP_RX_DESC_SIZE);
 
 	rx_info->rx_refill_idx = 0;
 	rx_info->rx_idx = 0;
 	rx_info->busy_rx_desc_cnt = 0;
+
+	netdev_dbg(netdev, "Rx Descriptors in Ring Mode: No. of descriptors = %d base = 0x%px dma = 0x%px\n",
+			SYN_DP_RX_DESC_SIZE, first_desc, (void *)dma_addr);
 
 	return NSS_DP_SUCCESS;
 }
@@ -76,7 +78,7 @@ int syn_dp_cfg_rx_setup_rings(struct syn_dp_info *dev_info)
  * syn_dp_cfg_rx_cleanup_rings
  *	Cleanup Synopsys GMAC Rx rings
  */
-int syn_dp_cfg_rx_cleanup_rings(struct syn_dp_info *dev_info)
+void syn_dp_cfg_rx_cleanup_rings(struct syn_dp_info *dev_info)
 {
 	struct syn_dp_info_rx *rx_info = &dev_info->dp_info_rx;
 	uint32_t rx_skb_index;
@@ -91,12 +93,8 @@ int syn_dp_cfg_rx_cleanup_rings(struct syn_dp_info *dev_info)
 	 */
 	rx_skb_index = rx_info->rx_idx;
 	for (i = 0; i < rx_info->busy_rx_desc_cnt; i++) {
-		rx_skb_index = (rx_skb_index + i) & (SYN_DP_RX_DESC_SIZE - 1);
+		rx_skb_index = (rx_skb_index + i) & SYN_DP_RX_DESC_MAX_INDEX;
 		rxdesc = rx_info->rx_desc;
-
-		dma_unmap_single(rx_info->dev, rxdesc->buffer1,
-			SYN_DP_MINI_JUMBO_FRAME_MTU, DMA_FROM_DEVICE);
-
 		skb = rx_info->rx_buf_pool[rx_skb_index].skb;
 		if (unlikely(skb != NULL)) {
 			dev_kfree_skb_any(skb);
@@ -104,8 +102,7 @@ int syn_dp_cfg_rx_cleanup_rings(struct syn_dp_info *dev_info)
 		}
 	}
 
-	dma_free_coherent(rx_info->dev, (sizeof(struct dma_desc_rx) * SYN_DP_RX_DESC_SIZE),
-				rx_info->rx_desc, dev_info->rx_desc_dma_addr);
-
-	return NSS_DP_SUCCESS;
+	kfree(rx_info->rx_desc);
+	rx_info->rx_desc = NULL;
+	dev_info->rx_desc_dma_addr = (dma_addr_t)0;
 }

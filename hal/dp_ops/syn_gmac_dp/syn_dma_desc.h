@@ -341,9 +341,9 @@ static inline uint32_t syn_dp_gmac_get_rx_desc_frame_length(uint32_t status)
  * syn_dp_gmac_is_rx_desc_owned_by_dma()
  *	Checks whether the Rx descriptor is owned by DMA.
  */
-static inline bool syn_dp_gmac_is_rx_desc_owned_by_dma(struct dma_desc_rx *desc)
+static inline bool syn_dp_gmac_is_rx_desc_owned_by_dma(uint32_t status)
 {
-	return (desc->status & DESC_OWN_BY_DMA) == DESC_OWN_BY_DMA;
+	return (status & DESC_OWN_BY_DMA) == DESC_OWN_BY_DMA;
 }
 
 /*

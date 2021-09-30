@@ -23,7 +23,10 @@
 #include "syn_dp_tx.h"
 
 #define SYN_DP_MINI_JUMBO_FRAME_MTU	1978
-#define SYN_DP_MAX_DESC_BUFF		0x1FFF	/* Max size of buffer that can be programed into one field of desc */
+#define SYN_DP_MAX_DESC_BUFF_LEN	0x1FFF	/* Max size of buffer that can be programed into one field of desc */
+#define SYN_DP_SKB_ALLOC_SIZE		(SYN_DP_MINI_JUMBO_FRAME_MTU + NET_IP_ALIGN)
+#define SYN_DP_SKB_HEADROOM		128
+#define SYN_DP_SKB_DATA_INVAL_SIZE	(SYN_DP_SKB_ALLOC_SIZE - (SYN_DP_SKB_HEADROOM + NET_IP_ALIGN))
 
 /*
  * syn_dp_info
@@ -42,9 +45,9 @@ struct syn_dp_info {
  * GMAC TX/Rx APIs
  */
 int syn_dp_cfg_rx_setup_rings(struct syn_dp_info *dev_info);
-int syn_dp_cfg_rx_cleanup_rings(struct syn_dp_info *dev_info);
+void syn_dp_cfg_rx_cleanup_rings(struct syn_dp_info *dev_info);
 int syn_dp_cfg_tx_setup_rings(struct syn_dp_info *dev_info);
-int syn_dp_cfg_tx_cleanup_rings(struct syn_dp_info *dev_info);
+void syn_dp_cfg_tx_cleanup_rings(struct syn_dp_info *dev_info);
 
 int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget);
 void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info);

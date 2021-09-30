@@ -115,6 +115,7 @@ int nss_dp_override_data_plane(struct net_device *netdev,
 	/*
 	 * Override the data_plane_ctx, data_plane_ops
 	 */
+	dp_dev->drv_flags |= NSS_DP_PRIV_FLAG(INIT_OVERRIDE);
 	dp_dev->dpc = dpc;
 	dp_dev->data_plane_ops = dp_ops;
 

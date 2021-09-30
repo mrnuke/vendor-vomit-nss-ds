@@ -63,6 +63,7 @@ struct nss_dp_hal_gmac_stats_rx {
 	uint64_t rx_fifo_overflows;	/**< Number of RX FIFO overflows signalled by the DMA */
 	uint64_t rx_overflow_errors;	/**< Number of Rx Overflow errors received from Rx descriptors */
 	uint64_t rx_crc_errors;		/**< Number of Rx CRC errors */
+	uint64_t rx_skb_alloc_errors;	/**< Number of Rx skb alocation errors */
 };
 
 /**
