@@ -30,26 +30,6 @@
 struct edma_hw edma_hw;
 
 /*
- * edma_get_port_num_from_netdev()
- *	Get port number from net device
- */
-static int edma_get_port_num_from_netdev(struct net_device *netdev)
-{
-	int i;
-
-	for (i = 0; i < EDMA_MAX_GMACS; i++) {
-		/* In the port-id to netdev mapping table, port-id
-		 * starts from 1 and table index starts from 0.
-		 * So we return index + 1 for port-id
-		 */
-		if (edma_hw.netdev_arr[i] == netdev)
-			return i+1;
-	}
-
-	return -1;
-}
-
-/*
  * edma_reg_read()
  *	Read EDMA register
  */
@@ -308,48 +288,6 @@ static void edma_if_set_features(struct nss_dp_data_plane_ctx *dpc)
 static int edma_if_pause_on_off(struct nss_dp_data_plane_ctx *dpc,
 				uint32_t pause_on)
 {
-	return NSS_DP_SUCCESS;
-}
-
-/*
- * edma_if_vsi_assign()
- *	assign vsi of the data plane
- *
- */
-static int edma_if_vsi_assign(struct nss_dp_data_plane_ctx *dpc, uint32_t vsi)
-{
-	struct net_device *netdev = dpc->dev;
-	int32_t port_num;
-
-	port_num = edma_get_port_num_from_netdev(netdev);
-
-	if (port_num < 0)
-		return NSS_DP_FAILURE;
-
-	if (fal_port_vsi_set(0, port_num, vsi) < 0)
-		return NSS_DP_FAILURE;
-
-	return NSS_DP_SUCCESS;
-}
-
-/*
- * edma_if_vsi_unassign()
- *	unassign vsi of the data plane
- *
- */
-static int edma_if_vsi_unassign(struct nss_dp_data_plane_ctx *dpc, uint32_t vsi)
-{
-	struct net_device *netdev = dpc->dev;
-	uint32_t port_num;
-
-	port_num = edma_get_port_num_from_netdev(netdev);
-
-	if (port_num < 0)
-		return NSS_DP_FAILURE;
-
-	if (fal_port_vsi_set(0, port_num, 0xffff) < 0)
-		return NSS_DP_FAILURE;
-
 	return NSS_DP_SUCCESS;
 }
 
@@ -638,8 +576,6 @@ struct nss_dp_data_plane_ops nss_dp_edma_ops = {
 	.xmit		= edma_if_xmit,
 	.set_features	= edma_if_set_features,
 	.pause_on_off	= edma_if_pause_on_off,
-	.vsi_assign	= edma_if_vsi_assign,
-	.vsi_unassign	= edma_if_vsi_unassign,
 #ifdef CONFIG_RFS_ACCEL
 	.rx_flow_steer	= edma_if_rx_flow_steer,
 #endif

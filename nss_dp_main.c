@@ -27,6 +27,7 @@
 #include <linux/of_mdio.h>
 #include <linux/phy.h>
 #if defined(NSS_DP_PPE_SUPPORT)
+#include <fal/fal_vsi.h>
 #include <ref/ref_vsi.h>
 #endif
 #include <net/switchdev.h>
@@ -213,10 +214,17 @@ static int nss_dp_close(struct net_device *netdev)
 	dp_priv->link_state = __NSS_DP_LINK_DOWN;
 
 #if defined(NSS_DP_PPE_SUPPORT)
-	/* Notify data plane to unassign VSI */
-	if (dp_priv->data_plane_ops->vsi_unassign(dp_priv->dpc, dp_priv->vsi)) {
-		netdev_dbg(netdev, "Data plane vsi unassign failed\n");
-		return -EAGAIN;
+	/*
+	 * Notify data plane to unassign VSI.
+	 * This is applicable only for dataplane override mode,
+	 * where NPU is expected to manage VSI assigns/un-assigns for ports.
+	 */
+	if (dp_priv->data_plane_ops->vsi_unassign) {
+		if (dp_priv->data_plane_ops->vsi_unassign(dp_priv->dpc,
+							dp_priv->vsi)) {
+			netdev_err(netdev, "Data plane vsi unassign failed\n");
+			return -EAGAIN;
+		}
 	}
 #endif
 
@@ -267,9 +275,18 @@ static int nss_dp_open(struct net_device *netdev)
 	set_bit(__NSS_DP_UP, &dp_priv->flags);
 
 #if defined(NSS_DP_PPE_SUPPORT)
-	if (dp_priv->data_plane_ops->vsi_assign(dp_priv->dpc, dp_priv->vsi)) {
-		netdev_dbg(netdev, "Data plane vsi assign failed\n");
-		return -EAGAIN;
+	/*
+	 * Notify data plane to assign VSI if required.
+	 * This is applicable only for dataplane override mode,
+	 * where NPU is expected to manage VSI assigns/un-assigns
+	 * based on port status and network configuration.
+	 */
+	if (dp_priv->data_plane_ops->vsi_assign) {
+		if (dp_priv->data_plane_ops->vsi_assign(dp_priv->dpc,
+							dp_priv->vsi)) {
+			netdev_err(netdev, "Data plane vsi assign failed\n");
+			return -EAGAIN;
+		}
 	}
 #endif
 
@@ -711,6 +728,14 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 	}
 
 	dp_priv->vsi = vsi_id;
+
+	/*
+	 * Assign the VSI to the port.
+	 */
+	if (fal_port_vsi_set(0, port_id, vsi_id) < 0) {
+		netdev_dbg(netdev, "Data plane vsi assign failed\n");
+		goto fail;
+	}
 #endif
 
 	/* TODO: Features: CSUM, tx/rx offload... configure */
@@ -753,6 +778,13 @@ static int nss_dp_remove(struct platform_device *pdev)
 		hal_ops = dp_priv->gmac_hal_ops;
 		if (dp_priv->phydev)
 			phy_disconnect(dp_priv->phydev);
+
+#if defined(NSS_DP_PPE_SUPPORT)
+		/*
+		 * Unassign the port's VSI.
+		 */
+		fal_port_vsi_set(0, dp_priv->macid, 0xFFFF);
+#endif
 		unregister_netdev(dp_priv->netdev);
 		hal_ops->exit(dp_priv->gmac_hal_ctx);
 		free_netdev(dp_priv->netdev);
