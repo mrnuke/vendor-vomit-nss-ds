@@ -23,6 +23,17 @@
 #define SYN_DP_RX_DESC_MAX_INDEX	(SYN_DP_RX_DESC_SIZE - 1)
 
 /*
+ * Size of sk_buff is 184B, which requires 3 cache lines
+ * in ARM core (Each cache line is of size 64B). napi_gro_receive
+ * and skb_put are majorly using variables from sk_buff structure
+ * which falls on either first or third cache lines. So, prefetching
+ * first and third cache line provides better performance.
+ */
+#define SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE1	64
+#define SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE3	128
+#define SYN_DP_RX_SKB_CACHE_LINE3	128
+
+/*
  * syn_dp_rx_buf
  */
 struct syn_dp_rx_buf {
@@ -49,5 +60,14 @@ struct syn_dp_info_rx {
 	struct net_device *netdev;	/* Net-device corresponding to the GMAC */
 	struct device *dev;		/* Platform device corresponding to the GMAC */
 };
+
+/*
+ * syn_dp_rx_inc_index()
+ * 	Increment Rx descriptor index
+ */
+static inline int syn_dp_rx_inc_index(uint32_t index, uint32_t inc)
+{
+	return ((index + inc) & SYN_DP_RX_DESC_MAX_INDEX);
+}
 
 #endif /*  __NSS_DP_SYN_DP_RX__ */

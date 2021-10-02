@@ -83,7 +83,7 @@ void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
 	uint32_t start, end;
 
 	start = rx_info->rx_refill_idx;
-	end = (start + empty_count) & SYN_DP_RX_DESC_MAX_INDEX;
+	end = syn_dp_rx_inc_index(start, empty_count);
 
 	for (i = 0; i < empty_count; i++) {
 		skb = __netdev_alloc_skb(netdev, SYN_DP_SKB_ALLOC_SIZE, GFP_ATOMIC);
@@ -105,7 +105,8 @@ void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
 		 */
 		syn_dp_rx_refill_one_desc(rx_desc, dma_addr, SYN_DP_SKB_DATA_INVAL_SIZE);
 		rx_info->rx_buf_pool[rx_refill_idx].skb = skb;
-		rx_info->rx_refill_idx = (rx_refill_idx + 1) & SYN_DP_RX_DESC_MAX_INDEX;
+		rx_info->rx_buf_pool[rx_refill_idx].map_addr_virt = (size_t)(skb->data);
+		rx_info->rx_refill_idx = syn_dp_rx_inc_index(rx_refill_idx, 1);
 		atomic_inc((atomic_t *)&rx_info->busy_rx_desc_cnt);
 	}
 
@@ -129,12 +130,15 @@ void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
 int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 {
 	struct dma_desc_rx *rx_desc = NULL;
-	int frame_length, busy, rx_idx;
+	int frame_length, busy, rx_idx, rx_next_idx;
 	uint32_t status, extstatus;
 	struct sk_buff *rx_skb;
 	struct net_device *netdev = rx_info->netdev;
 	uint32_t rx_packets = 0, rx_bytes = 0;
 	uint32_t start, end;
+	struct syn_dp_rx_buf *rx_buf;
+	struct dma_desc_rx *rx_desc_next = NULL;
+	uint8_t *next_skb_ptr;
 
 	busy = atomic_read((atomic_t *)&rx_info->busy_rx_desc_cnt);
 	if (unlikely(!busy)) {
@@ -149,6 +153,9 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 		busy = budget;
 	}
 
+	start = rx_info->rx_idx;
+	rx_desc = rx_info->rx_desc + start;
+
 	/*
 	 * Invalidate all the descriptors we can read in one go.
 	 * This could mean we re invalidating more than what we could
@@ -157,8 +164,7 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 	 * It is expected that speculative prefetches are disabled while
 	 * this code is executing.
 	 */
-	start = rx_info->rx_idx;
-	end = (rx_info->rx_idx + busy) & SYN_DP_RX_DESC_MAX_INDEX;
+	end = syn_dp_rx_inc_index(rx_info->rx_idx, busy);
 	if (end > start) {
 		dmac_inv_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
 	} else {
@@ -167,8 +173,6 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 	}
 
 	do {
-		rx_idx = rx_info->rx_idx;
-		rx_desc = rx_info->rx_desc + rx_idx;
 		status = rx_desc->status;
 		if (syn_dp_gmac_is_rx_desc_owned_by_dma(status)) {
 
@@ -178,7 +182,23 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 			break;
 		}
 
-		rx_skb = rx_info->rx_buf_pool[rx_idx].skb;
+		rx_idx = rx_info->rx_idx;
+		rx_next_idx = syn_dp_rx_inc_index(rx_idx, 1);
+		rx_desc_next = rx_info->rx_desc + rx_next_idx;
+
+		/*
+		 * Prefetch the next descriptor, assuming the next descriptor is available
+		 * for us to read.
+		 */
+		prefetch(rx_desc_next);
+		rx_buf = &rx_info->rx_buf_pool[rx_idx];
+
+		/*
+		 * Prefetch a cacheline (64B) of packet header data for the current SKB.
+		 */
+		prefetch((void *)rx_buf->map_addr_virt);
+		rx_skb = rx_buf->skb;
+		next_skb_ptr = (uint8_t *)rx_info->rx_buf_pool[rx_next_idx].skb;
 		extstatus = rx_desc->extstatus;
 		if (likely(syn_dp_gmac_is_rx_desc_valid(status) && !(extstatus & (DESC_RX_IP_HEADER_ERROR | DESC_RX_IP_PAYLOAD_ERROR)))) {
 			/*
@@ -199,6 +219,18 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 			rx_skb->protocol = eth_type_trans(rx_skb, netdev);
 			if (likely(!(extstatus & DESC_RX_CHK_SUM_BYPASS))) {
 				rx_skb->ip_summed = CHECKSUM_UNNECESSARY;
+			}
+
+			/*
+			 * Size of sk_buff is 184B, which requires 3 cache lines
+			 * in ARM core (Each cache line is of size 64B). napi_gro_receive
+			 * and skb_put are majorly using variables from sk_buff structure
+			 * which falls on either first or third cache lines. So, prefetching
+			 * first and third cache line provides better performance.
+			 */
+			if (likely(next_skb_ptr)) {
+				prefetch(next_skb_ptr + SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE1);
+				prefetch(next_skb_ptr + SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE3);
 			}
 
 			/*
@@ -227,9 +259,10 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 		 */
 		syn_dp_rx_reset_one_desc(rx_desc);
 		rx_info->rx_buf_pool[rx_idx].skb = NULL;
-		rx_info->rx_idx = (rx_idx + 1) & SYN_DP_RX_DESC_MAX_INDEX;
+		rx_info->rx_idx = syn_dp_rx_inc_index(rx_idx, 1);
 		atomic_dec((atomic_t *)&rx_info->busy_rx_desc_cnt);
 		busy--;
+		rx_desc = rx_desc_next;
 	} while (likely(busy > 0));
 
 	/*
