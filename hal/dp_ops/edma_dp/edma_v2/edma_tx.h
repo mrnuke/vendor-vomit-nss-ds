@@ -45,6 +45,9 @@
 #define EDMA_DST_INFO_SET(desc, x)	(desc->word4 |= (EDMA_DST_PORT_TYPE_SET(EDMA_DST_PORT_TYPE) | EDMA_DST_PORT_ID_SET(x)))
 
 #define EDMA_TXDESC_DATA_LEN_SET(desc, x)	(desc->word5 = ((x) & 0x1ffff))
+#define EDMA_TXDESC_SERVICE_CODE_SHIFT	16
+#define EDMA_TXDESC_SERVICE_CODE_MASK	(0x1FF << EDMA_TXDESC_SERVICE_CODE_SHIFT)
+#define EDMA_TXDESC_SERVICE_CODE_SET(desc, x)	(desc->word1 |= (((x) << EDMA_TXDESC_SERVICE_CODE_SHIFT) & EDMA_TXDESC_SERVICE_CODE_MASK))
 #ifdef __LP64__
 #define EDMA_TXDESC_OPAQUE_GET(desc)		(((uint64_t)desc->word3 << 32) | desc->word2)
 #define EDMA_TXCMPL_OPAQUE_GET(desc)		(((uint64_t)desc->word1 << 32) | desc->word0)

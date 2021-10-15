@@ -23,6 +23,7 @@
 #include <linux/reset.h>
 #include <fal/fal_qm.h>
 #include <fal/fal_rss_hash.h>
+#include <fal/fal_servcode.h>
 #include "edma.h"
 #include "edma_cfg_tx.h"
 #include "edma_cfg_rx.h"
@@ -95,11 +96,34 @@ void edma_enable_interrupts(struct edma_gbl_ctx *egc)
 
 /*
  * edma_disable_port()
- * 	EDMA disable port
+ *	EDMA disable port
  */
 static void edma_disable_port(void)
 {
 	edma_reg_write(EDMA_REG_PORT_CTRL, EDMA_DISABLE);
+}
+
+/*
+ * edma_cfg_sc_bypass
+ *	Set service code to disable PPE processing
+ *
+ * TODO: Use PPE APIs when they are available.
+ */
+static sw_error_t edma_cfg_sc_bypass(struct edma_gbl_ctx *egc)
+{
+	sw_error_t ret;
+	fal_servcode_config_t entry = {0};
+	entry.bypass_bitmap[0] = ~((1 << FAKE_MAC_HEADER_BYP)
+					| (1 << SERVICE_CODE_BYP)
+					| (1 << FAKE_L2_PROTO_BYP));
+	entry.bypass_bitmap[1] = ~(1 << ACL_POST_ROUTING_CHECK_BYP);
+
+	ret = fal_servcode_config_set(0, EDMA_SC_BYPASS, &entry);
+	if (ret < 0) {
+		edma_err("%px: Error in configuring service code %d\n", egc, ret);
+	}
+
+	return ret;
 }
 
 /*
@@ -730,6 +754,12 @@ static int edma_hw_init(struct edma_gbl_ctx *egc)
 	ret = edma_hw_reset(egc);
 	if (ret) {
 		edma_err("Error in resetting the hardware. ret: %d\n", ret);
+		return ret;
+	}
+
+	ret = (int)edma_cfg_sc_bypass(egc);
+	if (ret) {
+		edma_err("Error in configuring service code: %d\n", ret);
 		return ret;
 	}
 

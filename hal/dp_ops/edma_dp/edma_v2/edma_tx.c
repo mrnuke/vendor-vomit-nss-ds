@@ -211,6 +211,7 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 	 * Set the data pointer as the buffer address in the descriptor.
 	 */
 	txdesc->word0 = (dma_addr_t)virt_to_phys(skb->data);
+	EDMA_TXDESC_SERVICE_CODE_SET(txdesc, EDMA_SC_BYPASS);
 
 	dmac_clean_range((void *)skb->data, (void *)(skb->data + buf_len));
 
