@@ -287,10 +287,10 @@ static void syn_dp_if_set_features(struct nss_dp_data_plane_ctx *dpc)
 {
 	struct net_device *netdev = dpc->dev;
 
-	netdev->features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
-	netdev->hw_features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
-	netdev->vlan_features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
-	netdev->wanted_features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
+	netdev->features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM | NETIF_F_FRAGLIST | NETIF_F_SG;
+	netdev->hw_features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM | NETIF_F_FRAGLIST | NETIF_F_SG;
+	netdev->vlan_features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM | NETIF_F_FRAGLIST | NETIF_F_SG;
+	netdev->wanted_features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM | NETIF_F_FRAGLIST | NETIF_F_SG;
 }
 
 /*
@@ -303,18 +303,10 @@ static netdev_tx_t syn_dp_if_xmit(struct nss_dp_data_plane_ctx *dpc, struct sk_b
 	struct nss_dp_dev *gmac_dev = (struct nss_dp_dev *)netdev_priv(netdev);
 	struct syn_dp_info_tx *tx_info = &gmac_dev->dp_info.syn_info.dp_info_tx;
 
-	/*
-	 * Most likely, it is not a fragmented pkt, optimize for that
-	 */
-	if (unlikely(skb_is_nonlinear(skb))) {
-		goto drop;
-	}
-
 	if (likely(!syn_dp_tx(tx_info, skb))) {
 		return NETDEV_TX_OK;
 	}
 
-drop:
 	dev_kfree_skb_any(skb);
 	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_dropped);
 

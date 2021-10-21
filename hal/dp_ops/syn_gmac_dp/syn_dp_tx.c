@@ -21,7 +21,7 @@
 #include "syn_dma_reg.h"
 
 /*
- * syn_dp_tx_error_cnt
+ * syn_dp_tx_error_cnt()
  *	Set the error counters.
  */
 static inline void syn_dp_tx_error_cnt(struct syn_dp_info_tx *tx_info, uint32_t status)
@@ -40,17 +40,308 @@ static inline void syn_dp_tx_error_cnt(struct syn_dp_info_tx *tx_info, uint32_t 
 }
 
 /*
- * syn_dp_tx_clear_buf_entry
+ * syn_dp_tx_clear_buf_entry()
  *	Clear the Tx info after Tx is over.
  */
 static inline void syn_dp_tx_clear_buf_entry(struct syn_dp_info_tx *tx_info, uint32_t tx_skb_index)
 {
 	tx_info->tx_buf_pool[tx_skb_index].len = 0;
 	tx_info->tx_buf_pool[tx_skb_index].skb = NULL;
+	tx_info->tx_buf_pool[tx_skb_index].desc_count = 0;
 }
 
 /*
- * syn_dp_tx_set_desc
+ * syn_dp_tx_set_desc_sg()
+ *	Populate the tx desc structure with the buffer address for SG packets
+ */
+static inline struct dma_desc_tx *syn_dp_tx_set_desc_sg(struct syn_dp_info_tx *tx_info,
+					   uint32_t buffer, unsigned int length, uint32_t status)
+{
+	uint32_t tx_idx = tx_info->tx_idx;
+	struct dma_desc_tx *txdesc = tx_info->tx_desc + tx_idx;
+
+#ifdef SYN_DP_DEBUG
+	BUG_ON(atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt) > SYN_DP_TX_DESC_SIZE);
+	BUG_ON(txdesc != (tx_info->tx_desc + tx_idx));
+	BUG_ON(!syn_dp_gmac_is_tx_desc_empty(txdesc));
+	BUG_ON(syn_dp_gmac_is_tx_desc_owned_by_dma(txdesc));
+#endif
+
+	if (likely(length <= SYN_DP_MAX_DESC_BUFF_LEN)) {
+		txdesc->length  = ((length << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK);
+		txdesc->buffer2 = 0;
+	} else {
+		txdesc->length  = (SYN_DP_MAX_DESC_BUFF_LEN << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK;
+		txdesc->length |= ((length - SYN_DP_MAX_DESC_BUFF_LEN) << DESC_SIZE2_SHIFT) & DESC_SIZE2_MASK;
+		txdesc->buffer2 = buffer + SYN_DP_MAX_DESC_BUFF_LEN;
+	}
+
+	txdesc->buffer1 = buffer;
+
+	txdesc->status = (status | ((tx_idx == (SYN_DP_TX_DESC_SIZE - 1)) ? DESC_TX_DESC_END_OF_RING : 0));
+
+	tx_info->tx_idx = syn_dp_tx_inc_index(tx_idx, 1);
+	return txdesc;
+}
+
+/*
+ * syn_dp_tx_process_nr_frags()
+ *	Process nr frags for the SG packets
+ */
+static inline struct dma_desc_tx *syn_dp_tx_process_nr_frags(struct syn_dp_info_tx *tx_info,
+				struct sk_buff *skb, uint32_t *total_length, uint32_t nr_frags)
+{
+	struct dma_desc_tx *tx_desc;
+	dma_addr_t dma_addr;
+	unsigned int length, i = 0;
+
+	do {
+		const skb_frag_t *frag = &skb_shinfo(skb)->frags[i++];
+		void *frag_addr = skb_frag_address(frag);
+		length = skb_frag_size(frag);
+		dma_addr = (dma_addr_t)virt_to_phys(frag_addr);
+
+		dmac_clean_range(frag_addr, frag_addr + length);
+
+		*total_length += length;
+		tx_desc = syn_dp_tx_set_desc_sg(tx_info, dma_addr, length, DESC_OWN_BY_DMA);
+	} while ( i < nr_frags);
+
+	return tx_desc;
+}
+
+/*
+ * syn_dp_tx_nr_frags()
+ *	TX routine for Synopsys GMAC SG packets with nr frags
+ */
+int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
+{
+	dma_addr_t dma_addr;
+	unsigned int length = skb_headlen(skb);
+	struct dma_desc_tx *first_desc, *tx_desc;
+	unsigned int desc_needed = 0, total_len = 0;
+	unsigned int nr_frags = skb_shinfo(skb)->nr_frags;
+	uint32_t first_idx;
+
+#ifdef SYN_DP_DEBUG
+	BUG_ON(nr_frags > MAX_SKB_FRAGS);
+#endif
+
+	/*
+	 * Total descriptor needed will be sum of number of nr_frags and head skb.
+	 */
+	desc_needed = 1 + nr_frags;
+
+	/*
+	 * If we don't have enough tx descriptor for this pkt, return busy.
+	 */
+	if (unlikely((SYN_DP_TX_DESC_SIZE - atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt)) < desc_needed)) {
+		atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_desc_not_avail);
+		netdev_dbg(tx_info->netdev, "Not enough descriptors available %d", desc_needed);
+		return -1;
+	}
+
+	/*
+	 * Flush the dma for non-paged skb data
+	 */
+	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
+	dmac_clean_range((void *)skb->data, (void *)(skb->data + length));
+
+	total_len = length;
+
+	/*
+	 * Save the tx index of the first descriptor of the segment
+	 */
+	first_idx = tx_info->tx_idx;
+
+	/*
+	 * Fill the non paged data (skb->data) in the first descriptor.
+	 * We defer setting the desc_own_by_dma for first fragment until
+	 * all the descriptors for this frame are ready.
+	 */
+	first_desc = syn_dp_tx_set_desc_sg(tx_info, dma_addr, length, DESC_TX_FIRST);
+
+	/*
+	 * Fill other fragments which are part of nr_frags in the remaining descriptors
+	 * and returns the last descriptor.
+	 */
+	tx_desc = syn_dp_tx_process_nr_frags(tx_info, skb, &total_len, nr_frags);
+
+	/*
+	 * Fill the buffer pool in the first segment of the fragment only
+	 * instead of filling in all the descriptors for the fragments
+	 */
+	tx_info->tx_buf_pool[first_idx].desc_count = desc_needed;
+	tx_info->tx_buf_pool[first_idx].skb = skb;
+	tx_info->tx_buf_pool[first_idx].len = total_len;
+
+	/*
+	 * For the last fragment, Enable the interrupt and set LS bit
+	 */
+	tx_desc->status |= (DESC_TX_LAST | DESC_TX_INT_ENABLE);
+
+	/*
+	 * Ensure all write completed before setting own by dma bit so when gmac
+	 * HW takeover this descriptor, all the fields are filled correctly
+	 */
+	wmb();
+
+	/*
+	 * We've now written all of the descriptors in our scatter-gather list
+	 * and need to write the "OWN" bit of the first one to mark the chain
+	 * as available to the DMA engine. Also, add checksum calculation bit
+	 * for the first descriptor if needed
+	 */
+	first_desc->status |= (DESC_OWN_BY_DMA | ((skb->ip_summed == CHECKSUM_PARTIAL) ? DESC_TX_CIS_TCP_PSEUDO_CS : 0));
+
+	atomic_add(desc_needed, (atomic_t *)&tx_info->busy_tx_desc_cnt);
+	syn_resume_dma_tx(tx_info->mac_base);
+
+	return 0;
+}
+
+/*
+ * syn_dp_tx_frag_list()
+ *	TX routine for Synopsys GMAC SG packets with frag lists
+ */
+int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
+{
+	dma_addr_t dma_addr;
+	struct sk_buff *iter_skb;
+	struct dma_desc_tx *first_desc, *tx_desc;
+	unsigned int length = skb_headlen(skb);
+	unsigned int desc_needed = 1, total_len = 0;
+	unsigned int nr_frags = skb_shinfo(skb)->nr_frags, fraglist_nr_frags = 0;
+	uint32_t first_idx;
+
+	/*
+	 * When skb is fragmented, count the number of descriptors needed
+	 */
+	if (unlikely(nr_frags)) {
+#ifdef SYN_DP_DEBUG
+		BUG_ON(nr_frags > MAX_SKB_FRAGS);
+#endif
+		desc_needed += nr_frags;
+	}
+
+	/*
+	 * Walk through fraglist skbs, also making note of nr_frags
+	 */
+	skb_walk_frags(skb, iter_skb) {
+		fraglist_nr_frags = skb_shinfo(iter_skb)->nr_frags;
+
+#ifdef SYN_DP_DEBUG
+		/* It is unlikely below check hits, BUG_ON */
+		BUG_ON(fraglist_nr_frags > MAX_SKB_FRAGS);
+#endif
+		/* One descriptor for skb->data and more for nr_frags */
+		desc_needed +=  (1 + fraglist_nr_frags);
+	}
+
+	/*
+	 * If we don't have enough tx descriptor for this pkt, return busy.
+	 */
+	if (unlikely((SYN_DP_TX_DESC_SIZE - atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt)) < desc_needed)) {
+		atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_desc_not_avail);
+		netdev_dbg(tx_info->netdev, "Not enough descriptors available %d", desc_needed);
+		return -1;
+	}
+
+	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
+
+	/*
+	 * Flush the data area of the head skb
+	 */
+	dmac_clean_range((void *)skb->data, (void *)(skb->data + length));
+
+	total_len = length;
+
+	/*
+	 * Save the tx index of the first descriptor of the segment
+	 */
+	first_idx = tx_info->tx_idx;
+
+	/*
+	 * Fill the first skb of the frag list chain in the first descriptor
+	 * We defer setting the desc_own_by_dma bit for first fragment until
+	 * all the descriptors for this frame are ready.
+	 */
+	first_desc = syn_dp_tx_set_desc_sg(tx_info, dma_addr, length, DESC_TX_FIRST);
+
+	/*
+	 * Fill other fragments which are part of nr_frags in the remaining descriptors
+	 * and returns the last descriptor.
+	 */
+	if (unlikely(nr_frags)) {
+		tx_desc = syn_dp_tx_process_nr_frags(tx_info, skb, &total_len, nr_frags);
+	}
+
+	/*
+	 * Walk through fraglist skbs, also making note of nr_frags and filling it in descriptors
+	 */
+	skb_walk_frags(skb, iter_skb) {
+		length = skb_headlen(iter_skb);
+		dma_addr = (dma_addr_t)virt_to_phys(iter_skb->data);
+
+		dmac_clean_range((void *)iter_skb->data, (void *)(iter_skb->data + length));
+
+		total_len += length;
+
+		/*
+		 * Fill the non paged data skb->data.
+		 */
+		tx_desc = syn_dp_tx_set_desc_sg(tx_info, dma_addr, length, DESC_OWN_BY_DMA);
+
+		/*
+		 * Check if nr_frags is available for the skb. If so, fill the
+		 * fragments in the descriptors else, continue
+		 */
+		fraglist_nr_frags = skb_shinfo(iter_skb)->nr_frags;
+
+		/*
+		 * Fill other fragments which are part of nr_frags in the remaining descriptors
+		 * and returns the last descriptor.
+		 */
+		if (unlikely(fraglist_nr_frags)) {
+			tx_desc = syn_dp_tx_process_nr_frags(tx_info, iter_skb, &total_len, fraglist_nr_frags);
+		}
+	}
+
+	/*
+	 * Fill the buffer pool in the first segment of the fragment only
+	 * instead of filling in all the descriptors for the fragments
+	 */
+	tx_info->tx_buf_pool[first_idx].desc_count = desc_needed;
+	tx_info->tx_buf_pool[first_idx].skb = skb;
+	tx_info->tx_buf_pool[first_idx].len = total_len;
+
+	/*
+	 * For the last fragment, Enable the interrupt and set LS bit
+	 */
+	tx_desc->status |= (DESC_TX_LAST | DESC_TX_INT_ENABLE);
+
+	/*
+	 * Ensure all write completed before setting own by dma bit so when gmac
+	 * HW takeover this descriptor, all the fields are filled correctly
+	 */
+	wmb();
+
+	/*
+	 * We've now written all of the descriptors in our scatter-gather list
+	 * and need to write the "OWN" bit of the first one to mark the chain
+	 * as available to the DMA engine. Also, add checksum calculation
+	 * bit in the first descriptor if needed.
+	 */
+	first_desc->status |= (DESC_OWN_BY_DMA | ((skb->ip_summed == CHECKSUM_PARTIAL) ? DESC_TX_CIS_TCP_PSEUDO_CS : 0));
+
+	atomic_add(desc_needed, (atomic_t *)&tx_info->busy_tx_desc_cnt);
+	syn_resume_dma_tx(tx_info->mac_base);
+
+	return 0;
+}
+
+/*
+ * syn_dp_tx_set_desc()
  *	Populate the tx desc structure with the buffer address.
  */
 static inline void syn_dp_tx_set_desc(struct syn_dp_info_tx *tx_info,
@@ -81,6 +372,7 @@ static inline void syn_dp_tx_set_desc(struct syn_dp_info_tx *tx_info,
 
 	tx_info->tx_buf_pool[tx_idx].skb = skb;
 	tx_info->tx_buf_pool[tx_idx].len = length;
+	tx_info->tx_buf_pool[tx_idx].desc_count = 1;
 
 	/*
 	 * Ensure all write completed before setting own by dma bit so when gmac
@@ -94,12 +386,12 @@ static inline void syn_dp_tx_set_desc(struct syn_dp_info_tx *tx_info,
 }
 
 /*
- * syn_dp_tx_complete
+ * syn_dp_tx_complete()
  *	Xmit complete, clear descriptor and free the skb
  */
 int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 {
-	int busy;
+	int busy, desc_cnt;
 	uint32_t status;
 	struct dma_desc_tx *desc = NULL;
 	struct sk_buff *skb;
@@ -108,9 +400,9 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	uint32_t skb_free_start_idx;
 	uint32_t skb_free_end_idx = SYN_DP_TX_INVALID_DESC_INDEX;
 	uint32_t skb_free_abs_end_idx = 0;
+	uint32_t num_desc = 0;
 
-
-	busy = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
+	busy = desc_cnt = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
 
 	if (unlikely(!busy)) {
 
@@ -122,7 +414,7 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	}
 
 	if (likely(busy > budget)) {
-		busy = budget;
+		busy = desc_cnt = budget;
 	}
 
 	skb_free_start_idx = syn_dp_tx_comp_index_get(tx_info);
@@ -138,6 +430,13 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 		}
 
 		tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
+
+                /*
+		 * If fragments were transmitted in descriptor,
+		 * calculate the number of descriptors used by
+		 * the fragments in order to free it.
+		 */
+		num_desc = tx_info->tx_buf_pool[tx_skb_index].desc_count;
 		skb = tx_info->tx_buf_pool[tx_skb_index].skb;
 		len = tx_info->tx_buf_pool[tx_skb_index].len;
 
@@ -160,19 +459,22 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 			}
 		}
 		skb_free_end_idx = tx_info->tx_comp_idx;
-		tx_info->tx_comp_idx = syn_dp_tx_inc_index(tx_info->tx_comp_idx, 1);
+		tx_info->tx_comp_idx = syn_dp_tx_inc_index(tx_info->tx_comp_idx, num_desc);
 
 		/*
-		 * Busy tx descriptor is reduced by one as
-		 * it will be handed over to Processor now.
+		 * Busy is used to count the workdone with assigned budget.
+		 * desc_cnt is used to count the number of descriptors available for completion in given budget.
+		 * Note: In sg case the descriptors count may be greater than one for single skb.
 		 */
-		atomic_dec((atomic_t *)&tx_info->busy_tx_desc_cnt);
-	} while (--busy);
+		atomic_sub(num_desc, ( atomic_t *)&tx_info->busy_tx_desc_cnt);
+		desc_cnt -= num_desc;
+		--busy;
+	} while (likely(busy && desc_cnt));
 
 	/*
 	 * Descriptors still held by DMA. We are done.
 	 */
-	if (skb_free_end_idx == SYN_DP_TX_INVALID_DESC_INDEX) {
+	if (unlikely(skb_free_end_idx == SYN_DP_TX_INVALID_DESC_INDEX)) {
 		goto done;
 	}
 
@@ -186,16 +488,20 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	}
 
 	while (skb_free_end_idx >= skb_free_start_idx) {
-		dev_kfree_skb_any(tx_info->tx_buf_pool[skb_free_start_idx].skb);
-		syn_dp_tx_clear_buf_entry(tx_info, skb_free_start_idx);
+		if (likely(tx_info->tx_buf_pool[skb_free_start_idx].skb)) {
+			dev_kfree_skb_any(tx_info->tx_buf_pool[skb_free_start_idx].skb);
+			syn_dp_tx_clear_buf_entry(tx_info, skb_free_start_idx);
+		}
 		skb_free_start_idx++;
 	}
 
 	if (skb_free_abs_end_idx) {
 		skb_free_start_idx = 0;
 		while (skb_free_start_idx <= skb_free_abs_end_idx) {
-			dev_kfree_skb_any(tx_info->tx_buf_pool[skb_free_start_idx].skb);
-			syn_dp_tx_clear_buf_entry(tx_info, skb_free_start_idx);
+			if (likely(tx_info->tx_buf_pool[skb_free_start_idx].skb)) {
+				dev_kfree_skb_any(tx_info->tx_buf_pool[skb_free_start_idx].skb);
+				syn_dp_tx_clear_buf_entry(tx_info, skb_free_start_idx);
+			}
 			skb_free_start_idx++;
 		}
 	}
@@ -207,7 +513,40 @@ done:
 }
 
 /*
- * syn_dp_tx
+ * syn_dp_tx_sg()
+ *	Tx routine for Synopsys GMAC scatter gather packets
+ */
+int syn_dp_tx_sg(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
+{
+	struct net_device *netdev = tx_info->netdev;
+	bool has_frag_list;
+	unsigned int nr_frags;
+
+	has_frag_list = skb_has_frag_list(skb);
+	nr_frags = skb_shinfo(skb)->nr_frags;
+
+	/*
+	 * Handle SG for below skb types.
+	 * 1. skb has fraglist
+	 * 2. skb has fraglist and any of the fragments can have nr_frags
+	 */
+	if (has_frag_list) {
+		return syn_dp_tx_frag_list(tx_info, skb);
+	}
+
+	/*
+	 * Handle SG for nr_frags
+	 */
+	if (nr_frags) {
+		return syn_dp_tx_nr_frags(tx_info, skb);
+	}
+
+	netdev_dbg(netdev, "Not a valid non-linear packet");
+	return -1;
+}
+
+/*
+ * syn_dp_tx()
  *	TX routine for Synopsys GMAC
  */
 int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
@@ -216,10 +555,17 @@ int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	dma_addr_t dma_addr;
 
 	/*
-	 * If we don't have enough tx descriptor for this pkt, return busy.
+	 * Check if it's a Scatter Gather packet
+	 */
+	if (unlikely(skb_is_nonlinear(skb))) {
+		return syn_dp_tx_sg(tx_info, skb);
+	}
+
+	/*
+	 * Linear skb processing
 	 */
 	if (unlikely((SYN_DP_TX_DESC_SIZE - atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt)) < 1)) {
-		atomic_inc((atomic_t *)&tx_info->tx_stats.tx_desc_not_avail);
+		atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_desc_not_avail);
 		netdev_dbg(netdev, "Not enough descriptors available");
 		return -1;
 	}
@@ -232,10 +578,9 @@ int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	 * Queue packet to the GMAC rings
 	 */
 	syn_dp_tx_set_desc(tx_info, dma_addr, skb, (skb->ip_summed == CHECKSUM_PARTIAL),
-				(DESC_TX_LAST | DESC_TX_FIRST | DESC_TX_INT_ENABLE | DESC_OWN_BY_DMA));
+			(DESC_TX_LAST | DESC_TX_FIRST | DESC_TX_INT_ENABLE | DESC_OWN_BY_DMA));
 
 	syn_resume_dma_tx(tx_info->mac_base);
 	atomic_inc((atomic_t *)&tx_info->busy_tx_desc_cnt);
-
 	return 0;
 }
