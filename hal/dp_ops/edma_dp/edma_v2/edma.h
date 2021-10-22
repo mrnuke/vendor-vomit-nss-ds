@@ -42,6 +42,7 @@
 #define EDMA_START_GMACS		NSS_DP_HAL_START_IFNUM
 #define EDMA_MAX_GMACS			NSS_DP_HAL_MAX_PORTS
 #define EDMA_IRQ_NAME_SIZE		32
+#define EDMA_SC_BYPASS		1
 
 #define EDMA_DESC_AVAIL_COUNT(head, tail, max) (((head) - (tail)) + (max)) & ((max) - 1)
 
