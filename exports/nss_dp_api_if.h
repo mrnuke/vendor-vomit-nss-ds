@@ -47,6 +47,7 @@
 			/**< First GMAC interface number (0/1) depending on SoC. */
 #define NSS_DP_MAX_INTERFACES	(NSS_DP_HAL_MAX_PORTS + NSS_DP_START_IFNUM)
 			/**< Last interface index for the SoC, to be used by qca-nss-drv. */
+#define NSS_DP_INVALID_INTERFACE -1
 
 /*
  * NSS PTP service code
@@ -209,6 +210,34 @@ void nss_phy_tstamp_rx_buf(void *app_data, struct sk_buff *skb);
  * @param[in] skb Pointer to the packet.
  */
 void nss_phy_tstamp_tx_buf(struct net_device *ndev, struct sk_buff *skb);
+
+/**
+ * nss_dp_is_netdev_physical
+ *	Returns true if the net device is physical, false otherwise..
+ *
+ * @datatypes
+ * net_device
+ *
+ * @param[in] net_device pointer to netdev structure.
+ *
+ * @return
+ * true if interface is physical, false otherwise.
+ */
+bool nss_dp_is_netdev_physical(struct net_device *netdev);
+
+/**
+ * nss_dp_get_port_num
+ *	Returns the port number for the physical interface.
+ *
+ * @datatypes
+ * net_device
+ *
+ * @param[in] net_device pointer to netdev structure.
+ *
+ * @return
+ * port number correspond to this net_device.
+ */
+int32_t nss_dp_get_port_num(struct net_device *netdev);
 
 /**
  *@}
