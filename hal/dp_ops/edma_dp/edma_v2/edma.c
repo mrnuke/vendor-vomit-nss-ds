@@ -24,6 +24,7 @@
 #include <fal/fal_qm.h>
 #include <fal/fal_rss_hash.h>
 #include <fal/fal_servcode.h>
+#include <linux/clk.h>
 #include "edma.h"
 #include "edma_cfg_tx.h"
 #include "edma_cfg_rx.h"
@@ -827,6 +828,192 @@ static int edma_hw_init(struct edma_gbl_ctx *egc)
 }
 
 /*
+ * edma_clock_set_and_enable()
+ *	API to set and enable the EDMA common clocks
+ */
+static int32_t edma_clock_set_and_enable(struct device *dev, const char *id, unsigned long rate)
+{
+	struct clk *clk = NULL;
+	int err;
+
+	clk = devm_clk_get(dev, id);
+	if (IS_ERR(clk)) {
+		edma_err("%px: Error in getting the %s clock\n", dev, id);
+		return -1;
+	}
+
+	if (rate) {
+		err = clk_set_rate(clk, rate);
+		if (err) {
+			edma_err("%px: Error in setting %s clock frequency\n", dev, id);
+			return -1;
+		}
+	}
+
+	err = clk_prepare_enable(clk);
+	if (err) {
+		edma_err("%px: Error in enabling %s clock\n", dev, id);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * edma_configure_clocks()
+ *	API to configure EDMA common clocks
+ */
+static int32_t edma_configure_clocks(void)
+{
+	struct platform_device *pdev = edma_gbl_ctx.pdev;
+	int32_t err;
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_CSR_CLK, EDMA_CSR_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_CSR_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_CSR_CLK, EDMA_NSSNOC_CSR_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_CSR_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_IMEM_QSB_CLK,
+					EDMA_IMEM_QSB_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_IMEM_QSB_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_IMEM_QSB_CLK,
+					EDMA_NSSNOC_IMEM_QSB_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_IMEM_QSB_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_IMEM_AHB_CLK,
+					EDMA_IMEM_AHB_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_IMEM_AHB_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_IMEM_AHB_CLK,
+					EDMA_NSSNOC_IMEM_AHB_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_IMEM_AHB_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_MEM_NOC_NSSNOC_CLK,
+					EDMA_MEM_NOC_NSSNOC_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_MEM_NOC_NSSNOC_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_TBU_CLK,
+					EDMA_TBU_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_TBU_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_TS_CLK, EDMA_TS_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_TS_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSCC_CLK, EDMA_NSSCC_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSCC_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSCFG_CLK, EDMA_NSSCFG_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSCFG_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSCNOC_ATB_CLK,
+					EDMA_NSSCNOC_ATB_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSCNOC_ATB_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_MEM_NOC_1_CLK,
+					EDMA_NSSNOC_MEM_NOC_1_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_MEM_NOC_1_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_MEMNOC_CLK,
+					EDMA_NSSNOC_MEMNOC_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_MEMNOC_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_NSSCC_CLK,
+					EDMA_NSSNOC_NSSCC_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_NSSCC_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_PCNOC_1_CLK,
+					EDMA_NSSNOC_PCNOC_1_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_PCNOC_1_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_QOSGEN_REF_CLK,
+					EDMA_NSSNOC_QOSGEN_REF_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_QOSGEN_REF_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_SNOC_1_CLK,
+					EDMA_NSSNOC_SNOC_1_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_SNOC_1_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_SNOC_CLK,
+					EDMA_NSSNOC_SNOC_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_SNOC_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_TIMEOUT_REF_CLK,
+					EDMA_NSSNOC_TIMEOUT_REF_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_TIMEOUT_REF_CLK);
+		return -1;
+	}
+
+	err = edma_clock_set_and_enable(&pdev->dev, EDMA_NSSNOC_XO_DCD_CLK,
+					EDMA_NSSNOC_XO_DCD_CLK_FREQ);
+	if (err) {
+		edma_err("Error in enabling %s clock\n", EDMA_NSSNOC_XO_DCD_CLK);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  * edma_init()
  *	EDMA init
  */
@@ -879,6 +1066,18 @@ int edma_init(void)
 		ret = -EFAULT;
 		goto edma_init_remap_fail;
 	}
+
+	/*
+	 * Configure the EDMA common clocks
+	 */
+	ret = edma_configure_clocks();
+	if (ret) {
+		edma_err("Error in configuring the common EDMA clocks\n");
+		ret = -EFAULT;
+		goto edma_init_remap_fail;
+	}
+
+	edma_info("EDMA common clocks are configured\n");
 
 	if (edma_hw_init(&edma_gbl_ctx) != 0) {
 		edma_err("Error in edma initialization\n");
