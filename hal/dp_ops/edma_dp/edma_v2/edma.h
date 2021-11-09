@@ -37,7 +37,6 @@
 #endif
 
 #define EDMA_HW_RESET_ID		"edma_rst"
-#define EDMA_HW_CFG_RESET_ID		"edma_cfg_reset"
 #define EDMA_BUF_SIZE			2000
 #define EDMA_DEVICE_NODE_NAME		"edma"
 #define EDMA_START_GMACS		NSS_DP_HAL_START_IFNUM

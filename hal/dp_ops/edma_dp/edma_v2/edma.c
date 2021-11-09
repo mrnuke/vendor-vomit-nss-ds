@@ -605,24 +605,12 @@ rx_rings_alloc_fail:
  */
 static int edma_hw_reset(struct edma_gbl_ctx *egc)
 {
-	struct reset_control *edma_rst, *edma_hw_rst;
+	struct reset_control *edma_hw_rst;
 	struct platform_device *pdev = egc->pdev;
 
-	edma_rst = devm_reset_control_get(&pdev->dev, EDMA_HW_RESET_ID);
-	if (IS_ERR(edma_rst)) {
-		edma_err("DTS Node: %s does not exist\n", EDMA_HW_RESET_ID);
-		return -EINVAL;
-	}
-
-	reset_control_assert(edma_rst);
-	udelay(100);
-
-	reset_control_deassert(edma_rst);
-	udelay(100);
-
-	edma_hw_rst = devm_reset_control_get(&pdev->dev, EDMA_HW_CFG_RESET_ID);
+	edma_hw_rst = devm_reset_control_get(&pdev->dev, EDMA_HW_RESET_ID);
 	if (IS_ERR(edma_hw_rst)) {
-		edma_err("DTS Node: %s does not exist\n", EDMA_HW_CFG_RESET_ID);
+		edma_err("DTS Node: %s does not exist\n", EDMA_HW_RESET_ID);
 		return -EINVAL;
 	}
 
