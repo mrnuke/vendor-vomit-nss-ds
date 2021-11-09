@@ -1,6 +1,7 @@
 /*
- **************************************************************************
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ *
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -13,7 +14,6 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- **************************************************************************
  */
 
 #ifndef __NSS_DP_DEV_H__
@@ -74,6 +74,8 @@ struct nss_dp_dev {
 	u8 stp_state;			/* STP state of this physical port */
 	unsigned long brport_flags;	/* bridge port flags */
 #endif
+	bool rx_page_mode;		/* page mode for Rx processing */
+	uint32_t rx_jumbo_mru;		/* Jumbo mru value for Rx processing */
 };
 
 /*

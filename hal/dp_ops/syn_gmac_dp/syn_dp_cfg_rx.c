@@ -68,7 +68,11 @@ int syn_dp_cfg_rx_setup_rings(struct syn_dp_info *dev_info)
 		return NSS_DP_FAILURE;
 	}
 
-	syn_dp_rx_refill(&dev_info->dp_info_rx);
+	if (likely(!dev_info->dp_info_rx.page_mode)) {
+		syn_dp_rx_refill(&dev_info->dp_info_rx);
+	} else {
+		syn_dp_rx_refill_page_mode(&dev_info->dp_info_rx);
+	}
 	syn_init_rx_desc_base(dev_info->mac_base, dev_info->rx_desc_dma_addr);
 
 	return NSS_DP_SUCCESS;

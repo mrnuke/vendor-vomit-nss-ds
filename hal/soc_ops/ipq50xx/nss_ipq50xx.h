@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -59,11 +61,13 @@ struct nss_dp_hal_gmac_stats_rx {
 	uint64_t rx_no_buffer_errors;	/**< Number of RX no-buffer errors */
 	uint64_t rx_transport_csum_bypassed;
 					/**< Number of RX packets where the transport checksum was bypassed */
-	uint64_t rx_scatter_errors;	/**< Number of scattered frames received by the DMA */
 	uint64_t rx_fifo_overflows;	/**< Number of RX FIFO overflows signalled by the DMA */
 	uint64_t rx_overflow_errors;	/**< Number of Rx Overflow errors received from Rx descriptors */
 	uint64_t rx_crc_errors;		/**< Number of Rx CRC errors */
 	uint64_t rx_skb_alloc_errors;	/**< Number of Rx skb alocation errors */
+	uint64_t rx_scatter_packets;	/**< Number of received scattered frames successful */
+	uint64_t rx_scatter_bytes;	/**< Number of bytes received for scattered frames */
+	uint64_t rx_scatter_errors;	/**< Number of RX scatter errors */
 };
 
 /**

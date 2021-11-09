@@ -38,7 +38,7 @@
 #define SYN_DP_MAX_DESC_BUFF_LEN	0x1FFF	/* Max size of buffer that can be programed into one field of desc */
 #define SYN_DP_SKB_ALLOC_SIZE		(SYN_DP_MINI_JUMBO_FRAME_MTU + NET_IP_ALIGN)
 #define SYN_DP_SKB_HEADROOM		128
-#define SYN_DP_SKB_DATA_INVAL_SIZE	(SYN_DP_SKB_ALLOC_SIZE - (SYN_DP_SKB_HEADROOM + NET_IP_ALIGN))
+#define SYN_DP_PAGE_MODE_SKB_SIZE	256	/* SKB head buffer size for page mode */
 
 /*
  * syn_dp_info
@@ -63,6 +63,7 @@ void syn_dp_cfg_tx_cleanup_rings(struct syn_dp_info *dev_info);
 
 int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget);
 void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info);
+void syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info);
 int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb);
 int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget);
 

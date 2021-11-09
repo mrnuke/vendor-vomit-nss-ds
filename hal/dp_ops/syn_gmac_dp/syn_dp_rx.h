@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ *
  * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -59,6 +60,11 @@ struct syn_dp_info_rx {
 					/* GMAC driver Rx statistics */
 	struct net_device *netdev;	/* Net-device corresponding to the GMAC */
 	struct device *dev;		/* Platform device corresponding to the GMAC */
+	struct sk_buff *head;		/* Head of the skb list in case of Scatter-Gather frame */
+	struct sk_buff *tail;		/* Tail of the skb list in case of Scatter-Gather frame */
+	bool page_mode;			/* page_mode: true for nr_frag and false for fraglist */
+	uint32_t alloc_buf_len;		/* Skb alloc length, depends based on page/fraglist mode */
+	uint32_t prev_len;		/* Stores frame_length of previous descriptor */
 };
 
 /*
