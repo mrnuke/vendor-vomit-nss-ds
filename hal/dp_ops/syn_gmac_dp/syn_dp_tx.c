@@ -105,6 +105,10 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	struct sk_buff *skb;
 	uint32_t tx_skb_index, len;
 	uint32_t tx_packets = 0, total_len = 0;
+	uint32_t skb_free_start_idx;
+	uint32_t skb_free_end_idx = SYN_DP_TX_INVALID_DESC_INDEX;
+	uint32_t skb_free_abs_end_idx = 0;
+
 
 	busy = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
 
@@ -121,6 +125,7 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 		busy = budget;
 	}
 
+	skb_free_start_idx = syn_dp_tx_comp_index_get(tx_info);
 	do {
 		desc = syn_dp_tx_comp_desc_get(tx_info);
 		status = desc->status;
@@ -135,8 +140,6 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 		tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
 		skb = tx_info->tx_buf_pool[tx_skb_index].skb;
 		len = tx_info->tx_buf_pool[tx_skb_index].len;
-
-		syn_dp_tx_clear_buf_entry(tx_info, tx_skb_index);
 
 		if (likely(status & DESC_TX_LAST)) {
 			if (likely(!(status & DESC_TX_ERROR))) {
@@ -156,8 +159,7 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 				syn_dp_tx_error_cnt(tx_info, status);
 			}
 		}
-		dev_kfree_skb_any(skb);
-
+		skb_free_end_idx = tx_info->tx_comp_idx;
 		tx_info->tx_comp_idx = syn_dp_tx_inc_index(tx_info->tx_comp_idx, 1);
 
 		/*
@@ -167,6 +169,37 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 		atomic_dec((atomic_t *)&tx_info->busy_tx_desc_cnt);
 	} while (--busy);
 
+	/*
+	 * Descriptors still held by DMA. We are done.
+	 */
+	if (skb_free_end_idx == SYN_DP_TX_INVALID_DESC_INDEX) {
+		goto done;
+	}
+
+	if (skb_free_end_idx < skb_free_start_idx) {
+
+		/*
+		 * If the ring is wrapped around, get the absolute end index.
+		 */
+		skb_free_abs_end_idx = skb_free_end_idx;
+		skb_free_end_idx = SYN_DP_TX_DESC_MAX_INDEX;
+	}
+
+	while (skb_free_end_idx >= skb_free_start_idx) {
+		dev_kfree_skb_any(tx_info->tx_buf_pool[skb_free_start_idx].skb);
+		syn_dp_tx_clear_buf_entry(tx_info, skb_free_start_idx);
+		skb_free_start_idx++;
+	}
+
+	if (skb_free_abs_end_idx) {
+		skb_free_start_idx = 0;
+		while (skb_free_start_idx <= skb_free_abs_end_idx) {
+			dev_kfree_skb_any(tx_info->tx_buf_pool[skb_free_start_idx].skb);
+			syn_dp_tx_clear_buf_entry(tx_info, skb_free_start_idx);
+			skb_free_start_idx++;
+		}
+	}
+done:
 	atomic64_add(tx_packets, (atomic64_t *)&tx_info->tx_stats.tx_packets);
 	atomic64_add(total_len, (atomic64_t *)&tx_info->tx_stats.tx_bytes);
 
