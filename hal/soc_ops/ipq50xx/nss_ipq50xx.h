@@ -93,6 +93,7 @@ struct nss_dp_hal_gmac_stats_tx {
 	uint64_t tx_ip_payload_errors;	/**< Number of TX IP payload errors */
 	uint64_t tx_dropped;		/**< Number of TX dropped packets */
 	uint64_t tx_ts_create_errors;	/**< Number of tx timestamp creation errors */
+	uint64_t tx_desc_not_avail;	/**< TX descriptor unavailable */
 };
 
 /**

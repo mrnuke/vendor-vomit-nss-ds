@@ -22,6 +22,18 @@
 #include "syn_dp_rx.h"
 #include "syn_dp_tx.h"
 
+/*
+ * The driver uses kernel DMA constructs that assume an architecture
+ * where the view of physical addresses is consistent between SoC and
+ * IO device(SynopsysGMAC).
+ * Note that this may not be compatible for platforms where this
+ * assumption is not true, for example IO devices with IOMMU support.
+ */
+#if defined(CONFIG_ARM_SMMU) || \
+	defined(CONFIG_IOMMU_SUPPORT)
+#error "Build Error: Platform is enabled with IOMMU/SMMU support."
+#endif
+
 #define SYN_DP_MINI_JUMBO_FRAME_MTU	1978
 #define SYN_DP_MAX_DESC_BUFF_LEN	0x1FFF	/* Max size of buffer that can be programed into one field of desc */
 #define SYN_DP_SKB_ALLOC_SIZE		(SYN_DP_MINI_JUMBO_FRAME_MTU + NET_IP_ALIGN)

@@ -74,6 +74,7 @@ static const struct syn_ethtool_stats syn_gstrings_stats[] = {
 	{"tx_ip_payload_errors", SYN_STAT(tx_stats.tx_ip_payload_errors)},
 	{"tx_dropped", SYN_STAT(tx_stats.tx_dropped)},
 	{"tx_ts_create_errors", SYN_STAT(tx_stats.tx_ts_create_errors)},
+	{"tx_desc_not_avail", SYN_STAT(tx_stats.tx_desc_not_avail)},
 	{"pmt_interrupts", SYN_STAT(hw_errs[0])},
 	{"mmc_interrupts", SYN_STAT(hw_errs[0]) + (1 * HW_ERR_SIZE)},
 	{"line_interface_interrupts", SYN_STAT(hw_errs[0]) + (2 * HW_ERR_SIZE)},

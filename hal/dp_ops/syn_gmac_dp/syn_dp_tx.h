@@ -19,15 +19,14 @@
 #define __NSS_DP_SYN_DP_TX__
 
 #define SYN_DP_NAPI_BUDGET_TX		32
-#define SYN_DP_TX_DESC_SIZE		1024	/* Rx Descriptors needed in the descriptor pool/queue */
+#define SYN_DP_TX_DESC_SIZE		1024	/* Tx Descriptors needed in the descriptor pool/queue */
 #define SYN_DP_TX_DESC_MAX_INDEX	(SYN_DP_TX_DESC_SIZE - 1)
 
 /*
  * syn_dp_tx_buf
  */
 struct syn_dp_tx_buf {
-	struct sk_buff *skb;	/* Buffer pointer populated to Rx/Tx dma desc */
-	size_t map_addr_virt;	/* Virtual address of buffer populated to Rx/Tx dma desc */
+	struct sk_buff *skb;	/* Buffer pointer populated to Tx dma desc */
 };
 
 /*
@@ -49,5 +48,32 @@ struct syn_dp_info_tx {
 	struct net_device *netdev;	/* Net-device corresponding to the GMAC */
 	struct device *dev;		/* Platform device corresponding to the GMAC */
 };
+
+/*
+ * syn_dp_tx_inc_index()
+ * 	Increment Tx descriptor index
+ */
+static inline uint32_t syn_dp_tx_inc_index(uint32_t index, uint32_t inc)
+{
+	return ((index + inc) & SYN_DP_TX_DESC_MAX_INDEX);
+}
+
+/*
+ * syn_dp_tx_comp_desc_get()
+ * 	Get the Tx completed descriptor
+ */
+static inline struct dma_desc_tx *syn_dp_tx_comp_desc_get(struct syn_dp_info_tx *tx_info)
+{
+	return tx_info->tx_desc + tx_info->tx_comp_idx;
+}
+
+/*
+ * syn_dp_tx_comp_index_get()
+ * 	Get the Tx completion index
+ */
+static inline uint32_t syn_dp_tx_comp_index_get(struct syn_dp_info_tx *tx_info)
+{
+	return tx_info->tx_comp_idx;
+}
 
 #endif /*  __NSS_DP_SYN_DP_TX__ */

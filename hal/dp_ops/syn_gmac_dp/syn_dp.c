@@ -306,17 +306,17 @@ static netdev_tx_t syn_dp_if_xmit(struct nss_dp_data_plane_ctx *dpc, struct sk_b
 	/*
 	 * Most likely, it is not a fragmented pkt, optimize for that
 	 */
-	if (likely(!skb_is_nonlinear(skb))) {
-		if (syn_dp_tx(tx_info, skb)) {
-			goto drop;
-		}
+	if (unlikely(skb_is_nonlinear(skb))) {
+		goto drop;
+	}
 
+	if (likely(!syn_dp_tx(tx_info, skb))) {
 		return NETDEV_TX_OK;
 	}
 
 drop:
 	dev_kfree_skb_any(skb);
-	tx_info->tx_stats.tx_dropped++;
+	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_dropped);
 
 	return NETDEV_TX_OK;
 }

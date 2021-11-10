@@ -15,31 +15,45 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <asm/cacheflush.h>
-#include <linux/kernel.h>
-#include <linux/interrupt.h>
 #include <linux/netdevice.h>
-#include <linux/debugfs.h>
 #include <nss_dp_dev.h>
+#include <asm/cacheflush.h>
 #include "syn_dma_reg.h"
 
 /*
- * syn_dp_tx_reset_qptr
- *	Reset the descriptor after Tx is over.
+ * syn_dp_tx_error_cnt
+ *	Set the error counters.
  */
-static inline void syn_dp_tx_reset_qptr(struct syn_dp_info_tx *tx_info)
+static inline void syn_dp_tx_error_cnt(struct syn_dp_info_tx *tx_info, uint32_t status)
 {
-	struct dma_desc_tx *txdesc;
+	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_errors);
+	(status & DESC_TX_TIMEOUT) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_jabber_timeout_errors) : 0;
+	(status & DESC_TX_FRAME_FLUSHED) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_frame_flushed_errors) : 0;
+	(status & DESC_TX_LOST_CARRIER) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_loss_of_carrier_errors) : 0;
+	(status & DESC_TX_NO_CARRIER) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_no_carrier_errors) : 0;
+	(status & DESC_TX_LATE_COLLISION) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_late_collision_errors) : 0;
+	(status & DESC_TX_EXC_COLLISIONS) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_excessive_collision_errors) : 0;
+	(status & DESC_TX_EXC_DEFERRAL) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_excessive_deferral_errors) : 0;
+	(status & DESC_TX_UNDERFLOW) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_underflow_errors) : 0;
+	(status & DESC_TX_IPV4_CHK_ERROR) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_ip_header_errors) : 0;
+	(status & DESC_TX_PAY_CHK_ERROR) ? atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_ip_payload_errors) : 0;
+}
+
+/*
+ * syn_dp_tx_clear_desc
+ *	Clear the Tx info and reset the descriptor after Tx is over.
+ */
+static inline void syn_dp_tx_clear_desc(struct syn_dp_info_tx *tx_info, struct dma_desc_tx *txdesc)
+{
 	uint32_t txover = tx_info->tx_comp_idx;
 
-	txdesc = tx_info->tx_desc + tx_info->tx_comp_idx;
 	txdesc->status &= DESC_TX_DESC_END_OF_RING;
 	txdesc->length = 0;
 	txdesc->buffer1 = 0;
 	txdesc->buffer2 = 0;
 	txdesc->reserved1 = 0;
 
-	tx_info->tx_comp_idx = (txover + 1) & (SYN_DP_TX_DESC_SIZE - 1);
+	tx_info->tx_comp_idx = syn_dp_tx_inc_index(txover, 1);
 	tx_info->tx_buf_pool[txover].skb = NULL;
 
 	/*
@@ -50,68 +64,47 @@ static inline void syn_dp_tx_reset_qptr(struct syn_dp_info_tx *tx_info)
 }
 
 /*
- * syn_dp_tx_set_qptr
+ * syn_dp_tx_set_desc
  *	Populate the tx desc structure with the buffer address.
  */
-static inline struct dma_desc_tx *syn_dp_tx_set_qptr(struct syn_dp_info_tx *tx_info,
-					   uint32_t buffer1, uint32_t length1, struct sk_buff *skb, uint32_t offload_needed,
-					   uint32_t tx_cntl, uint32_t set_dma)
+static inline void syn_dp_tx_set_desc(struct syn_dp_info_tx *tx_info,
+					   uint32_t buffer, struct sk_buff *skb, uint32_t offload_needed,
+					   uint32_t status)
 {
-	uint32_t txnext = tx_info->tx_idx;
-	struct dma_desc_tx *txdesc = tx_info->tx_desc + txnext;
-	uint32_t tx_skb_index = txnext;
+	uint32_t tx_idx = tx_info->tx_idx;
+	struct dma_desc_tx *txdesc = tx_info->tx_desc + tx_idx;
+	unsigned int length = skb->len;
 
 #ifdef SYN_DP_DEBUG
 	BUG_ON(atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt) > SYN_DP_TX_DESC_SIZE);
-	BUG_ON(txdesc != (tx_info->tx_desc + txnext));
+	BUG_ON(txdesc != (tx_info->tx_desc + tx_idx));
 	BUG_ON(!syn_dp_gmac_is_tx_desc_empty(txdesc));
 	BUG_ON(syn_dp_gmac_is_tx_desc_owned_by_dma(txdesc));
 #endif
 
-	if (length1 > SYN_DP_MAX_DESC_BUFF_LEN) {
+	if (likely(length <= SYN_DP_MAX_DESC_BUFF_LEN)) {
+		txdesc->length = ((length << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK);
+		txdesc->buffer2 = 0;
+	} else {
 		txdesc->length = (SYN_DP_MAX_DESC_BUFF_LEN << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK;
 		txdesc->length |=
-		    ((length1 - SYN_DP_MAX_DESC_BUFF_LEN) << DESC_SIZE2_SHIFT) & DESC_SIZE2_MASK;
-	} else {
-		txdesc->length = ((length1 << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK);
+		    ((length - SYN_DP_MAX_DESC_BUFF_LEN) << DESC_SIZE2_SHIFT) & DESC_SIZE2_MASK;
+		txdesc->buffer2 = buffer + SYN_DP_MAX_DESC_BUFF_LEN;
 	}
 
-	txdesc->status |= tx_cntl;
-	txdesc->buffer1 = buffer1;
+	txdesc->buffer1 = buffer;
 
-	tx_info->tx_buf_pool[tx_skb_index].skb = skb;
-
-	/* Program second buffer address if using two buffers. */
-	if (length1 > SYN_DP_MAX_DESC_BUFF_LEN)
-		txdesc->buffer2 = buffer1 + SYN_DP_MAX_DESC_BUFF_LEN;
-	else
-		txdesc->buffer2 = 0;
-
-	if (likely(offload_needed)) {
-		txdesc->status |= DESC_TX_CIS_TCP_PSEUDO_CS;
-	}
+	tx_info->tx_buf_pool[tx_idx].skb = skb;
 
 	/*
 	 * Ensure all write completed before setting own by dma bit so when gmac
 	 * HW takeover this descriptor, all the fields are filled correctly
 	 */
 	wmb();
-	txdesc->status |= set_dma;
 
-	tx_info->tx_idx = (txnext + 1) & (SYN_DP_TX_DESC_SIZE - 1);
-	return txdesc;
-}
+	txdesc->status = (status | ((offload_needed) ? DESC_TX_CIS_TCP_PSEUDO_CS : 0) | ((tx_idx == (SYN_DP_TX_DESC_SIZE - 1)) ? DESC_TX_DESC_END_OF_RING : 0));
 
-/*
- * syn_dp_tx_queue_desc
- *	Queue TX descriptor to the TX ring
- */
-static void syn_dp_tx_desc_queue(struct syn_dp_info_tx *tx_info, struct sk_buff *skb, dma_addr_t dma_addr)
-{
-	unsigned int len = skb->len;
-
-	syn_dp_tx_set_qptr(tx_info, dma_addr, len, skb, (skb->ip_summed == CHECKSUM_PARTIAL),
-				(DESC_TX_LAST | DESC_TX_FIRST | DESC_TX_INT_ENABLE), DESC_OWN_BY_DMA);
+	tx_info->tx_idx = syn_dp_tx_inc_index(tx_idx, 1);
 }
 
 /*
@@ -125,50 +118,63 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	struct dma_desc_tx *desc = NULL;
 	struct sk_buff *skb;
 	uint32_t tx_skb_index;
+	uint32_t tx_packets = 0, total_len = 0;
 
 	busy = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
 
-	if (!busy) {
-		/* No desc are hold by gmac dma, we are done */
+	if (unlikely(!busy)) {
+
+		/*
+		 * No descriptors are held by GMAC DMA, we are done
+		 */
+		netdev_dbg(tx_info->netdev, "No descriptors held by DMA");
 		return 0;
 	}
 
-	if (busy > budget)
+	if (likely(busy > budget)) {
 		busy = budget;
+	}
 
 	do {
-		desc = tx_info->tx_desc + tx_info->tx_comp_idx;
-		if (syn_dp_gmac_is_tx_desc_owned_by_dma(desc)) {
-			/* desc still hold by gmac dma, so we are done */
+		desc = syn_dp_tx_comp_desc_get(tx_info);
+		if (unlikely(syn_dp_gmac_is_tx_desc_owned_by_dma(desc))) {
+
+			/*
+			 * Descriptor still held by gmac dma, so we are done.
+			 */
 			break;
 		}
 
 		len = (desc->length & DESC_SIZE1_MASK) >> DESC_SIZE1_SHIFT;
-		dma_unmap_single(tx_info->dev, desc->buffer1, len, DMA_TO_DEVICE);
-
 		status = desc->status;
-		if (status & DESC_TX_LAST) {
-			/* TX is done for this whole skb, we can free it */
-			/* Get the skb from the tx skb pool */
-			tx_skb_index = tx_info->tx_comp_idx;
-			skb = tx_info->tx_buf_pool[tx_skb_index].skb;
+		tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
+		skb = tx_info->tx_buf_pool[tx_skb_index].skb;
 
+		if (likely(status & DESC_TX_LAST)) {
+			if (likely(!(status & DESC_TX_ERROR))) {
 #ifdef SYN_DP_DEBUG
-			BUG_ON(!skb);
+				BUG_ON(!skb);
 #endif
-			dev_kfree_skb_any(skb);
-
-			if (unlikely(status & DESC_TX_ERROR)) {
-				/* Some error happen, collect statistics */
-			} else {
-				/* No error, recored tx pkts/bytes and
-				 * collision
+				/*
+				 * No error, recored tx pkts/bytes and collision.
 				 */
+				tx_packets++;
+				total_len += skb->len;
+			} else {
+
+				/*
+				 * Some error happen, collect error statistics.
+				 */
+				syn_dp_tx_error_cnt(tx_info, status);
 			}
 		}
-		syn_dp_tx_reset_qptr(tx_info);
-		busy--;
-	} while (likely(busy > 0));
+		syn_dp_tx_clear_desc(tx_info, desc);
+		dev_kfree_skb_any(skb);
+
+	} while (--busy);
+
+	atomic64_add(tx_packets, (atomic64_t *)&tx_info->tx_stats.tx_packets);
+	atomic64_add(total_len, (atomic64_t *)&tx_info->tx_stats.tx_bytes);
 
 	return budget - busy;
 }
@@ -180,27 +186,26 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 {
 	struct net_device *netdev = tx_info->netdev;
-	unsigned len = skb->len;
 	dma_addr_t dma_addr;
 
 	/*
 	 * If we don't have enough tx descriptor for this pkt, return busy.
 	 */
-	if ((SYN_DP_TX_DESC_SIZE - atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt)) < 1) {
+	if (unlikely((SYN_DP_TX_DESC_SIZE - atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt)) < 1)) {
+		atomic_inc((atomic_t *)&tx_info->tx_stats.tx_desc_not_avail);
 		netdev_dbg(netdev, "Not enough descriptors available");
 		return -1;
 	}
 
-	dma_addr = dma_map_single(tx_info->dev, skb->data, len, DMA_TO_DEVICE);
-	if (unlikely(dma_mapping_error(tx_info->dev, dma_addr))) {
-		netdev_dbg(netdev, "DMA mapping failed for empty buffer\n");
-		return -1;
-	}
+	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
+
+	dmac_clean_range((void *)skb->data, (void *)(skb->data + skb->len));
 
 	/*
 	 * Queue packet to the GMAC rings
 	 */
-	syn_dp_tx_desc_queue(tx_info, skb, dma_addr);
+	syn_dp_tx_set_desc(tx_info, dma_addr, skb, (skb->ip_summed == CHECKSUM_PARTIAL),
+				(DESC_TX_LAST | DESC_TX_FIRST | DESC_TX_INT_ENABLE | DESC_OWN_BY_DMA));
 
 	syn_resume_dma_tx(tx_info->mac_base);
 	atomic_inc((atomic_t *)&tx_info->busy_tx_desc_cnt);

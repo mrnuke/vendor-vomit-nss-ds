@@ -86,17 +86,14 @@ void syn_dp_cfg_tx_cleanup_rings(struct syn_dp_info *dev_info)
 	/*
 	 * Tx Ring cleaning
 	 */
-	tx_skb_index = tx_info->tx_comp_idx;
+	tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
 	for (i = 0; i < busy_tx_desc_cnt; i++) {
-		tx_skb_index = (tx_skb_index + i) & (SYN_DP_TX_DESC_SIZE - 1);
+		tx_skb_index = syn_dp_tx_inc_index(tx_skb_index, i);
 		txdesc = tx_info->tx_desc;
-
-		dma_unmap_single(tx_info->dev, txdesc->buffer1,
-			SYN_DP_MINI_JUMBO_FRAME_MTU, DMA_FROM_DEVICE);
 
 		skb = tx_info->tx_buf_pool[tx_skb_index].skb;
 		if (unlikely(skb != NULL)) {
-			dev_kfree_skb(skb);
+			dev_kfree_skb_any(skb);
 			tx_info->tx_buf_pool[tx_skb_index].skb = NULL;
 		}
 	}
