@@ -40,27 +40,13 @@ static inline void syn_dp_tx_error_cnt(struct syn_dp_info_tx *tx_info, uint32_t 
 }
 
 /*
- * syn_dp_tx_clear_desc
- *	Clear the Tx info and reset the descriptor after Tx is over.
+ * syn_dp_tx_clear_buf_entry
+ *	Clear the Tx info after Tx is over.
  */
-static inline void syn_dp_tx_clear_desc(struct syn_dp_info_tx *tx_info, struct dma_desc_tx *txdesc)
+static inline void syn_dp_tx_clear_buf_entry(struct syn_dp_info_tx *tx_info, uint32_t tx_skb_index)
 {
-	uint32_t txover = tx_info->tx_comp_idx;
-
-	txdesc->status &= DESC_TX_DESC_END_OF_RING;
-	txdesc->length = 0;
-	txdesc->buffer1 = 0;
-	txdesc->buffer2 = 0;
-	txdesc->reserved1 = 0;
-
-	tx_info->tx_comp_idx = syn_dp_tx_inc_index(txover, 1);
-	tx_info->tx_buf_pool[txover].skb = NULL;
-
-	/*
-	 * Busy tx descriptor is reduced by one as
-	 * it will be handed over to Processor now.
-	 */
-	atomic_dec((atomic_t *)&tx_info->busy_tx_desc_cnt);
+	tx_info->tx_buf_pool[tx_skb_index].len = 0;
+	tx_info->tx_buf_pool[tx_skb_index].skb = NULL;
 }
 
 /*
@@ -87,14 +73,14 @@ static inline void syn_dp_tx_set_desc(struct syn_dp_info_tx *tx_info,
 		txdesc->buffer2 = 0;
 	} else {
 		txdesc->length = (SYN_DP_MAX_DESC_BUFF_LEN << DESC_SIZE1_SHIFT) & DESC_SIZE1_MASK;
-		txdesc->length |=
-		    ((length - SYN_DP_MAX_DESC_BUFF_LEN) << DESC_SIZE2_SHIFT) & DESC_SIZE2_MASK;
+		txdesc->length |= ((length - SYN_DP_MAX_DESC_BUFF_LEN) << DESC_SIZE2_SHIFT) & DESC_SIZE2_MASK;
 		txdesc->buffer2 = buffer + SYN_DP_MAX_DESC_BUFF_LEN;
 	}
 
 	txdesc->buffer1 = buffer;
 
 	tx_info->tx_buf_pool[tx_idx].skb = skb;
+	tx_info->tx_buf_pool[tx_idx].len = length;
 
 	/*
 	 * Ensure all write completed before setting own by dma bit so when gmac
@@ -113,11 +99,11 @@ static inline void syn_dp_tx_set_desc(struct syn_dp_info_tx *tx_info,
  */
 int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 {
-	int busy, len;
+	int busy;
 	uint32_t status;
 	struct dma_desc_tx *desc = NULL;
 	struct sk_buff *skb;
-	uint32_t tx_skb_index;
+	uint32_t tx_skb_index, len;
 	uint32_t tx_packets = 0, total_len = 0;
 
 	busy = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
@@ -137,7 +123,8 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 
 	do {
 		desc = syn_dp_tx_comp_desc_get(tx_info);
-		if (unlikely(syn_dp_gmac_is_tx_desc_owned_by_dma(desc))) {
+		status = desc->status;
+		if (unlikely(syn_dp_gmac_is_tx_desc_owned_by_dma(status))) {
 
 			/*
 			 * Descriptor still held by gmac dma, so we are done.
@@ -145,10 +132,11 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 			break;
 		}
 
-		len = (desc->length & DESC_SIZE1_MASK) >> DESC_SIZE1_SHIFT;
-		status = desc->status;
 		tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
 		skb = tx_info->tx_buf_pool[tx_skb_index].skb;
+		len = tx_info->tx_buf_pool[tx_skb_index].len;
+
+		syn_dp_tx_clear_buf_entry(tx_info, tx_skb_index);
 
 		if (likely(status & DESC_TX_LAST)) {
 			if (likely(!(status & DESC_TX_ERROR))) {
@@ -159,7 +147,7 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 				 * No error, recored tx pkts/bytes and collision.
 				 */
 				tx_packets++;
-				total_len += skb->len;
+				total_len += len;
 			} else {
 
 				/*
@@ -168,9 +156,15 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 				syn_dp_tx_error_cnt(tx_info, status);
 			}
 		}
-		syn_dp_tx_clear_desc(tx_info, desc);
 		dev_kfree_skb_any(skb);
 
+		tx_info->tx_comp_idx = syn_dp_tx_inc_index(tx_info->tx_comp_idx, 1);
+
+		/*
+		 * Busy tx descriptor is reduced by one as
+		 * it will be handed over to Processor now.
+		 */
+		atomic_dec((atomic_t *)&tx_info->busy_tx_desc_cnt);
 	} while (--busy);
 
 	atomic64_add(tx_packets, (atomic64_t *)&tx_info->tx_stats.tx_packets);

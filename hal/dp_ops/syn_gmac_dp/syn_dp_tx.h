@@ -27,6 +27,7 @@
  */
 struct syn_dp_tx_buf {
 	struct sk_buff *skb;	/* Buffer pointer populated to Tx dma desc */
+	uint32_t len;		/* Length of the buffer provided to descriptor */
 };
 
 /*

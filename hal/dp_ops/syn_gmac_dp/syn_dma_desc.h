@@ -350,9 +350,9 @@ static inline bool syn_dp_gmac_is_rx_desc_owned_by_dma(uint32_t status)
  * syn_dp_gmac_is_tx_desc_owned_by_dma()
  *	Checks whether the Tx descriptor is owned by DMA.
  */
-static inline bool syn_dp_gmac_is_tx_desc_owned_by_dma(struct dma_desc_tx *desc)
+static inline bool syn_dp_gmac_is_tx_desc_owned_by_dma(uint32_t status)
 {
-	return (desc->status & DESC_OWN_BY_DMA) == DESC_OWN_BY_DMA;
+	return (status & DESC_OWN_BY_DMA) == DESC_OWN_BY_DMA;
 }
 
 /*
