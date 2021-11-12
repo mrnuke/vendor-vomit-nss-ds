@@ -699,14 +699,22 @@ static void edma_configure_rps_hash_map(struct edma_gbl_ctx *egc)
 	 */
 	hash_cfg.hash_seed = PPE_HASH_SEED_DEFAULT;
 	hash_cfg.hash_mask = PPE_HASH_MASK;
-	hash_cfg.hash_sip_mix = PPE_HASH_MIX_V4_SIP;
-	hash_cfg.hash_dip_mix = PPE_HASH_MIX_V4_DIP;
+	hash_cfg.hash_sip_mix[0] = PPE_HASH_MIX_V4_SIP;
+	hash_cfg.hash_dip_mix[0] = PPE_HASH_MIX_V4_DIP;
 	hash_cfg.hash_protocol_mix = PPE_HASH_MIX_V4_PROTO;
 	hash_cfg.hash_dport_mix = PPE_HASH_MIX_V4_DPORT;
 	hash_cfg.hash_sport_mix = PPE_HASH_MIX_V4_SPORT;
 
-	hash_cfg.hash_fin_inner = PPE_HASH_FIN_INNER;
-	hash_cfg.hash_fin_outer = PPE_HASH_FIN_OUTER;
+	hash_cfg.hash_fin_inner[0] = (PPE_HASH_FIN_INNER_OUTER_0 & 0x1f);
+	hash_cfg.hash_fin_outer[0] = ((PPE_HASH_FIN_INNER_OUTER_0 >> 5) & 0x1f);
+	hash_cfg.hash_fin_inner[1] = (PPE_HASH_FIN_INNER_OUTER_1 & 0x1f);
+	hash_cfg.hash_fin_outer[1] = ((PPE_HASH_FIN_INNER_OUTER_1 >> 5) & 0x1f);
+	hash_cfg.hash_fin_inner[2] = (PPE_HASH_FIN_INNER_OUTER_2 & 0x1f);
+	hash_cfg.hash_fin_outer[2] = ((PPE_HASH_FIN_INNER_OUTER_2 >> 5) & 0x1f);
+	hash_cfg.hash_fin_inner[3] = (PPE_HASH_FIN_INNER_OUTER_3 & 0x1f);
+	hash_cfg.hash_fin_outer[3] = ((PPE_HASH_FIN_INNER_OUTER_3 >> 5) & 0x1f);
+	hash_cfg.hash_fin_inner[4] = (PPE_HASH_FIN_INNER_OUTER_4 & 0x1f);
+	hash_cfg.hash_fin_outer[4] = ((PPE_HASH_FIN_INNER_OUTER_4 >> 5) & 0x1f);
 
 	/*
 	 * Configure IPv4 RSS hash seed initialization
@@ -716,8 +724,14 @@ static void edma_configure_rps_hash_map(struct edma_gbl_ctx *egc)
 		edma_err("IPv4 RSS hash initialization failed. ret: %d\n", error);
 	}
 
-	hash_cfg.hash_sip_mix = PPE_HASH_MIX_V6_SIP;
-	hash_cfg.hash_dip_mix = PPE_HASH_MIX_V6_DIP;
+	hash_cfg.hash_sip_mix[0] = PPE_HASH_SIPV6_MIX_0;
+	hash_cfg.hash_dip_mix[0] = PPE_HASH_DIPV6_MIX_0;
+	hash_cfg.hash_sip_mix[1] = PPE_HASH_SIPV6_MIX_1;
+	hash_cfg.hash_dip_mix[1] = PPE_HASH_DIPV6_MIX_1;
+	hash_cfg.hash_sip_mix[2] = PPE_HASH_SIPV6_MIX_2;
+	hash_cfg.hash_dip_mix[2] = PPE_HASH_DIPV6_MIX_2;
+	hash_cfg.hash_sip_mix[3] = PPE_HASH_SIPV6_MIX_3;
+	hash_cfg.hash_dip_mix[3] = PPE_HASH_DIPV6_MIX_3;
 
 	/*
 	 * Configure IPv6 RSS hash seed initialization
