@@ -444,7 +444,7 @@ static int32_t syn_set_max_frame_size(struct nss_gmac_hal_dev *nghd,
 	}
 
 	frame_sz = val + SYN_HAL_MTU_L2_OVERHEAD;
-	return fal_port_max_frame_size_set(0, nghd->mac_id, val);
+	return fal_port_max_frame_size_set(0, nghd->mac_id, frame_sz);
 }
 
 /*
