@@ -43,6 +43,12 @@
 #define EDMA_DST_PORT_TYPE_SET(x)	(((x) << EDMA_DST_PORT_TYPE_SHIFT) & EDMA_DST_PORT_TYPE_MASK)
 #define EDMA_DST_PORT_ID_SET(x)		(((x) << EDMA_DST_PORT_ID_SHIFT) & EDMA_DST_PORT_ID_MASK)
 #define EDMA_DST_INFO_SET(desc, x)	((desc)->word4 |= (EDMA_DST_PORT_TYPE_SET(EDMA_DST_PORT_TYPE) | EDMA_DST_PORT_ID_SET(x)))
+#define EDMA_TXDESC_TSO_ENABLE_SHIFT		24
+#define EDMA_TXDESC_TSO_ENABLE_MASK		0x1000000
+#define EDMA_TXDESC_TSO_ENABLE_SET(desc, x)	((desc)->word5 |= (((x) << EDMA_TXDESC_TSO_ENABLE_SHIFT) & EDMA_TXDESC_TSO_ENABLE_MASK))
+#define EDMA_TXDESC_MSS_SHIFT			16
+#define EDMA_TXDESC_MSS_MASK			0xFFFF0000
+#define EDMA_TXDESC_MSS_SET(desc, x)		((desc)->word6 |= (((x) << EDMA_TXDESC_MSS_SHIFT) & EDMA_TXDESC_MSS_MASK))
 #define EDMA_TXDESC_MORE_BIT_MASK	0x40000000
 #define EDMA_TXDESC_MORE_BIT_SHIFT	30
 #define EDMA_TXDESC_MORE_BIT_SET(desc, x)	((desc)->word1 |= (((x) << EDMA_TXDESC_MORE_BIT_SHIFT) & EDMA_TXDESC_MORE_BIT_MASK))
@@ -100,6 +106,7 @@ struct edma_tx_stats {
 	uint64_t tx_nr_frag_pkts;
 	uint64_t tx_fraglist_pkts;
 	uint64_t tx_fraglist_with_nr_frags_pkts;
+	uint64_t tx_tso_pkts;
 	struct u64_stats_sync syncp;
 };
 

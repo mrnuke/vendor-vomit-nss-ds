@@ -224,6 +224,7 @@ static void edma_dp_get_ndo_stats(struct nss_dp_data_plane_ctx *dpc,
 		stats->stats.tx_nr_frag_packets += txp.tx_nr_frag_pkts;
 		stats->stats.tx_fraglist_packets += txp.tx_fraglist_pkts;
 		stats->stats.tx_fraglist_with_nr_frags_packets += txp.tx_fraglist_with_nr_frags_pkts;
+		stats->stats.tx_tso_packets += txp.tx_tso_pkts;
 	}
 }
 

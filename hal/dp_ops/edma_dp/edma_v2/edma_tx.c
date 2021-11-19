@@ -255,9 +255,9 @@ static uint32_t edma_tx_skb_nr_frags(struct edma_txdesc_ring *txdesc_ring, struc
  *	Process the Tx for the first descriptor required for skb
  */
 static struct edma_pri_txdesc *edma_tx_skb_first_desc(struct nss_dp_dev *dp_dev, struct edma_txdesc_ring *txdesc_ring,
-							struct sk_buff *skb, uint32_t *hw_next_to_use)
+					struct sk_buff *skb, uint32_t *hw_next_to_use, struct edma_tx_stats *stats)
 {
-	uint32_t buf_len = 0, num_descs = 0;
+	uint32_t buf_len = 0, num_descs = 0, mss = 0;
 	struct edma_pri_txdesc *txd = NULL;
 
 	/*
@@ -284,6 +284,25 @@ static struct edma_pri_txdesc *edma_tx_skb_first_desc(struct nss_dp_dev *dp_dev,
 		EDMA_TXDESC_ADV_OFFLOAD_SET(txd);
 		EDMA_TXDESC_IP_CSUM_SET(txd);
 		EDMA_TXDESC_L4_CSUM_SET(txd);
+	}
+
+	/*
+	 * Check if the packet needs TSO
+	 */
+	if (unlikely(skb_is_gso(skb))) {
+		if ((skb_shinfo(skb)->gso_type == SKB_GSO_TCPV4) ||
+				(skb_shinfo(skb)->gso_type == SKB_GSO_TCPV6)){
+			mss = skb_shinfo(skb)->gso_size;
+			EDMA_TXDESC_TSO_ENABLE_SET(txd, 1);
+			EDMA_TXDESC_MSS_SET(txd, mss);
+
+			/*
+			 * Update tso stats
+			 */
+			u64_stats_update_begin(&stats->syncp);
+			stats->tx_tso_pkts++;
+			u64_stats_update_end(&stats->syncp);
+		}
 	}
 
 	/*
@@ -319,7 +338,7 @@ static uint32_t edma_tx_skb_sg_fill_desc(struct nss_dp_dev *dp_dev, struct edma_
 	/*
 	 * Process head skb
 	 */
-	txd = edma_tx_skb_first_desc(dp_dev, txdesc_ring, skb, hw_next_to_use);
+	txd = edma_tx_skb_first_desc(dp_dev, txdesc_ring, skb, hw_next_to_use, stats);
 	num_descs++;
 
 	/*
@@ -494,7 +513,7 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 	 * Process head skb + nr_frags + fraglist for non linear skb
 	 */
 	if (likely(!skb_is_nonlinear(skb))) {
-		txdesc = edma_tx_skb_first_desc(dp_dev, txdesc_ring, skb, &hw_next_to_use);
+		txdesc = edma_tx_skb_first_desc(dp_dev, txdesc_ring, skb, &hw_next_to_use, stats);
 		num_desc_filled++;
 	} else {
 		num_tx_desc_needed += 1;
