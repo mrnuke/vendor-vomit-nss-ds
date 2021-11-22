@@ -156,6 +156,9 @@ struct edma_gbl_ctx {
 	bool napi_added;
 			/* NAPI flag */
 
+	struct ctl_table_header *ctl_table_hdr;
+			/* sysctl table entry */
+
 	struct edma_rxfill_ring *rxfill_rings;
 			/* Rx Fill Rings, SW is producer */
 	struct edma_rxdesc_ring *rxdesc_rings;

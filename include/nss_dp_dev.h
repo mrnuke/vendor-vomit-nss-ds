@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved
+ * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc. All rights reserved
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -38,6 +38,20 @@
 #define NSS_DP_RX_BUFFER_SIZE		1856
 #else
 #define NSS_DP_RX_BUFFER_SIZE		1984
+#endif
+
+#if defined(NSS_DP_IPQ95XX)
+/*
+ * Rx rings flow control threshold values
+ *
+ * The Rx flow control has the X-OFF and the X-ON threshold values.
+ * Whenever the free Rx ring descriptor count falls below the X-OFF value, the
+ * ring level flow control will kick in and the mapped PPE queues will be backpressured.
+ * Similarly, whenever the free Rx ring descriptor count crosses the X-ON value,
+ * the ring level flow control will be disabled.
+ */
+#define NSS_DP_RX_FC_XOFF_DEF		16
+#define NSS_DP_RX_FC_XON_DEF		32
 #endif
 
 struct nss_dp_global_ctx;
@@ -102,6 +116,10 @@ struct nss_dp_global_ctx {
 /* Global data */
 extern struct nss_dp_global_ctx dp_global_ctx;
 extern struct nss_dp_data_plane_ctx dp_global_data_plane_ctx[NSS_DP_HAL_MAX_PORTS];
+#if defined(NSS_DP_IPQ95XX)
+extern int nss_dp_rx_fc_xon;
+extern int nss_dp_rx_fc_xoff;
+#endif
 
 /*
  * nss data plane link state

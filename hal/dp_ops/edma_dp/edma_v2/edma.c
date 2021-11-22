@@ -149,6 +149,11 @@ void edma_cleanup(bool is_dp_override)
 		return;
 	}
 
+	if (edma_gbl_ctx.ctl_table_hdr) {
+		unregister_net_sysctl_table(edma_gbl_ctx.ctl_table_hdr);
+		edma_gbl_ctx.ctl_table_hdr = NULL;
+	}
+
 	/*
 	 * TODO: Check with HW team about the state of in-flight
 	 * packets when the descriptor rings are disabled.
@@ -1018,6 +1023,47 @@ static int32_t edma_configure_clocks(void)
 }
 
 /*
+ * edma_rx_flow_control_table
+ *	EDMA Rx flow control sysctl table
+ */
+static struct ctl_table edma_rx_flow_control_table[] = {
+	{
+		.procname	=	"rx_fc_enable",
+		.data		=	&edma_cfg_rx_fc_enable,
+		.maxlen		=	sizeof(int),
+		.mode		=	0644,
+		.proc_handler	=	edma_cfg_rx_fc_enable_handler
+	},
+	{}
+};
+
+/*
+ * edma_main
+ *	EDMA main directory
+ */
+static struct ctl_table edma_main[] = {
+	{
+		.procname	=	"edma",
+		.mode		=	0555,
+		.child		=	edma_rx_flow_control_table,
+	},
+	{}
+};
+
+/*
+ * edma_root
+ *	EDMA root directory
+ */
+static struct ctl_table edma_root[] = {
+	{
+		.procname	=	"net",
+		.mode		=	0555,
+		.child		=	edma_main,
+	},
+	{}
+};
+
+/*
  * edma_init()
  *	EDMA init
  */
@@ -1046,6 +1092,12 @@ int edma_init(void)
 
 	if (!edma_validate_desc_map()) {
 		edma_err("Incorrect desc map received\n");
+		return -EINVAL;
+	}
+
+	edma_gbl_ctx.ctl_table_hdr = register_sysctl_table(edma_root);
+	if (!edma_gbl_ctx.ctl_table_hdr) {
+		edma_err("sysctl table configuration failed");
 		return -EINVAL;
 	}
 

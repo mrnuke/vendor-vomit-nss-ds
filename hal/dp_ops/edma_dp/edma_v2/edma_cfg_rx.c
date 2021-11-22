@@ -29,6 +29,8 @@
 #include "edma_debug.h"
 #include "nss_dp_dev.h"
 
+uint32_t edma_cfg_rx_fc_enable = EDMA_RX_FC_ENABLE;
+
 /*
  * edma_cfg_rx_fill_ring_cleanup()
  *	Cleanup resources for one RxFill ring
@@ -302,11 +304,88 @@ static int32_t edma_cfg_rx_desc_ring_reset_queue_config(struct edma_gbl_ctx *egc
 }
 
 /*
+ * edma_cfg_rx_desc_ring_to_queue_mapping()
+ *	API to map Rx descriptor rings to PPE queue for backpressure
+ */
+static void edma_cfg_rx_desc_ring_to_queue_mapping(uint32_t enable)
+{
+	uint32_t i, j;
+	sw_error_t ret;
+	fal_queue_bmp_t queue_bmp = {0};
+
+	/*
+	 * Rxdesc ring to PPE queue mapping
+	 */
+	for (i = 0; i < edma_gbl_ctx.num_rxdesc_rings; i++) {
+		struct edma_rxdesc_ring *rxdesc_ring;
+
+		rxdesc_ring = &edma_gbl_ctx.rxdesc_rings[i];
+		if (enable) {
+			memcpy(queue_bmp.bmp, edma_gbl_ctx.rxdesc_ring_to_queue_bm[i],
+					sizeof(uint32_t) * EDMA_RING_MAPPED_QUEUE_BM_WORD_COUNT);
+		}
+
+		ret = fal_edma_ring_queue_map_set(0, rxdesc_ring->ring_id, &queue_bmp);
+		if (ret != SW_OK) {
+			edma_err("Error in configuring Rx ring to PPE queue mapping."
+					" ret: %d, id: %d, queue: %d\n",
+					ret, rxdesc_ring->ring_id, queue_bmp.bmp[0]);
+			if (edma_cfg_rx_desc_rings_reset_queue_mapping()) {
+				edma_err("Error in resetting Rx desc ring backpressure configurations\n");
+			}
+			return;
+		}
+
+		edma_info("Rx desc ring %d to PPE queue mapping for backpressure:\n",
+				rxdesc_ring->ring_id);
+		for (j = 0; j < EDMA_RING_MAPPED_QUEUE_BM_WORD_COUNT; j++) {
+			edma_info("\tPPE queue bitmap[%d]: %0x\n", j, queue_bmp.bmp[j]);
+		}
+	}
+}
+
+/*
+ * edma_cfg_rx_fill_ring_flow_control()
+ *	Configure Rx fill ring flow control configuration
+ */
+static void edma_cfg_rx_fill_ring_flow_control(uint32_t threshold_xoff, uint32_t threshold_xon)
+{
+	uint32_t data, i;
+
+	data = (threshold_xoff & EDMA_RXFILL_FC_XOFF_THRE_MASK) << EDMA_RXFILL_FC_XOFF_THRE_SHIFT;
+	data |= ((threshold_xon & EDMA_RXFILL_FC_XON_THRE_MASK) << EDMA_RXFILL_FC_XON_THRE_SHIFT);
+
+	for (i = 0; i < edma_gbl_ctx.num_rxfill_rings; i++) {
+		struct edma_rxfill_ring *rxfill_ring;
+
+		rxfill_ring = &edma_gbl_ctx.rxfill_rings[i];
+		edma_reg_write(EDMA_REG_RXFILL_FC_THRE(rxfill_ring->ring_id), data);
+	}
+}
+
+/*
+ * edma_cfg_rx_desc_ring_flow_control()
+ *	Configure Rx descriptor ring flow control configuration
+ */
+static void edma_cfg_rx_desc_ring_flow_control(uint32_t threshold_xoff, uint32_t threshold_xon)
+{
+	uint32_t data, i;
+
+	data = (threshold_xoff & EDMA_RXDESC_FC_XOFF_THRE_MASK) << EDMA_RXDESC_FC_XOFF_THRE_SHIFT;
+	data |= ((threshold_xon & EDMA_RXDESC_FC_XON_THRE_MASK) << EDMA_RXDESC_FC_XON_THRE_SHIFT);
+	for (i = 0; i < edma_gbl_ctx.num_rxdesc_rings; i++) {
+		struct edma_rxdesc_ring *rxdesc_ring;
+
+		rxdesc_ring = &edma_gbl_ctx.rxdesc_rings[i];
+		edma_reg_write(EDMA_REG_RXDESC_FC_THRE(rxdesc_ring->ring_id), data);
+	}
+}
+
+/*
  * edma_cfg_rx_desc_ring_configure()
  *	Configure one RxDesc ring in EDMA HW
  */
-static void edma_cfg_rx_desc_ring_configure(struct edma_gbl_ctx *egc,
-					struct edma_rxdesc_ring *rxdesc_ring)
+static void edma_cfg_rx_desc_ring_configure(struct edma_rxdesc_ring *rxdesc_ring)
 {
 	uint32_t data;
 
@@ -338,8 +417,7 @@ static void edma_cfg_rx_desc_ring_configure(struct edma_gbl_ctx *egc,
  * edma_cfg_rx_fill_ring_configure()
  *	Configure one RxFill ring in EDMA HW
  */
-static void edma_cfg_rx_fill_ring_configure(struct edma_gbl_ctx *egc,
-					struct edma_rxfill_ring *rxfill_ring)
+static void edma_cfg_rx_fill_ring_configure(struct edma_rxfill_ring *rxfill_ring)
 {
 	uint32_t ring_sz;
 
@@ -737,14 +815,14 @@ void edma_cfg_rx_rings(struct edma_gbl_ctx *egc)
 	 * Configure RXFILL rings
 	 */
 	for (i = 0; i < egc->num_rxfill_rings; i++) {
-		edma_cfg_rx_fill_ring_configure(egc, &egc->rxfill_rings[i]);
+		edma_cfg_rx_fill_ring_configure(&egc->rxfill_rings[i]);
 	}
 
 	/*
 	 * Configure RXDESC ring
 	 */
 	for (i = 0; i < egc->num_rxdesc_rings; i++) {
-		edma_cfg_rx_desc_ring_configure(egc, &egc->rxdesc_rings[i]);
+		edma_cfg_rx_desc_ring_configure(&egc->rxdesc_rings[i]);
 	}
 }
 
@@ -826,4 +904,68 @@ void edma_cfg_rx_napi_add(struct edma_gbl_ctx *egc, struct net_device *netdev)
 				edma_rx_napi_poll, EDMA_RX_NAPI_WORK);
 		rxdesc_ring->napi_added = true;
 	}
+}
+
+/*
+ * edma_cfg_rx_fc_enable_handler()
+ *	API to enable/disable Rx rings flow control configurations
+ *
+ * The Rx flow control has the X-OFF and the X-ON threshold values.
+ * Whenever the free Rx ring descriptor count falls below the X-OFF value, the
+ * ring level flow control will kick in and the mapped PPE queues will be backpressured.
+ * Similarly, whenever the free Rx ring descriptor count crosses the X-ON value,
+ * the ring level flow control will be disabled.
+ */
+int edma_cfg_rx_fc_enable_handler(struct ctl_table *table, int write,
+		void __user *buffer, size_t *lenp, loff_t *ppos)
+{
+	int ret;
+
+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
+
+	if (!write) {
+		return ret;
+	}
+
+	if (edma_cfg_rx_fc_enable) {
+		/*
+		 * Validate flow control X-OFF and X-ON configurations
+		 */
+		if ((nss_dp_rx_fc_xoff < EDMA_RX_FC_XOFF_THRE_MIN) ||
+				(nss_dp_rx_fc_xoff > EDMA_RX_RING_SIZE)) {
+			edma_err("Incorrect Rx Xoff flow control value: %d. Setting\n"
+					" it to default value: %d", nss_dp_rx_fc_xoff,
+					NSS_DP_RX_FC_XOFF_DEF);
+			nss_dp_rx_fc_xoff = NSS_DP_RX_FC_XOFF_DEF;
+		}
+		if ((nss_dp_rx_fc_xon < EDMA_RX_FC_XON_THRE_MIN) ||
+				(nss_dp_rx_fc_xon > EDMA_RX_RING_SIZE) ||
+				(nss_dp_rx_fc_xon < nss_dp_rx_fc_xoff)) {
+			edma_err("Incorrect Rx Xon flow control value: %d. Setting\n"
+					" it to default value: %d", nss_dp_rx_fc_xon,
+					NSS_DP_RX_FC_XON_DEF);
+			nss_dp_rx_fc_xon = NSS_DP_RX_FC_XON_DEF;
+		}
+
+		/*
+		 * Configure Rx flow control configurations
+		 */
+		edma_cfg_rx_desc_ring_flow_control(nss_dp_rx_fc_xoff, nss_dp_rx_fc_xon);
+		edma_cfg_rx_fill_ring_flow_control(nss_dp_rx_fc_xoff, nss_dp_rx_fc_xon);
+		edma_cfg_rx_desc_ring_to_queue_mapping(edma_cfg_rx_fc_enable);
+	} else {
+		/*
+		 * De-configure Rx flow control configurations:
+		 *
+		 * 1. Reset  the Rx descriptor and Rx fill rings flow control
+		 * configurations with original X-OFF and X-ON threshold values.
+		 * 2. Reset the backpressure configuration by un-mapping the Rx
+		 * descriptor rings with any mapped PPE queues
+		 */
+		edma_cfg_rx_desc_ring_flow_control(0, 0);
+		edma_cfg_rx_fill_ring_flow_control(0, 0);
+		edma_cfg_rx_desc_ring_to_queue_mapping(edma_cfg_rx_fc_enable);
+	}
+
+	return ret;
 }

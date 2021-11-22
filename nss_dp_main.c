@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -63,6 +63,16 @@ MODULE_PARM_DESC(overwrite_mode, "overwrite default page_mode setting");
 int jumbo_mru;
 module_param(jumbo_mru, int, 0);
 MODULE_PARM_DESC(jumbo_mru, "jumbo mode");
+
+#if defined(NSS_DP_IPQ95XX)
+int nss_dp_rx_fc_xoff = NSS_DP_RX_FC_XOFF_DEF;
+module_param(nss_dp_rx_fc_xoff, int, S_IRUGO);
+MODULE_PARM_DESC(nss_dp_rx_fc_xoff, "Rx ring's flow control XOFF threshold value");
+
+int nss_dp_rx_fc_xon = NSS_DP_RX_FC_XON_DEF;
+module_param(nss_dp_rx_fc_xon, int, S_IRUGO);
+MODULE_PARM_DESC(nss_dp_rx_fc_xon, "Rx ring's flow control XON threshold value");
+#endif
 
 /*
  * nss_dp_do_ioctl()
