@@ -50,6 +50,8 @@ struct syn_dp_info_tx {
 					/* GMAC driver Tx statistics */
 	struct net_device *netdev;	/* Net-device corresponding to the GMAC */
 	struct device *dev;		/* Platform device corresponding to the GMAC */
+	struct sk_buff *skb_free_list[SYN_DP_NAPI_BUDGET_TX];
+					/* Array to hold SKBs before free during Tx completion */
 };
 
 /*
