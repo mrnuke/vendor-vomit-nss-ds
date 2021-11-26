@@ -540,13 +540,6 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 		if (unlikely(!txdesc_ring->avail_desc)) {
 			edma_debug("No available descriptors are present at %d ring\n",
 					txdesc_ring->id);
-			/*
-			 * TODO:
-			 * Remove this statistic from EDMA TX stats
-			 */
-			u64_stats_update_begin(&stats->syncp);
-			++stats->tx_no_desc_avail;
-			u64_stats_update_end(&stats->syncp);
 
 			u64_stats_update_begin(&txdesc_stats->syncp);
 			++txdesc_stats->no_desc_avail;
@@ -569,14 +562,6 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 		if (unlikely(num_tx_desc_needed > txdesc_ring->avail_desc)) {
 			txdesc_ring->avail_desc = edma_tx_avail_desc(txdesc_ring, hw_next_to_use);
 			if (num_tx_desc_needed > txdesc_ring->avail_desc) {
-				/*
-				 * TODO:
-				 * Remove this statistic from EDMA TX stats
-				 */
-				u64_stats_update_begin(&stats->syncp);
-				++stats->tx_no_desc_avail;
-				u64_stats_update_end(&stats->syncp);
-
 				u64_stats_update_begin(&txdesc_stats->syncp);
 				++txdesc_stats->no_desc_avail;
 				u64_stats_update_end(&txdesc_stats->syncp);

@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -87,34 +89,6 @@ static void nss_dp_hal_tcsr_set(void)
 		writel(TCSR_GMAC_AXI_CACHE_OVERRIDE_VALUE, tcsr_addr);
 		iounmap(tcsr_addr);
 	}
-}
-
-/*
- * nss_dp_hal_get_ndo_stats()
- *	Update netdev statistics from data plane statistics
- */
-struct rtnl_link_stats64 *nss_dp_hal_get_ndo_stats(
-				struct nss_dp_hal_gmac_stats *gmac_stats,
-				struct rtnl_link_stats64 *ndo_stats)
-{
-	ndo_stats->rx_packets = gmac_stats->rx_stats.rx_packets;
-	ndo_stats->rx_bytes = gmac_stats->rx_stats.rx_bytes;
-	ndo_stats->rx_errors = gmac_stats->rx_stats.rx_errors;
-	ndo_stats->rx_dropped = gmac_stats->rx_stats.rx_errors;
-	ndo_stats->rx_length_errors = gmac_stats->rx_stats.rx_length_errors;
-	ndo_stats->rx_frame_errors = gmac_stats->rx_stats.rx_dribble_bit_errors;
-	ndo_stats->rx_fifo_errors = gmac_stats->rx_stats.rx_fifo_overflows;
-	ndo_stats->rx_missed_errors = gmac_stats->rx_stats.rx_missed;
-	ndo_stats->collisions = gmac_stats->tx_stats.tx_collisions + gmac_stats->rx_stats.rx_late_collision_errors;
-	ndo_stats->tx_packets = gmac_stats->tx_stats.tx_packets;
-	ndo_stats->tx_bytes = gmac_stats->tx_stats.tx_bytes;
-	ndo_stats->tx_errors = gmac_stats->tx_stats.tx_errors;
-	ndo_stats->tx_dropped = gmac_stats->tx_stats.tx_dropped;
-	ndo_stats->tx_carrier_errors = gmac_stats->tx_stats.tx_loss_of_carrier_errors + gmac_stats->tx_stats.tx_no_carrier_errors;
-	ndo_stats->tx_fifo_errors = gmac_stats->tx_stats.tx_underflow_errors;
-	ndo_stats->tx_window_errors = gmac_stats->tx_stats.tx_late_collision_errors;
-
-	return ndo_stats;
 }
 
 /*

@@ -107,7 +107,6 @@ struct edma_tx_stats {
 	uint64_t tx_pkts;
 	uint64_t tx_bytes;
 	uint64_t tx_drops;
-	uint64_t tx_no_desc_avail;
 	uint64_t tx_nr_frag_pkts;
 	uint64_t tx_fraglist_pkts;
 	uint64_t tx_fraglist_with_nr_frags_pkts;

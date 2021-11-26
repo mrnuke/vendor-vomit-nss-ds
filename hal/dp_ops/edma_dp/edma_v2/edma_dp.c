@@ -225,7 +225,6 @@ static void edma_dp_get_ndo_stats(struct nss_dp_data_plane_ctx *dpc,
 		stats->stats.tx_packets += txp.tx_pkts;
 		stats->stats.tx_bytes += txp.tx_bytes;
 		stats->stats.tx_dropped += txp.tx_drops;
-		stats->stats.tx_no_desc_avail += txp.tx_no_desc_avail;
 		stats->stats.tx_nr_frag_packets += txp.tx_nr_frag_pkts;
 		stats->stats.tx_fraglist_packets += txp.tx_fraglist_pkts;
 		stats->stats.tx_fraglist_with_nr_frags_packets += txp.tx_fraglist_with_nr_frags_pkts;

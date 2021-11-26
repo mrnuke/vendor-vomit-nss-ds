@@ -2,6 +2,8 @@
  **************************************************************************
  * Copyright (c) 2016-2018, 2020-2021 The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all copies.
@@ -24,7 +26,8 @@
 #include <nss_dp_dev.h>
 #include "qcom_dev.h"
 
-#define QCOM_STAT(m) offsetof(fal_mib_counter_t, m)
+#define QCOM_STAT(m)		offsetof(struct nss_dp_hal_gmac_stats, m)
+#define QCOM_MIB_STAT(m)	offsetof(fal_mib_counter_t, m)
 
 /*
  * Ethtool stats pointer structure
@@ -35,51 +38,76 @@ struct qcom_ethtool_stats {
 };
 
 /*
- * Array of strings describing statistics
+ * Array of strings describing data plane statistics
  */
 static const struct qcom_ethtool_stats qcom_gstrings_stats[] = {
-	{"rx_broadcast", QCOM_STAT(RxBroad)},
-	{"rx_pause", QCOM_STAT(RxPause)},
-	{"rx_unicast", QCOM_STAT(RxUniCast)},
-	{"rx_multicast", QCOM_STAT(RxMulti)},
-	{"rx_fcserr", QCOM_STAT(RxFcsErr)},
-	{"rx_alignerr", QCOM_STAT(RxAllignErr)},
-	{"rx_runt", QCOM_STAT(RxRunt)},
-	{"rx_frag", QCOM_STAT(RxFragment)},
-	{"rx_jmbfcserr", QCOM_STAT(RxJumboFcsErr)},
-	{"rx_jmbalignerr", QCOM_STAT(RxJumboAligenErr)},
-	{"rx_pkt64", QCOM_STAT(Rx64Byte)},
-	{"rx_pkt65to127", QCOM_STAT(Rx128Byte)},
-	{"rx_pkt128to255", QCOM_STAT(Rx256Byte)},
-	{"rx_pkt256to511", QCOM_STAT(Rx512Byte)},
-	{"rx_pkt512to1023", QCOM_STAT(Rx1024Byte)},
-	{"rx_pkt1024to1518", QCOM_STAT(Rx1518Byte)},
-	{"rx_pkt1519tox", QCOM_STAT(RxMaxByte)},
-	{"rx_toolong", QCOM_STAT(RxTooLong)},
-	{"rx_pktgoodbyte", QCOM_STAT(RxGoodByte)},
-	{"rx_pktbadbyte", QCOM_STAT(RxBadByte)},
-	{"rx_overflow", QCOM_STAT(RxOverFlow)},
-	{"tx_broadcast", QCOM_STAT(TxBroad)},
-	{"tx_pause", QCOM_STAT(TxPause)},
-	{"tx_multicast", QCOM_STAT(TxMulti)},
-	{"tx_underrun", QCOM_STAT(TxUnderRun)},
-	{"tx_pkt64", QCOM_STAT(Tx64Byte)},
-	{"tx_pkt65to127", QCOM_STAT(Tx128Byte)},
-	{"tx_pkt128to255", QCOM_STAT(Tx256Byte)},
-	{"tx_pkt256to511", QCOM_STAT(Tx512Byte)},
-	{"tx_pkt512to1023", QCOM_STAT(Tx1024Byte)},
-	{"tx_pkt1024to1518", QCOM_STAT(Tx1518Byte)},
-	{"tx_pkt1519tox", QCOM_STAT(TxMaxByte)},
-	{"tx_oversize", QCOM_STAT(TxOverSize)},
-	{"tx_pktbyte_h", QCOM_STAT(TxByte)},
-	{"tx_collisions", QCOM_STAT(TxCollision)},
-	{"tx_abortcol", QCOM_STAT(TxAbortCol)},
-	{"tx_multicol", QCOM_STAT(TxMultiCol)},
-	{"tx_singlecol", QCOM_STAT(TxSingalCol)},
-	{"tx_exesdeffer", QCOM_STAT(TxExcDefer)},
-	{"tx_deffer", QCOM_STAT(TxDefer)},
-	{"tx_latecol", QCOM_STAT(TxLateCol)},
-	{"tx_unicast", QCOM_STAT(TxUniCast)},
+#if defined(NSS_DP_IPQ95XX)
+	/*
+	 * Per GMAC DMA driver statistics are
+	 * supported today only for IPQ95xx.
+	 */
+	{"rx_bytes", QCOM_STAT(rx_bytes)},
+	{"rx_packets", QCOM_STAT(rx_packets)},
+	{"rx_dropped", QCOM_STAT(rx_dropped)},
+	{"rx_fraglist_packets", QCOM_STAT(rx_fraglist_packets)},
+	{"rx_nr_frag_packets", QCOM_STAT(rx_nr_frag_packets)},
+	{"rx_nr_frag_headroom_err", QCOM_STAT(rx_nr_frag_headroom_err)},
+	{"tx_bytes", QCOM_STAT(tx_bytes)},
+	{"tx_packets", QCOM_STAT(tx_packets)},
+	{"tx_dropped", QCOM_STAT(tx_dropped)},
+	{"tx_nr_frag_packets", QCOM_STAT(tx_nr_frag_packets)},
+	{"tx_fraglist_packets", QCOM_STAT(tx_fraglist_packets)},
+	{"tx_fraglist_nr_frags_packets", QCOM_STAT(tx_fraglist_with_nr_frags_packets)},
+	{"tx_tso_packets", QCOM_STAT(tx_tso_packets)},
+#endif
+};
+
+/*
+ * Array of strings describing mib statistics
+ */
+static const struct qcom_ethtool_stats qcom_gstrings_mib_stats[] = {
+	{"rx_broadcast", QCOM_MIB_STAT(RxBroad)},
+	{"rx_pause", QCOM_MIB_STAT(RxPause)},
+	{"rx_unicast", QCOM_MIB_STAT(RxUniCast)},
+	{"rx_multicast", QCOM_MIB_STAT(RxMulti)},
+	{"rx_fcserr", QCOM_MIB_STAT(RxFcsErr)},
+	{"rx_alignerr", QCOM_MIB_STAT(RxAllignErr)},
+	{"rx_runt", QCOM_MIB_STAT(RxRunt)},
+	{"rx_frag", QCOM_MIB_STAT(RxFragment)},
+	{"rx_jmbfcserr", QCOM_MIB_STAT(RxJumboFcsErr)},
+	{"rx_jmbalignerr", QCOM_MIB_STAT(RxJumboAligenErr)},
+	{"rx_pkt64", QCOM_MIB_STAT(Rx64Byte)},
+	{"rx_pkt65to127", QCOM_MIB_STAT(Rx128Byte)},
+	{"rx_pkt128to255", QCOM_MIB_STAT(Rx256Byte)},
+	{"rx_pkt256to511", QCOM_MIB_STAT(Rx512Byte)},
+	{"rx_pkt512to1023", QCOM_MIB_STAT(Rx1024Byte)},
+	{"rx_pkt1024to1518", QCOM_MIB_STAT(Rx1518Byte)},
+	{"rx_pkt1519tox", QCOM_MIB_STAT(RxMaxByte)},
+	{"rx_toolong", QCOM_MIB_STAT(RxTooLong)},
+	{"rx_pktgoodbyte", QCOM_MIB_STAT(RxGoodByte)},
+	{"rx_pktbadbyte", QCOM_MIB_STAT(RxBadByte)},
+	{"rx_overflow", QCOM_MIB_STAT(RxOverFlow)},
+	{"tx_broadcast", QCOM_MIB_STAT(TxBroad)},
+	{"tx_pause", QCOM_MIB_STAT(TxPause)},
+	{"tx_multicast", QCOM_MIB_STAT(TxMulti)},
+	{"tx_underrun", QCOM_MIB_STAT(TxUnderRun)},
+	{"tx_pkt64", QCOM_MIB_STAT(Tx64Byte)},
+	{"tx_pkt65to127", QCOM_MIB_STAT(Tx128Byte)},
+	{"tx_pkt128to255", QCOM_MIB_STAT(Tx256Byte)},
+	{"tx_pkt256to511", QCOM_MIB_STAT(Tx512Byte)},
+	{"tx_pkt512to1023", QCOM_MIB_STAT(Tx1024Byte)},
+	{"tx_pkt1024to1518", QCOM_MIB_STAT(Tx1518Byte)},
+	{"tx_pkt1519tox", QCOM_MIB_STAT(TxMaxByte)},
+	{"tx_oversize", QCOM_MIB_STAT(TxOverSize)},
+	{"tx_pktbyte_h", QCOM_MIB_STAT(TxByte)},
+	{"tx_collisions", QCOM_MIB_STAT(TxCollision)},
+	{"tx_abortcol", QCOM_MIB_STAT(TxAbortCol)},
+	{"tx_multicol", QCOM_MIB_STAT(TxMultiCol)},
+	{"tx_singlecol", QCOM_MIB_STAT(TxSingalCol)},
+	{"tx_exesdeffer", QCOM_MIB_STAT(TxExcDefer)},
+	{"tx_deffer", QCOM_MIB_STAT(TxDefer)},
+	{"tx_latecol", QCOM_MIB_STAT(TxLateCol)},
+	{"tx_unicast", QCOM_MIB_STAT(TxUniCast)},
 };
 
 /*
@@ -91,8 +119,9 @@ static const char * const qcom_strings_priv_flags[] = {
 	"tsmode",
 };
 
-#define QCOM_STATS_LEN ARRAY_SIZE(qcom_gstrings_stats)
-#define QCOM_PRIV_FLAGS_LEN ARRAY_SIZE(qcom_strings_priv_flags)
+#define QCOM_STATS_LEN		ARRAY_SIZE(qcom_gstrings_stats)
+#define QCOM_MIB_STATS_LEN	ARRAY_SIZE(qcom_gstrings_mib_stats)
+#define QCOM_PRIV_FLAGS_LEN	ARRAY_SIZE(qcom_strings_priv_flags)
 
 /*
  * qcom_rx_flow_control()
@@ -211,7 +240,7 @@ int32_t qcom_get_strset_count(struct nss_gmac_hal_dev *nghd, int32_t sset)
 
 	switch (sset) {
 	case ETH_SS_STATS:
-		return QCOM_STATS_LEN;
+		return (QCOM_STATS_LEN + QCOM_MIB_STATS_LEN);
 	case ETH_SS_PRIV_FLAGS:
 		return QCOM_PRIV_FLAGS_LEN;
 	}
@@ -237,7 +266,14 @@ int32_t qcom_get_strings(struct nss_gmac_hal_dev *nghd, int32_t sset,
 				strlen(qcom_gstrings_stats[i].stat_string));
 			data += ETH_GSTRING_LEN;
 		}
+
+		for (i = 0; i < QCOM_MIB_STATS_LEN; i++) {
+			memcpy(data, qcom_gstrings_mib_stats[i].stat_string,
+				strlen(qcom_gstrings_mib_stats[i].stat_string));
+			data += ETH_GSTRING_LEN;
+		}
 		break;
+
 	case ETH_SS_PRIV_FLAGS:
 		for (i = 0; i < QCOM_PRIV_FLAGS_LEN; i++) {
 			memcpy(data, qcom_strings_priv_flags[i],
@@ -245,6 +281,7 @@ int32_t qcom_get_strings(struct nss_gmac_hal_dev *nghd, int32_t sset,
 			data += ETH_GSTRING_LEN;
 		}
 		break;
+
 	default:
 		netdev_dbg(netdev, "%s: Invalid string set\n", __func__);
 		return -EPERM;
@@ -261,13 +298,31 @@ static int32_t qcom_get_eth_stats(struct nss_gmac_hal_dev *nghd, uint64_t *data,
 	struct qcom_hal_dev *qhd = (struct qcom_hal_dev *)nghd;
 	fal_mib_counter_t *mib_stats = &(qhd->stats);
 	uint8_t *p;
-	int i;
+	int i, i_mib;
 
-	if (qcom_get_mib_stats(nghd))
-		return -1;
-
+	/*
+	 * Populate data plane statistics.
+	 */
 	for (i = 0; i < QCOM_STATS_LEN; i++) {
-		p = (uint8_t *)mib_stats + qcom_gstrings_stats[i].stat_offset;
+		p = ((uint8_t *)(stats)
+			+ qcom_gstrings_stats[i].stat_offset);
+		data[i] = *(uint64_t *)p;
+	}
+
+	/*
+	 * Get MIB statistics
+	 */
+	if (qcom_get_mib_stats(nghd)) {
+		return -1;
+	}
+
+	/*
+	 * Populate MIB statistics
+	 */
+	for (i_mib = 0; i_mib < QCOM_MIB_STATS_LEN; i_mib++) {
+		p = (uint8_t *)mib_stats
+			+ qcom_gstrings_mib_stats[i_mib].stat_offset;
+		i = QCOM_STATS_LEN + i_mib;
 		data[i] = *(uint32_t *)p;
 	}
 
