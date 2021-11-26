@@ -1,6 +1,7 @@
 /*
- **************************************************************************
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ *
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -13,7 +14,6 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- **************************************************************************
  */
 
 #include <linux/kernel.h>
@@ -50,6 +50,19 @@ struct ipq40xx_mdio_data {
 /* Global data */
 struct nss_dp_global_ctx dp_global_ctx;
 struct nss_dp_data_plane_ctx dp_global_data_plane_ctx[NSS_DP_HAL_MAX_PORTS];
+
+/* Module params */
+static int page_mode;
+module_param(page_mode, int, 0);
+MODULE_PARM_DESC(page_mode, "enable page mode");
+
+static int overwrite_mode;
+module_param(overwrite_mode, int, 0);
+MODULE_PARM_DESC(overwrite_mode, "overwrite default page_mode setting");
+
+int jumbo_mru;
+module_param(jumbo_mru, int, 0);
+MODULE_PARM_DESC(jumbo_mru, "jumbo mode");
 
 /*
  * nss_dp_do_ioctl()
@@ -554,6 +567,18 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 		random_ether_addr(netdev->dev_addr);
 		pr_info("GMAC%d(%px) Invalid MAC@ - using %pM\n", dp_priv->macid,
 						dp_priv, netdev->dev_addr);
+	}
+
+	dp_priv->rx_page_mode = of_property_read_bool(np, "qcom,rx-page-mode");
+	if (overwrite_mode) {
+		pr_info("Page mode is overwritten: %d\n", page_mode);
+		dp_priv->rx_page_mode = page_mode;
+	}
+
+	if (jumbo_mru) {
+		dp_priv->rx_page_mode = false;
+		dp_priv->rx_jumbo_mru = jumbo_mru;
+		pr_info("Jumbo mru is enabled: %d\n", dp_priv->rx_jumbo_mru);
 	}
 
 	return 0;

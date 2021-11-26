@@ -319,13 +319,22 @@ static inline void syn_dp_gmac_rx_desc_init_ring(struct dma_desc_rx *desc, uint3
 }
 
 /*
- * syn_dp_gmac_is_rx_desc_valid()
- *	Checks whether the rx descriptor is valid.
+ * syn_dp_gmac_is_rx_desc_linear_and_valid()
+ *	Checks whether the rx descriptor is linear and valid.
  */
-static inline bool syn_dp_gmac_is_rx_desc_valid(uint32_t status)
+static inline bool syn_dp_gmac_is_rx_desc_linear_and_valid(uint32_t status, uint32_t extstatus)
 {
-	return (status & (DESC_RX_ERROR | DESC_RX_FIRST | DESC_RX_LAST)) ==
-		(DESC_RX_FIRST | DESC_RX_LAST);
+	return (((status & (DESC_RX_ERROR | DESC_RX_FIRST | DESC_RX_LAST)) == (DESC_RX_FIRST | DESC_RX_LAST)) &&
+		!(extstatus & (DESC_RX_IP_HEADER_ERROR | DESC_RX_IP_PAYLOAD_ERROR)));
+}
+
+/*
+ * syn_dp_gmac_is_rx_desc_valid()
+ * 	Check if Rx descriptor is valid with no error.
+ */
+static inline bool syn_dp_gmac_is_rx_desc_valid(uint32_t status, uint32_t extstatus)
+{
+	return (!(status & DESC_RX_ERROR) && !(extstatus & (DESC_RX_IP_HEADER_ERROR | DESC_RX_IP_PAYLOAD_ERROR)));
 }
 
 /*
