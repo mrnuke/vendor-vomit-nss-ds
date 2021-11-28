@@ -983,10 +983,17 @@ void edma_cfg_rx_napi_add(struct edma_gbl_ctx *egc, struct net_device *netdev)
 {
 	uint32_t i;
 
+	if ((nss_dp_rx_napi_budget < EDMA_RX_NAPI_WORK_MIN) ||
+		(nss_dp_rx_napi_budget > EDMA_RX_NAPI_WORK_MAX)) {
+		edma_err("Incorrect Rx NAPI budget: %d, setting to default: %d",
+			nss_dp_rx_napi_budget, NSS_DP_HAL_RX_NAPI_BUDGET);
+		nss_dp_rx_napi_budget = NSS_DP_HAL_RX_NAPI_BUDGET;
+	}
+
 	for (i = 0; i < egc->num_rxdesc_rings; i++) {
 		struct edma_rxdesc_ring *rxdesc_ring = &egc->rxdesc_rings[i];
 		netif_napi_add(netdev, &rxdesc_ring->napi,
-				edma_rx_napi_poll, EDMA_RX_NAPI_WORK);
+				edma_rx_napi_poll, nss_dp_rx_napi_budget);
 		rxdesc_ring->napi_added = true;
 	}
 }

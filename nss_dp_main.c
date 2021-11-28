@@ -64,6 +64,14 @@ int jumbo_mru;
 module_param(jumbo_mru, int, 0);
 MODULE_PARM_DESC(jumbo_mru, "jumbo mode");
 
+int nss_dp_rx_napi_budget = NSS_DP_HAL_RX_NAPI_BUDGET;
+module_param(nss_dp_rx_napi_budget, int, S_IRUGO);
+MODULE_PARM_DESC(nss_dp_rx_napi_budget, "Rx NAPI budget");
+
+int nss_dp_tx_napi_budget = NSS_DP_HAL_TX_NAPI_BUDGET;
+module_param(nss_dp_tx_napi_budget, int, S_IRUGO);
+MODULE_PARM_DESC(nss_dp_tx_napi_budget, "Tx NAPI budget");
+
 #if defined(NSS_DP_IPQ95XX)
 int nss_dp_rx_fc_xoff = NSS_DP_RX_FC_XOFF_DEF;
 module_param(nss_dp_rx_fc_xoff, int, S_IRUGO);

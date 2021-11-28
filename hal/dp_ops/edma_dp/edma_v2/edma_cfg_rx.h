@@ -19,7 +19,8 @@
 #ifndef __EDMA_CFG_RX_H__
 #define __EDMA_CFG_RX_H__
 
-#define EDMA_RX_NAPI_WORK		32
+#define EDMA_RX_NAPI_WORK_MIN		16
+#define EDMA_RX_NAPI_WORK_MAX		512
 #define EDMA_RX_DEFAULT_QUEUE_PRI	0
 #define EDMA_RX_FC_ENABLE		0	/* RX flow control default state */
 #define EDMA_RX_FC_XOFF_THRE_MIN	0	/* Rx flow control minimum X-OFF value */

@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -17,7 +19,8 @@
 #ifndef __EDMA_CFG_TX_H__
 #define __EDMA_CFG_TX_H__
 
-#define EDMA_TX_NAPI_WORK		32
+#define EDMA_TX_NAPI_WORK_MIN   16
+#define EDMA_TX_NAPI_WORK_MAX	512
 
 void edma_cfg_tx_rings(struct edma_gbl_ctx *egc);
 int32_t edma_cfg_tx_rings_alloc(struct edma_gbl_ctx *egc);

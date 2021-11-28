@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -605,11 +607,18 @@ void edma_cfg_tx_napi_add(struct edma_gbl_ctx *egc, struct net_device *netdev)
 {
 	uint32_t i;
 
+	if ((nss_dp_tx_napi_budget < EDMA_TX_NAPI_WORK_MIN) ||
+		(nss_dp_tx_napi_budget > EDMA_TX_NAPI_WORK_MAX)) {
+		edma_err("Incorrect Tx NAPI budget: %d, setting to default: %d",
+				nss_dp_tx_napi_budget, NSS_DP_HAL_TX_NAPI_BUDGET);
+		nss_dp_tx_napi_budget = NSS_DP_HAL_TX_NAPI_BUDGET;
+	}
+
 	for (i = 0; i < egc->num_txcmpl_rings; i++) {
 		struct edma_txcmpl_ring *txcmpl_ring = &egc->txcmpl_rings[i];
 
 		netif_napi_add(netdev, &txcmpl_ring->napi,
-				edma_tx_napi_poll, EDMA_TX_NAPI_WORK);
+				edma_tx_napi_poll, nss_dp_tx_napi_budget);
 		txcmpl_ring->napi_added = true;
 	}
 }

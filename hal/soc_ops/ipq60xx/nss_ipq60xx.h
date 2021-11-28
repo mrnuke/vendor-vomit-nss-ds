@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -26,6 +28,12 @@
  * Number of TX/RX queue supported
  */
 #define NSS_DP_QUEUE_NUM		4
+
+/*
+ * TX/RX NAPI budget
+ */
+#define NSS_DP_HAL_RX_NAPI_BUDGET	32
+#define NSS_DP_HAL_TX_NAPI_BUDGET	32
 
 /**
  * nss_dp_hal_gmac_stats

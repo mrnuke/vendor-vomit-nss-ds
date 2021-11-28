@@ -28,6 +28,12 @@
 #define NSS_DP_QUEUE_NUM			1
 
 /*
+ * TX/RX NAPI budget
+ */
+#define NSS_DP_HAL_RX_NAPI_BUDGET		32
+#define NSS_DP_HAL_TX_NAPI_BUDGET		32
+
+/*
  * TCSR_GMAC_AXI_CACHE_OVERRIDE register size
  */
 #define TCSR_GMAC_AXI_CACHE_OVERRIDE_REG_SIZE	4
