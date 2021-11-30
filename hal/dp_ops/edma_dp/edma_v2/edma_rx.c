@@ -31,6 +31,7 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 	struct edma_rxfill_desc *rxfill_desc;
 	uint16_t prod_idx, start_idx;
 	uint16_t num_alloc = 0;
+	uint32_t rx_alloc_size = rxfill_ring->alloc_size;
 
 	/*
 	 * Get RXFILL ring producer index
@@ -45,7 +46,7 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 		/*
 		 * Allocate buffer
 		 */
-		skb = dev_alloc_skb(EDMA_BUF_SIZE + NET_IP_ALIGN);
+		skb = dev_alloc_skb(rx_alloc_size);
 		if (unlikely(!skb)) {
 			break;
 		}
@@ -80,14 +81,14 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 		EDMA_RXFILL_PACKET_LEN_SET(
 			rxfill_desc,
 			cpu_to_le32((uint32_t)
-			(EDMA_BUF_SIZE - EDMA_RX_SKB_HEADROOM - NET_IP_ALIGN)
+			(rx_alloc_size - EDMA_RX_SKB_HEADROOM - NET_IP_ALIGN)
 			& EDMA_RXFILL_BUF_SIZE_MASK));
 
 		/*
 		 * Invalidate skb->data
 		 */
 		dmac_inv_range((void *)skb->data,
-				(void *)(skb->data + EDMA_BUF_SIZE -
+				(void *)(skb->data + rx_alloc_size -
 					EDMA_RX_SKB_HEADROOM -
 					NET_IP_ALIGN));
 		prod_idx = (prod_idx + 1) & EDMA_RX_RING_SIZE_MASK;

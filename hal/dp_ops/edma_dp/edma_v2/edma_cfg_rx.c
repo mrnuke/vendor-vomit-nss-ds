@@ -24,6 +24,7 @@
 #include "edma_cfg_rx.h"
 #include "edma_regs.h"
 #include "edma_debug.h"
+#include "nss_dp_dev.h"
 
 /*
  * edma_cfg_rx_fill_ring_cleanup()
@@ -428,6 +429,7 @@ static int edma_cfg_rx_rings_setup(struct edma_gbl_ctx *egc)
 		rxfill_ring = &egc->rxfill_rings[i];
 		rxfill_ring->count = EDMA_RX_RING_SIZE;
 		rxfill_ring->ring_id = egc->rxfill_ring_start + i;
+		rxfill_ring->alloc_size = dp_global_ctx.rx_buf_size;
 
 		ret = edma_cfg_rx_fill_ring_setup(rxfill_ring);
 		if (ret != 0) {

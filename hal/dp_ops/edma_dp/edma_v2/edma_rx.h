@@ -125,6 +125,7 @@ struct edma_rxfill_ring {
 	uint32_t ring_id;		/* RXFILL ring number */
 	uint32_t count;			/* number of descriptors in the ring */
 	uint32_t prod_idx;		/* Ring producer index */
+	uint32_t alloc_size;		/* Buffer size to allocate */
 	struct edma_rxfill_desc *desc;	/* descriptor ring virtual address */
 	dma_addr_t dma;			/* descriptor ring physical address */
 };

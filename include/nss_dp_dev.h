@@ -31,6 +31,15 @@
 
 #define NSS_DP_ACL_DEV_ID 0
 
+/*
+ * Rx buffer allocation size as per memory profile
+ */
+#if (defined(NSS_DP_MEM_PROFILE_LOW) || defined(NSS_DP_MEM_PROFILE_MEDIUM)) && !defined(__LP64__)
+#define NSS_DP_RX_BUFFER_SIZE		1856
+#else
+#define NSS_DP_RX_BUFFER_SIZE		1984
+#endif
+
 struct nss_dp_global_ctx;
 
 /*
@@ -87,6 +96,7 @@ struct nss_dp_global_ctx {
 					/* GMAC HAL OPS */
 	bool common_init_done;		/* Flag to hold common init state */
 	uint8_t slowproto_acl_bm;	/* Port bitmap to allow slow protocol packets */
+	uint32_t rx_buf_size;		/* Buffer size to allocate */
 };
 
 /* Global data */

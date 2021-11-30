@@ -943,6 +943,11 @@ int __init nss_dp_init(void)
 	dp_global_ctx.common_init_done = false;
 
 	/*
+	 * Get the buffer size to allocate
+	 */
+	dp_global_ctx.rx_buf_size = NSS_DP_RX_BUFFER_SIZE;
+
+	/*
 	 * Check platform compatibility and
 	 * set GMAC and data_plane ops.
 	 */
