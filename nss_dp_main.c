@@ -568,7 +568,7 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 		pr_info("GMAC%d(%px) Invalid MAC@ - using %pM\n", dp_priv->macid,
 						dp_priv, netdev->dev_addr);
 	}
-
+#if !defined(NSS_DP_MEM_PROFILE_LOW) && !defined(NSS_DP_MEM_PROFILE_MEDIUM)
 	dp_priv->rx_page_mode = of_property_read_bool(np, "qcom,rx-page-mode");
 	if (overwrite_mode) {
 		pr_info("Page mode is overwritten: %d\n", page_mode);
@@ -580,7 +580,12 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 		dp_priv->rx_jumbo_mru = jumbo_mru;
 		pr_info("Jumbo mru is enabled: %d\n", dp_priv->rx_jumbo_mru);
 	}
-
+#else
+	if (overwrite_mode || page_mode || jumbo_mru) {
+		pr_err("Low memory profiles does not support page mode/jumbo mru\n");
+		return -EFAULT;
+	}
+#endif
 	return 0;
 }
 
