@@ -101,7 +101,7 @@ static inline struct dma_desc_tx *syn_dp_tx_process_nr_frags(struct syn_dp_info_
 		length = skb_frag_size(frag);
 		dma_addr = (dma_addr_t)virt_to_phys(frag_addr);
 
-		dmac_clean_range(frag_addr, frag_addr + length);
+		dmac_clean_range_no_dsb(frag_addr, frag_addr + length);
 
 		*total_length += length;
 		tx_desc = syn_dp_tx_set_desc_sg(tx_info, dma_addr, length, DESC_OWN_BY_DMA);
@@ -145,7 +145,7 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	 * Flush the dma for non-paged skb data
 	 */
 	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
-	dmac_clean_range((void *)skb->data, (void *)(skb->data + length));
+	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + length));
 
 	total_len = length;
 
@@ -252,7 +252,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	/*
 	 * Flush the data area of the head skb
 	 */
-	dmac_clean_range((void *)skb->data, (void *)(skb->data + length));
+	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + length));
 
 	total_len = length;
 
@@ -283,7 +283,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 		length = skb_headlen(iter_skb);
 		dma_addr = (dma_addr_t)virt_to_phys(iter_skb->data);
 
-		dmac_clean_range((void *)iter_skb->data, (void *)(iter_skb->data + length));
+		dmac_clean_range_no_dsb((void *)iter_skb->data, (void *)(iter_skb->data + length));
 
 		total_len += length;
 
@@ -572,7 +572,7 @@ int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 
 	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
 
-	dmac_clean_range((void *)skb->data, (void *)(skb->data + skb->len));
+	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + skb->len));
 
 	/*
 	 * Queue packet to the GMAC rings
