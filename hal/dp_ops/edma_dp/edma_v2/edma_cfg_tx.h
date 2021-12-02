@@ -22,6 +22,11 @@
 #define EDMA_TX_NAPI_WORK_MIN   16
 #define EDMA_TX_NAPI_WORK_MAX	512
 
+#define EDMA_TX_MITIGATION_TIMER_MIN	0	/* Tx mitigation timer's minimum value in microseconds */
+#define EDMA_TX_MITIGATION_TIMER_MAX	1000	/* Tx mitigation timer's maximum value in microseconds */
+#define EDMA_TX_MITIGATION_PKT_CNT_MIN	0	/* Tx mitigation packet count's minimum value */
+#define EDMA_TX_MITIGATION_PKT_CNT_MAX	256	/* Tx mitigation packet count's maximum value */
+
 void edma_cfg_tx_rings(struct edma_gbl_ctx *egc);
 int32_t edma_cfg_tx_rings_alloc(struct edma_gbl_ctx *egc);
 void edma_cfg_tx_rings_cleanup(struct edma_gbl_ctx *egc);
@@ -33,5 +38,4 @@ void edma_cfg_tx_mapping(struct edma_gbl_ctx *egc);
 void edma_cfg_tx_rings_enable(struct edma_gbl_ctx *egc);
 void edma_cfg_tx_rings_disable(struct edma_gbl_ctx *egc);
 void edma_cfg_tx_fill_per_port_tx_map(struct net_device *netdev, uint32_t macid);
-
 #endif	/* __EDMA_CFG_TX_H__ */

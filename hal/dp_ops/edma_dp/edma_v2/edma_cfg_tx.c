@@ -191,7 +191,7 @@ static void edma_cfg_tx_desc_ring_configure(struct edma_txdesc_ring *txdesc_ring
  */
 static void edma_cfg_tx_cmpl_ring_configure(struct edma_txcmpl_ring *txcmpl_ring)
 {
-	uint32_t tx_mod_timer;
+	uint32_t data;
 
 	/*
 	 * Configure TxCmpl ring base address
@@ -209,12 +209,45 @@ static void edma_cfg_tx_cmpl_ring_configure(struct edma_txcmpl_ring *txcmpl_ring
 			EDMA_TXCMPL_RETMODE_OPAQUE);
 
 	/*
-	 * Configure the default timer mitigation value
+	 * Validate mitigation timer value
 	 */
-	tx_mod_timer = (EDMA_TX_MOD_TIMER & EDMA_TX_MOD_TIMER_INIT_MASK)
-			<< EDMA_TX_MOD_TIMER_INIT_SHIFT;
-	edma_reg_write(EDMA_REG_TX_MOD_TIMER(txcmpl_ring->id),
-				tx_mod_timer);
+	if ((nss_dp_tx_mitigation_timer < EDMA_TX_MITIGATION_TIMER_MIN) ||
+			(nss_dp_tx_mitigation_timer > EDMA_TX_MITIGATION_TIMER_MAX)) {
+		edma_err("Invalid Tx mitigation timer configured:%d for ring:%d."
+				" Using the default timer value:%d\n",
+				nss_dp_tx_mitigation_timer, txcmpl_ring->id,
+				NSS_DP_TX_MITIGATION_TIMER_DEF);
+		nss_dp_tx_mitigation_timer = NSS_DP_TX_MITIGATION_TIMER_DEF;
+	}
+
+	/*
+	 * Validate mitigation packet count value
+	 */
+	if ((nss_dp_tx_mitigation_pkt_cnt < EDMA_TX_MITIGATION_PKT_CNT_MIN) ||
+			(nss_dp_tx_mitigation_pkt_cnt > EDMA_TX_MITIGATION_PKT_CNT_MAX)) {
+		edma_err("Invalid Tx mitigation packet count configured:%d for ring:%d."
+				" Using the default packet counter value:%d\n",
+				nss_dp_tx_mitigation_timer, txcmpl_ring->id,
+				NSS_DP_TX_MITIGATION_PKT_CNT_DEF);
+		nss_dp_tx_mitigation_pkt_cnt = NSS_DP_TX_MITIGATION_PKT_CNT_DEF;
+	}
+
+	/*
+	 * Configure the Mitigation timer
+	 */
+	data = MICROSEC_TO_TIMER_UNIT(nss_dp_tx_mitigation_timer);
+	data = ((data & EDMA_TX_MOD_TIMER_INIT_MASK)
+			<< EDMA_TX_MOD_TIMER_INIT_SHIFT);
+	edma_info("EDMA Tx mitigation timer value: %d\n", data);
+	edma_reg_write(EDMA_REG_TX_MOD_TIMER(txcmpl_ring->id), data);
+
+	/*
+	 * Configure the Mitigation packet count
+	 */
+	data = (nss_dp_tx_mitigation_pkt_cnt & EDMA_TXCMPL_LOW_THRE_MASK)
+			<< EDMA_TXCMPL_LOW_THRE_SHIFT;
+	edma_info("EDMA Tx mitigation packet count value: %d\n", data);
+	edma_reg_write(EDMA_REG_TXCMPL_UGT_THRE(txcmpl_ring->id), data);
 
 	edma_reg_write(EDMA_REG_TX_INT_CTRL(txcmpl_ring->id), EDMA_TX_NE_INT_EN);
 }

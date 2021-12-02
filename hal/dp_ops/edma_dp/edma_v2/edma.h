@@ -63,6 +63,20 @@
 #define EDMA_RING_MAPPED_QUEUE_BM_WORD_COUNT	10
 
 /*
+ * EDMA clock frequency: 352 MHZ
+ * So, one clock cycle = (1/352) micro seconds
+ *
+ * One timer unit is 128 clock cycles.
+ *
+ * So, therefore the microsecond to timer unit calculation is:
+ * Timer unit	= time in microseconds / (one clock cycle in microsecond * cycles in 1 timer unit)
+ * 		= ('x' microsecond * 352 / 128)
+ */
+#define EDMA_CLK_FREQ		352
+#define CYCLE_PER_TIMER_UNIT	128
+#define MICROSEC_TO_TIMER_UNIT(x)	(((x) * EDMA_CLK_FREQ) / CYCLE_PER_TIMER_UNIT)
+
+/*
  * EDMA common clocks
  */
 #define EDMA_CSR_CLK			"nss-csr-clk"

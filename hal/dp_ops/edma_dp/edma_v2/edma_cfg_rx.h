@@ -31,6 +31,11 @@
 #define EDMA_RX_AC_FC_THRE_MAX		0x7ff	/* Rx AC flow control maximum threshold.
 						   AC FC threshold value is 11 bits long */
 
+#define EDMA_RX_MITIGATION_TIMER_MIN	0	/* Rx mitigation timer's minimum value in microseconds */
+#define EDMA_RX_MITIGATION_TIMER_MAX	1000	/* Rx mitigation timer's maximum value in microseconds */
+#define EDMA_RX_MITIGATION_PKT_CNT_MIN	0	/* Rx mitigation packet count's minimum value */
+#define EDMA_RX_MITIGATION_PKT_CNT_MAX	256	/* Rx mitigation packet count's maximum value */
+
 extern uint32_t edma_cfg_rx_fc_enable;
 
 void edma_cfg_rx_rings(struct edma_gbl_ctx *egc);

@@ -84,6 +84,22 @@ MODULE_PARM_DESC(nss_dp_rx_fc_xon, "Rx ring's flow control XON threshold value")
 int nss_dp_rx_ac_fc_threshold = NSS_DP_RX_AC_FC_THRES_DEF;
 module_param(nss_dp_rx_ac_fc_threshold, int, S_IRUGO);
 MODULE_PARM_DESC(nss_dp_rx_ac_fc_threshold, "Rx ring's mapped PPE queue's FC threshold value");
+
+int nss_dp_tx_mitigation_timer = NSS_DP_TX_MITIGATION_TIMER_DEF;
+module_param(nss_dp_tx_mitigation_timer, int, S_IRUGO);
+MODULE_PARM_DESC(nss_dp_tx_mitigation_timer, "Tx mitigation timer value in microseconds");
+
+int nss_dp_tx_mitigation_pkt_cnt = NSS_DP_TX_MITIGATION_PKT_CNT_DEF;
+module_param(nss_dp_tx_mitigation_pkt_cnt, int, S_IRUGO);
+MODULE_PARM_DESC(nss_dp_tx_mitigation_pkt_cnt, "Tx mitigation packet count value");
+
+int nss_dp_rx_mitigation_timer = NSS_DP_RX_MITIGATION_TIMER_DEF;
+module_param(nss_dp_rx_mitigation_timer, int, S_IRUGO);
+MODULE_PARM_DESC(nss_dp_rx_mitigation_timer, "Rx mitigation timer value in microseconds");
+
+int nss_dp_rx_mitigation_pkt_cnt = NSS_DP_RX_MITIGATION_PKT_CNT_DEF;
+module_param(nss_dp_rx_mitigation_pkt_cnt, int, S_IRUGO);
+MODULE_PARM_DESC(nss_dp_rx_mitigation_pkt_cnt, "Rx mitigation packet count value");
 #endif
 
 /*
