@@ -45,7 +45,8 @@
 #define EDMA_SC_BYPASS			1
 #define EDMA_NETDEV_FEATURES		NETIF_F_FRAGLIST \
 					| NETIF_F_SG \
-					| NETIF_F_RXCSUM;
+					| NETIF_F_RXCSUM \
+					| NETIF_F_HW_CSUM;
 
 /*
  * EDMA common clocks
