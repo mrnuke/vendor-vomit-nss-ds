@@ -83,7 +83,7 @@ struct nss_dp_dev {
 	u8 stp_state;			/* STP state of this physical port */
 	unsigned long brport_flags;	/* bridge port flags */
 #endif
-	bool rx_page_mode;		/* page mode for Rx processing */
+	uint32_t rx_page_mode;		/* page mode for Rx processing */
 	uint32_t rx_jumbo_mru;		/* Jumbo mru value for Rx processing */
 };
 
