@@ -138,17 +138,6 @@ static netdev_tx_t edma_dp_xmit(struct nss_dp_data_plane_ctx *dpc,
 	stats = this_cpu_ptr(pcpu_stats->tx_stats);
 
 	/*
-	 * Check for non-linear skb
-	 */
-	if (unlikely(skb_is_nonlinear(skb))) {
-		netdev_dbg(netdev, "cannot Tx non-linear skb:%px\n", skb);
-		u64_stats_update_begin(&stats->syncp);
-		++stats->tx_non_linear_pkts;
-		u64_stats_update_end(&stats->syncp);
-		goto drop;
-	}
-
-	/*
 	 * Transmit the packet
 	 */
 	ret = edma_tx_ring_xmit(netdev, skb, txdesc_ring, stats);
@@ -156,7 +145,6 @@ static netdev_tx_t edma_dp_xmit(struct nss_dp_data_plane_ctx *dpc,
 		return NETDEV_TX_OK;
 	}
 
-drop:
 	dev_kfree_skb_any(skb);
 	u64_stats_update_begin(&stats->syncp);
 	++stats->tx_drops;
@@ -175,6 +163,12 @@ static void edma_dp_set_features(struct nss_dp_data_plane_ctx *dpc)
 	 * TODO:
 	 * Add flags to support HIGHMEM/cksum offload.
 	 */
+	struct net_device *netdev = dpc->dev;
+
+	netdev->features |= NETIF_F_FRAGLIST | NETIF_F_SG;
+	netdev->hw_features |= NETIF_F_FRAGLIST | NETIF_F_SG;
+	netdev->vlan_features |= NETIF_F_FRAGLIST | NETIF_F_SG;
+	netdev->wanted_features |= NETIF_F_FRAGLIST | NETIF_F_SG;
 }
 
 /* TODO - check if this is needed */
@@ -231,7 +225,9 @@ static void edma_dp_get_ndo_stats(struct nss_dp_data_plane_ctx *dpc,
 		stats->stats.tx_bytes += txp.tx_bytes;
 		stats->stats.tx_dropped += txp.tx_drops;
 		stats->stats.tx_no_desc_avail += txp.tx_no_desc_avail;
-		stats->stats.tx_non_linear_packets += txp.tx_non_linear_pkts;
+		stats->stats.tx_nr_frag_packets += txp.tx_nr_frag_pkts;
+		stats->stats.tx_fraglist_packets += txp.tx_fraglist_pkts;
+		stats->stats.tx_fraglist_with_nr_frags_packets += txp.tx_fraglist_with_nr_frags_pkts;
 	}
 }
 
