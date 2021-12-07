@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -71,11 +73,13 @@ uint32_t edma_tx_complete(uint32_t work_to_do, struct edma_txcmpl_ring *txcmpl_r
 	txcmpl = EDMA_TXCMPL_DESC(txcmpl_ring, cons_idx);
 
 	if (end_idx > cons_idx) {
-		dmac_inv_range((void *)txcmpl, txcmpl + avail);
+		dmac_inv_range_no_dsb((void *)txcmpl, txcmpl + avail);
 	} else {
-		dmac_inv_range(txcmpl_ring->desc, txcmpl_ring->desc + end_idx);
-		dmac_inv_range((void *)txcmpl, txcmpl_ring->desc + EDMA_TX_RING_SIZE);
+		dmac_inv_range_no_dsb(txcmpl_ring->desc, txcmpl_ring->desc + end_idx);
+		dmac_inv_range_no_dsb((void *)txcmpl, txcmpl_ring->desc + EDMA_TX_RING_SIZE);
 	}
+
+	dsb(st);
 
 	/*
 	 * TODO:
@@ -102,7 +106,7 @@ uint32_t edma_tx_complete(uint32_t work_to_do, struct edma_txcmpl_ring *txcmpl_r
 		if (unlikely(!skb)) {
 			edma_warn("Invalid skb: cons_idx:%u prod_idx:%u word2:%x word3:%x\n",
 					cons_idx, prod_idx, txcmpl->word2, txcmpl->word3);
-		} else  {
+		} else {
 			edma_debug("skb:%px, skb->len %d, skb->data_len %d, cons_idx:%d prod_idx:%d word2:0x%x word3:0x%x\n",
 					skb, skb->len, skb->data_len, cons_idx, prod_idx, txcmpl->word2, txcmpl->word3);
 
@@ -218,14 +222,15 @@ static uint32_t edma_tx_skb_nr_frags(struct edma_txdesc_ring *txdesc_ring, struc
 
 		/*
 		 * Setting the MORE bit on the previous Tx descriptor.
-		 * Note we flush this descriptor as well later.
+		 * Note: We will flush this descriptor as well later.
 		 */
 		EDMA_TXDESC_MORE_BIT_SET(txd, 1);
 
 		txd = EDMA_TXDESC_PRI_DESC(txdesc_ring, *hw_next_to_use);
 		edma_tx_desc_init(txd);
 		txd->word0 = (dma_addr_t)virt_to_phys(skb_frag_address(frag));
-		dmac_clean_range((void *)skb_frag_address(frag), (void *)(skb_frag_address(frag) + buf_len));
+		dmac_clean_range_no_dsb((void *)skb_frag_address(frag),
+				(void *)(skb_frag_address(frag) + buf_len));
 
 		EDMA_TXDESC_DATA_LEN_SET(txd, buf_len);
 
@@ -233,17 +238,23 @@ static uint32_t edma_tx_skb_nr_frags(struct edma_txdesc_ring *txdesc_ring, struc
 		i++;
 	}
 
-	end_idx = *hw_next_to_use;
+	/*
+	 * This will be the index previous to that of current *hw_next_to_use
+	 */
+	end_idx = (((*hw_next_to_use) + EDMA_TX_RING_SIZE_MASK) & EDMA_TX_RING_SIZE_MASK);
 
 	/*
 	 * Need to flush from initial *txdesc to accomodate for MORE bit change.
-	 * Need to flush all the descriptors that we filled as well.
+	 * Need to flush all the descriptors but last-one that we filled as well.
 	 */
 	if (end_idx > start_idx) {
-		dmac_clean_range((void *)(*txdesc), ((*txdesc) + num_descs));
+		dmac_clean_range_no_dsb((void *)(*txdesc),
+				((*txdesc) + num_descs));
 	} else {
-		dmac_clean_range(txdesc_ring->pdesc, txdesc_ring->pdesc + end_idx);
-		dmac_clean_range((void *)(*txdesc), txdesc_ring->pdesc + EDMA_TX_RING_SIZE);
+		dmac_clean_range_no_dsb(txdesc_ring->pdesc,
+				txdesc_ring->pdesc + end_idx);
+		dmac_clean_range_no_dsb((void *)(*txdesc),
+				txdesc_ring->pdesc + EDMA_TX_RING_SIZE);
 	}
 
 	*txdesc = txd;
@@ -257,7 +268,7 @@ static uint32_t edma_tx_skb_nr_frags(struct edma_txdesc_ring *txdesc_ring, struc
 static struct edma_pri_txdesc *edma_tx_skb_first_desc(struct nss_dp_dev *dp_dev, struct edma_txdesc_ring *txdesc_ring,
 					struct sk_buff *skb, uint32_t *hw_next_to_use, struct edma_tx_stats *stats)
 {
-	uint32_t buf_len = 0, num_descs = 0, mss = 0;
+	uint32_t buf_len = 0, mss = 0;
 	struct edma_pri_txdesc *txd = NULL;
 
 	/*
@@ -273,7 +284,7 @@ static struct edma_pri_txdesc *edma_tx_skb_first_desc(struct nss_dp_dev *dp_dev,
 	 * Set the data pointer as the buffer address in the descriptor.
 	 */
 	txd->word0 = (dma_addr_t)virt_to_phys(skb->data);
-	dmac_clean_range((void *)skb->data, (void *)(skb->data + buf_len));
+	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + buf_len));
 
 	EDMA_TXDESC_SERVICE_CODE_SET(txd, EDMA_SC_BYPASS);
 
@@ -316,8 +327,6 @@ static struct edma_pri_txdesc *edma_tx_skb_first_desc(struct nss_dp_dev *dp_dev,
 	EDMA_DST_INFO_SET(txd, dp_dev->macid);
 
 	*hw_next_to_use = (*hw_next_to_use + 1) & EDMA_TX_RING_SIZE_MASK;
-	dmac_clean_range(txd, txd + 1);
-	num_descs += 1;
 
 	return txd;
 }
@@ -378,7 +387,8 @@ static uint32_t edma_tx_skb_sg_fill_desc(struct nss_dp_dev *dp_dev, struct edma_
 			txd = EDMA_TXDESC_PRI_DESC(txdesc_ring, *hw_next_to_use);
 			edma_tx_desc_init(txd);
 			txd->word0 = (dma_addr_t)virt_to_phys(iter_skb->data);
-			dmac_clean_range((void *)iter_skb->data, (void *)(iter_skb->data + buf_len));
+			dmac_clean_range_no_dsb((void *)iter_skb->data,
+					(void *)(iter_skb->data + buf_len));
 
 			EDMA_TXDESC_DATA_LEN_SET(txd, buf_len);
 
@@ -403,18 +413,26 @@ static uint32_t edma_tx_skb_sg_fill_desc(struct nss_dp_dev *dp_dev, struct edma_
 			}
 		}
 
-		end_idx = *hw_next_to_use;
+		/*
+		 * This will be the index previous to
+		 * that of current *hw_next_to_use
+		 */
+		end_idx = (((*hw_next_to_use) + EDMA_TX_RING_SIZE_MASK) &
+					EDMA_TX_RING_SIZE_MASK);
 
 		/*
 		 * Need to flush from initial txd to accomodate for MORE bit change.
-		 * Need to flush all the descriptors that we filled as well.
+		 * Need to flush all the descriptors but last-one that we filled as well.
 		 * This may result double flush if fraglist iter_skb has nr_frags which is rare.
 		 */
 		if (end_idx > start_idx) {
-			dmac_clean_range((void *)(start_desc), ((start_desc) + num_sg_frag_list));
+			dmac_clean_range_no_dsb((void *)(start_desc),
+					((start_desc) + num_sg_frag_list));
 		} else {
-			dmac_clean_range(txdesc_ring->pdesc, txdesc_ring->pdesc + end_idx);
-			dmac_clean_range((void *)(start_desc), txdesc_ring->pdesc + EDMA_TX_RING_SIZE);
+			dmac_clean_range_no_dsb(txdesc_ring->pdesc,
+					txdesc_ring->pdesc + end_idx);
+			dmac_clean_range_no_dsb((void *)(start_desc),
+					txdesc_ring->pdesc + EDMA_TX_RING_SIZE);
 		}
 
 		/*
@@ -535,10 +553,15 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 	}
 
 	/*
-	 * Set the skb pointer to the descriptor's opaque field/s on the last descriptor of the packet/SG packet.
+	 * Set the skb pointer to the descriptor's opaque field/s
+	 * on the last descriptor of the packet/SG packet.
 	 */
 	EDMA_TXDESC_OPAQUE_SET(txdesc, skb);
-	dmac_clean_range(txdesc, txdesc + 1);
+
+	/*
+	 * Flush the last descriptor.
+	 */
+	dmac_clean_range_no_dsb(txdesc, txdesc + 1);
 
 	/*
 	 * Update producer index
@@ -550,6 +573,12 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 			" port:%u prod_idx:%u ip_summed:0x%x\n",
 			netdev->name, skb, txdesc_ring->id, ntohs(skb->protocol),
 			skb->len, dp_dev->macid, hw_next_to_use, skb->ip_summed);
+
+	/*
+	 * Make sure the information written to the descriptors
+	 * is updated before writing to the hardware.
+	 */
+	dsb(st);
 
 	edma_reg_write(EDMA_REG_TXDESC_PROD_IDX(txdesc_ring->id),
 			txdesc_ring->prod_idx);

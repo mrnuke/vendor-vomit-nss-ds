@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -87,7 +89,7 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 		/*
 		 * Invalidate skb->data
 		 */
-		dmac_inv_range((void *)skb->data,
+		dmac_inv_range_no_dsb((void *)skb->data,
 				(void *)(skb->data + rx_alloc_size -
 					EDMA_RX_SKB_HEADROOM -
 					NET_IP_ALIGN));
@@ -106,15 +108,21 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 		 * that are processed.
 		 */
 		if (end_idx > start_idx) {
-			dmac_clean_range((void *)rxfill_desc,
+			dmac_clean_range_no_dsb((void *)rxfill_desc,
 					(void *)(rxfill_desc + num_alloc));
 		} else {
-			dmac_clean_range((void *)rxfill_ring->desc,
+			dmac_clean_range_no_dsb((void *)rxfill_ring->desc,
 					(void *)(rxfill_ring->desc + end_idx));
-			dmac_clean_range((void *)rxfill_desc,
+			dmac_clean_range_no_dsb((void *)rxfill_desc,
 					(void *)(rxfill_ring->desc +
 							EDMA_RX_RING_SIZE));
 		}
+
+		/*
+		 * Make sure the information written to the descriptors
+		 * is updated before writing to the hardware.
+		 */
+		dsb(st);
 
 		edma_reg_write(EDMA_REG_RXFILL_PROD_IDX(rxfill_ring->ring_id),
 								prod_idx);
@@ -189,14 +197,16 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 	 * that'll be processed.
 	 */
 	if (end_idx > cons_idx) {
-		dmac_inv_range((void *)rxdesc_desc,
+		dmac_inv_range_no_dsb((void *)rxdesc_desc,
 			(void *)(rxdesc_desc + work_to_do));
 	} else {
-		dmac_inv_range((void *)rxdesc_ring->pdesc,
+		dmac_inv_range_no_dsb((void *)rxdesc_ring->pdesc,
 			(void *)(rxdesc_ring->pdesc + end_idx));
-		dmac_inv_range((void *)rxdesc_desc,
+		dmac_inv_range_no_dsb((void *)rxdesc_desc,
 			(void *)(rxdesc_ring->pdesc + EDMA_RX_RING_SIZE));
 	}
+
+	dsb(st);
 
 	work_leftover = work_to_do & (EDMA_RX_MAX_PROCESS - 1);
 	while (likely(work_to_do--)) {
