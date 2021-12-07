@@ -569,7 +569,8 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 						dp_priv, netdev->dev_addr);
 	}
 #if !defined(NSS_DP_MEM_PROFILE_LOW) && !defined(NSS_DP_MEM_PROFILE_MEDIUM)
-	dp_priv->rx_page_mode = of_property_read_bool(np, "qcom,rx-page-mode");
+	of_property_read_u32(np, "qcom,rx-page-mode", &dp_priv->rx_page_mode);
+
 	if (overwrite_mode) {
 		pr_info("Page mode is overwritten: %d\n", page_mode);
 		dp_priv->rx_page_mode = page_mode;
