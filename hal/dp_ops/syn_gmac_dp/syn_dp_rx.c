@@ -95,6 +95,8 @@ void syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info)
 			break;
 		}
 
+		skb_reserve(skb, SYN_DP_SKB_HEADROOM + NET_IP_ALIGN);
+
 		pg = alloc_page(GFP_ATOMIC);
 		if (unlikely(!pg)) {
 			dev_kfree_skb_any(skb);
@@ -307,6 +309,7 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 	struct syn_dp_rx_buf *rx_buf;
 	struct dma_desc_rx *rx_desc_next = NULL;
 	uint8_t *next_skb_ptr;
+	skb_frag_t *frag = NULL;
 
 	busy = atomic_read((atomic_t *)&rx_info->busy_rx_desc_cnt);
 	if (unlikely(!busy)) {
@@ -410,9 +413,13 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 			/*
 			 * Process packet when page_mode is enabled.
 			 */
+			frag = &skb_shinfo(rx_skb)->frags[0];
+
 			rx_skb->len = frame_length;
 			rx_skb->data_len = frame_length;
 			rx_skb->truesize = PAGE_SIZE;
+
+			skb_fill_page_desc(rx_skb, 0, skb_frag_page(frag), 0, frame_length);
 
 			if (!unlikely(pskb_may_pull(rx_skb, ETH_HLEN))) {
 				dev_kfree_skb_any(rx_skb);
