@@ -159,16 +159,12 @@ static netdev_tx_t edma_dp_xmit(struct nss_dp_data_plane_ctx *dpc,
  */
 static void edma_dp_set_features(struct nss_dp_data_plane_ctx *dpc)
 {
-	/*
-	 * TODO:
-	 * Add flags to support HIGHMEM/cksum offload.
-	 */
 	struct net_device *netdev = dpc->dev;
 
-	netdev->features |= NETIF_F_FRAGLIST | NETIF_F_SG;
-	netdev->hw_features |= NETIF_F_FRAGLIST | NETIF_F_SG;
-	netdev->vlan_features |= NETIF_F_FRAGLIST | NETIF_F_SG;
-	netdev->wanted_features |= NETIF_F_FRAGLIST | NETIF_F_SG;
+	netdev->features |= EDMA_NETDEV_FEATURES;
+	netdev->hw_features |= EDMA_NETDEV_FEATURES;
+	netdev->vlan_features |= EDMA_NETDEV_FEATURES;
+	netdev->wanted_features |= EDMA_NETDEV_FEATURES;
 }
 
 /* TODO - check if this is needed */

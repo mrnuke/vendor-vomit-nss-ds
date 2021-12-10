@@ -308,7 +308,7 @@ static int nss_dp_open(struct net_device *netdev)
 	}
 
 	/*
-	 * Inform the Linux Networking stack about the hardwar capability of
+	 * Inform the Linux Networking stack about the hardware capability of
 	 * checksum offloading and other features. Each data_plane is
 	 * responsible to maintain the feature set it supports
 	 */

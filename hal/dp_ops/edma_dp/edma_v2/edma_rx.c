@@ -244,10 +244,17 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 		skb_put(skb, pkt_length);
 		skb->protocol = eth_type_trans(skb, ndev);
 
+		skb_checksum_none_assert(skb);
+
 		/*
-		 * TODO: Enable Rx checksum offload.
+		 * Check Rx checksum offload status.
 		 */
-		skb->ip_summed = CHECKSUM_NONE;
+		if (likely(ndev->features & NETIF_F_RXCSUM)) {
+			if (likely(EDMA_RXDESC_L3CSUM_STATUS_GET(rxdesc_desc))
+			&& likely(EDMA_RXDESC_L4CSUM_STATUS_GET(rxdesc_desc))) {
+				skb->ip_summed = CHECKSUM_UNNECESSARY;
+			}
+		}
 
 #ifdef CONFIG_NET_SWITCHDEV
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))

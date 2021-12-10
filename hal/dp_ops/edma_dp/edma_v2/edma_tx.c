@@ -278,6 +278,15 @@ static struct edma_pri_txdesc *edma_tx_skb_first_desc(struct nss_dp_dev *dp_dev,
 	EDMA_TXDESC_SERVICE_CODE_SET(txd, EDMA_SC_BYPASS);
 
 	/*
+	 * Offload L3/L4 checksum computation
+	 */
+	if (likely(skb->ip_summed == CHECKSUM_PARTIAL)) {
+		EDMA_TXDESC_ADV_OFFLOAD_SET(txd);
+		EDMA_TXDESC_IP_CSUM_SET(txd);
+		EDMA_TXDESC_L4_CSUM_SET(txd);
+	}
+
+	/*
 	 * Set packet length in the descriptor
 	 */
 	EDMA_TXDESC_DATA_LEN_SET(txd, buf_len);
@@ -519,9 +528,9 @@ enum edma_tx edma_tx_ring_xmit(struct net_device *netdev, struct sk_buff *skb,
 	txdesc_ring->avail_desc -= num_desc_filled;
 
 	edma_debug("%s: skb:%px tx_ring:%u proto:0x%x skb->len:%d\n"
-			" port:%u prod_idx:%u\n",
+			" port:%u prod_idx:%u ip_summed:0x%x\n",
 			netdev->name, skb, txdesc_ring->id, ntohs(skb->protocol),
-			skb->len, dp_dev->macid, hw_next_to_use);
+			skb->len, dp_dev->macid, hw_next_to_use, skb->ip_summed);
 
 	edma_reg_write(EDMA_REG_TXDESC_PROD_IDX(txdesc_ring->id),
 			txdesc_ring->prod_idx);
