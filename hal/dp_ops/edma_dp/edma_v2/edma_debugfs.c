@@ -234,6 +234,72 @@ static int edma_debugfs_tx_rings_stats_show(struct seq_file *m, void __attribute
 }
 
 /*
+ * edma_debugfs_misc_stats_show()
+ *	EDMA debugfs miscellaneous stats show API
+ */
+static int edma_debugfs_misc_stats_show(struct seq_file *m, void __attribute__((unused))*p)
+{
+	struct edma_misc_stats *misc_stats, *pcpu_misc_stats;
+	uint32_t cpu;
+	unsigned int start;
+
+	misc_stats = kzalloc(sizeof(struct edma_misc_stats), GFP_KERNEL);
+	if (!misc_stats) {
+		edma_err("Error in allocating the miscellaneous stats buffer\n");
+		return -ENOMEM;
+	}
+
+	/*
+	 * Get percpu EDMA miscellaneous stats
+	 */
+	for_each_possible_cpu(cpu) {
+		pcpu_misc_stats = per_cpu_ptr(edma_gbl_ctx.misc_stats, cpu);
+		do {
+			start = u64_stats_fetch_begin_irq(&pcpu_misc_stats->syncp);
+			misc_stats->edma_misc_axi_read_err +=
+				pcpu_misc_stats->edma_misc_axi_read_err;
+			misc_stats->edma_misc_axi_write_err +=
+				pcpu_misc_stats->edma_misc_axi_write_err;
+			misc_stats->edma_misc_rx_desc_fifo_full +=
+				pcpu_misc_stats->edma_misc_rx_desc_fifo_full;
+			misc_stats->edma_misc_rx_buf_size_err +=
+				pcpu_misc_stats->edma_misc_rx_buf_size_err;
+			misc_stats->edma_misc_tx_sram_full +=
+				pcpu_misc_stats->edma_misc_tx_sram_full;
+			misc_stats->edma_misc_tx_data_len_err +=
+				pcpu_misc_stats->edma_misc_tx_data_len_err;
+			misc_stats->edma_misc_tx_timeout +=
+				pcpu_misc_stats->edma_misc_tx_timeout;
+			misc_stats->edma_misc_tx_cmpl_buf_full +=
+				pcpu_misc_stats->edma_misc_tx_cmpl_buf_full;
+		} while (u64_stats_fetch_retry_irq(&pcpu_misc_stats->syncp, start));
+	}
+
+	edma_debugfs_print_banner(m, EDMA_MISC_STATS_NODE_NAME);
+
+	seq_printf(m, "\n#EDMA miscellaneous stats:\n\n");
+	seq_printf(m, "\t\t miscellaneous axi read error = %llu\n",
+			misc_stats->edma_misc_axi_read_err);
+	seq_printf(m, "\t\t miscellaneous axi write error = %llu\n",
+			misc_stats->edma_misc_axi_write_err);
+	seq_printf(m, "\t\t miscellaneous Rx descriptor fifo full = %llu\n",
+			misc_stats->edma_misc_rx_desc_fifo_full);
+	seq_printf(m, "\t\t miscellaneous Rx buffer size error = %llu\n",
+			misc_stats->edma_misc_rx_buf_size_err);
+	seq_printf(m, "\t\t miscellaneous Tx SRAM full = %llu\n",
+			misc_stats->edma_misc_tx_sram_full);
+	seq_printf(m, "\t\t miscellaneous Tx data length error = %llu\n",
+			misc_stats->edma_misc_tx_data_len_err);
+	seq_printf(m, "\t\t miscellaneous Tx timeout = %llu\n",
+			misc_stats->edma_misc_tx_timeout);
+	seq_printf(m, "\t\t miscellaneous Tx completion buffer full = %llu\n",
+			misc_stats->edma_misc_tx_cmpl_buf_full);
+
+	kfree(misc_stats);
+	return 0;
+}
+
+/*
  * edma_debugs_rx_rings_stats_open()
  *	EDMA debugfs Rx rings open callback API
  */
@@ -274,6 +340,26 @@ const struct file_operations edma_debugfs_tx_rings_file_ops = {
 };
 
 /*
+ * edma_debugs_misc_stats_open()
+ *	EDMA debugfs miscellaneous stats open callback API
+ */
+static int edma_debugs_misc_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, edma_debugfs_misc_stats_show, inode->i_private);
+}
+
+/*
+ * edma_debugfs_misc_file_ops
+ *	File operations for EDMA miscellaneous stats
+ */
+const struct file_operations edma_debugfs_misc_file_ops = {
+	.open = edma_debugs_misc_stats_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release
+};
+
+/*
  * edma_debugfs_init()
  *	EDMA debugfs init API
  */
@@ -302,6 +388,21 @@ int edma_debugfs_init(void)
 		edma_err("Unable to create Tx rings statistics file entry in debugfs\n");
 		goto debugfs_dir_failed;
 	}
+
+	/*
+	 * Allocate memory for EDMA miscellaneous stats
+	 */
+	if (edma_misc_stats_alloc() < 0) {
+		edma_err("Unable to allocate miscellaneous percpu stats\n");
+		goto debugfs_dir_failed;
+	}
+
+	if (!debugfs_create_file("misc_stats", S_IRUGO, edma_gbl_ctx.stats_dentry,
+			NULL, &edma_debugfs_misc_file_ops)) {
+		edma_err("Unable to create EDMA miscellaneous statistics file entry in debugfs\n");
+		goto debugfs_dir_failed;
+	}
+
 	return 0;
 
 debugfs_dir_failed:
@@ -317,6 +418,11 @@ debugfs_dir_failed:
  */
 void edma_debugfs_exit(void)
 {
+	/*
+	 * Free EDMA miscellaneous stats memory
+	 */
+	edma_misc_stats_free();
+
 	if (edma_gbl_ctx.root_dentry) {
 		debugfs_remove_recursive(edma_gbl_ctx.root_dentry);
 		edma_gbl_ctx.root_dentry = NULL;

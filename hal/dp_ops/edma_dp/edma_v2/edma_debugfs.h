@@ -19,6 +19,7 @@
 #define EDMA_STATS_BANNER_MAX_LEN	80
 #define EDMA_RX_RING_STATS_NODE_NAME	"EDMA_RX"
 #define EDMA_TX_RING_STATS_NODE_NAME	"EDMA_TX"
+#define EDMA_MISC_STATS_NODE_NAME	"EDMA_MISC"
 
 int edma_debugfs_init(void);
 void edma_debugfs_exit(void);
