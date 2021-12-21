@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -194,6 +194,9 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	 */
 	first_desc->status |= (DESC_OWN_BY_DMA | ((skb->ip_summed == CHECKSUM_PARTIAL) ? DESC_TX_CIS_TCP_PSEUDO_CS : 0));
 
+	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_packets);
+	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_nr_frags_pkts);
+	atomic64_add(total_len, (atomic64_t *)&tx_info->tx_stats.tx_bytes);
 	atomic_add(desc_needed, (atomic_t *)&tx_info->busy_tx_desc_cnt);
 	syn_resume_dma_tx(tx_info->mac_base);
 
@@ -334,6 +337,9 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	 */
 	first_desc->status |= (DESC_OWN_BY_DMA | ((skb->ip_summed == CHECKSUM_PARTIAL) ? DESC_TX_CIS_TCP_PSEUDO_CS : 0));
 
+	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_packets);
+	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_fraglist_pkts);
+	atomic64_add(total_len, (atomic64_t *)&tx_info->tx_stats.tx_bytes);
 	atomic_add(desc_needed, (atomic_t *)&tx_info->busy_tx_desc_cnt);
 	syn_resume_dma_tx(tx_info->mac_base);
 
