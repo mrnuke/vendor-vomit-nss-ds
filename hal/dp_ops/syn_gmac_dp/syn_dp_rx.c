@@ -373,18 +373,32 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 	}
 
 	dsb(st);
+
+	/*
+	 * Prefetch a cacheline (64B) of packet header data for the current SKB.
+	 */
+	prefetch((void *)rx_info->rx_buf_pool[rx_info->rx_idx].map_addr_virt);
 	do {
 		status = rx_desc->status;
 		if (syn_dp_gmac_is_rx_desc_owned_by_dma(status)) {
 
 			/*
-			 * Rx descriptor still hold by GMAC DMA, so we are done
+			 * Rx descriptor still hold by GMAC DMA, so we are done.
+			 * Before we return, invalidation needs to be done
+			 * for prefetch of next data.
 			 */
+			dmac_inv_range((void *)rx_info->rx_buf_pool[rx_info->rx_idx].map_addr_virt,
+					(void *)rx_info->rx_buf_pool[rx_info->rx_idx].map_addr_virt
+					+ SYN_DP_RX_SKB_CACHE_LINE1);
 			break;
 		}
-
 		rx_idx = rx_info->rx_idx;
+
+		/*
+		 * Prefetch a cacheline (64B) of packet header data for the next SKB.
+		 */
 		rx_next_idx = syn_dp_rx_inc_index(rx_idx, 1);
+		prefetch((void *)rx_info->rx_buf_pool[rx_next_idx].map_addr_virt);
 		rx_desc_next = rx_info->rx_desc + rx_next_idx;
 
 		/*
@@ -394,10 +408,6 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 		prefetch(rx_desc_next);
 		rx_buf = &rx_info->rx_buf_pool[rx_idx];
 
-		/*
-		 * Prefetch a cacheline (64B) of packet header data for the current SKB.
-		 */
-		prefetch((void *)rx_buf->map_addr_virt);
 		rx_skb = rx_buf->skb;
 		next_skb_ptr = (uint8_t *)rx_info->rx_buf_pool[rx_next_idx].skb;
 		extstatus = rx_desc->extstatus;
@@ -413,11 +423,7 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 				rx_packets++;
 				rx_bytes += frame_length;
 
-				/*
-				 * Type_trans and deliver to linux
-				 */
 				skb_put(rx_skb, frame_length);
-				rx_skb->protocol = eth_type_trans(rx_skb, netdev);
 				if (likely(!(extstatus & DESC_RX_CHK_SUM_BYPASS))) {
 					rx_skb->ip_summed = CHECKSUM_UNNECESSARY;
 				}
@@ -430,13 +436,23 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 				 * first and third cache line provides better performance.
 				 */
 				if (likely(next_skb_ptr)) {
-					prefetch(next_skb_ptr + SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE1);
-					prefetch(next_skb_ptr + SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE3);
+					prefetch(next_skb_ptr + SYN_DP_RX_SKB_CACHE_LINE1);
+					prefetch(next_skb_ptr + SYN_DP_RX_SKB_CACHE_LINE3);
 				}
+
+				/*
+				 * Type_trans and deliver to linux
+				 */
+				rx_skb->protocol = eth_type_trans(rx_skb, netdev);
+
 				/*
 				 * Deliver the packet to linux
 				 */
+#if defined(NSS_DP_ENABLE_NAPI_GRO)
 				napi_gro_receive(&rx_info->napi_rx, rx_skb);
+#else
+				netif_receive_skb(rx_skb);
+#endif
 				goto next_desc;
 			}
 
@@ -469,8 +485,8 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 			rx_bytes += frame_length;
 
 			if (likely(next_skb_ptr)) {
-				prefetch(next_skb_ptr + SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE1);
-				prefetch(next_skb_ptr + SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE3);
+				prefetch(next_skb_ptr + SYN_DP_RX_SKB_CACHE_LINE1);
+				prefetch(next_skb_ptr + SYN_DP_RX_SKB_CACHE_LINE3);
 			}
 
 			napi_gro_receive(&rx_info->napi_rx, rx_skb);
@@ -524,8 +540,8 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 				atomic64_add(rx_scatter_bytes, (atomic64_t *)&rx_info->rx_stats.rx_scatter_bytes);
 
 				if (unlikely(likely(next_skb_ptr))) {
-					prefetch(next_skb_ptr + SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE1);
-					prefetch(next_skb_ptr + SYN_DP_RX_SKB_DATA_OFFSET_CACHE_LINE3);
+					prefetch(next_skb_ptr + SYN_DP_RX_SKB_CACHE_LINE1);
+					prefetch(next_skb_ptr + SYN_DP_RX_SKB_CACHE_LINE3);
 				}
 
 				napi_gro_receive(&rx_info->napi_rx, rx_info->head);
