@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -256,12 +258,13 @@ static void edma_cfg_rx_fill_ring_configure(struct edma_gbl_ctx *egc,
 }
 
 /*
- * edma_cfg_rx_ring_to_qid_mapping()
- *	Configure rx ring to PPE queue id mapping
+ * edma_cfg_rx_qid_to_rx_desc_ring_mapping()
+ *	Configure PPE queue id to Rx ring mapping
  */
-static void edma_cfg_rx_ring_to_qid_mapping(struct edma_gbl_ctx *egc)
+static void edma_cfg_rx_qid_to_rx_desc_ring_mapping(struct edma_gbl_ctx *egc)
 {
 	uint32_t desc_index, i;
+	uint32_t reg_index, data;
 
 	/*
 	 * Set PPE QID to EDMA Rx ring mapping.
@@ -273,7 +276,6 @@ static void edma_cfg_rx_ring_to_qid_mapping(struct edma_gbl_ctx *egc)
 	for (i = EDMA_PORT_QUEUE_START;
 		i <= EDMA_PORT_QUEUE_END;
 			i += EDMA_QID2RID_NUM_PER_REG) {
-		uint32_t reg_index, data;
 		reg_index = i/EDMA_QID2RID_NUM_PER_REG;
 		data = EDMA_RX_RING_ID_QUEUE0_SET(desc_index) |
 			EDMA_RX_RING_ID_QUEUE1_SET(desc_index + 1) |
@@ -281,8 +283,27 @@ static void edma_cfg_rx_ring_to_qid_mapping(struct edma_gbl_ctx *egc)
 			EDMA_RX_RING_ID_QUEUE3_SET(desc_index + 3);
 
 		edma_reg_write(EDMA_QID2RID_TABLE_MEM(reg_index), data);
-
 		desc_index += EDMA_QID2RID_NUM_PER_REG;
+
+		edma_debug("Configure QID2RID(%d) reg:0x%x to 0x%x\n",
+				i, EDMA_QID2RID_TABLE_MEM(reg_index), data);
+	}
+
+	/*
+	 * Map PPE multicast queues to the first Rx ring.
+	 */
+	desc_index = (egc->rxdesc_ring_start & EDMA_RX_RING_ID_MASK);
+	for (i = EDMA_CPU_PORT_MC_QID_MIN;
+		i <= EDMA_CPU_PORT_MC_QID_MAX;
+			i += EDMA_QID2RID_NUM_PER_REG) {
+		reg_index = i/EDMA_QID2RID_NUM_PER_REG;
+		data = EDMA_RX_RING_ID_QUEUE0_SET(desc_index) |
+			EDMA_RX_RING_ID_QUEUE1_SET(desc_index) |
+			EDMA_RX_RING_ID_QUEUE2_SET(desc_index) |
+			EDMA_RX_RING_ID_QUEUE3_SET(desc_index);
+
+		edma_reg_write(EDMA_QID2RID_TABLE_MEM(reg_index), data);
+
 		edma_debug("Configure QID2RID(%d) reg:0x%x to 0x%x\n",
 				i, EDMA_QID2RID_TABLE_MEM(reg_index), data);
 	}
@@ -428,7 +449,7 @@ void edma_cfg_rx_rings_disable(struct edma_gbl_ctx *egc)
  */
 void edma_cfg_rx_mapping(struct edma_gbl_ctx *egc)
 {
-	edma_cfg_rx_ring_to_qid_mapping(egc);
+	edma_cfg_rx_qid_to_rx_desc_ring_mapping(egc);
 	edma_cfg_rx_rings_to_rx_fill_mapping(egc);
 }
 
