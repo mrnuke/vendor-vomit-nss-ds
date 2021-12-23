@@ -125,6 +125,29 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 }
 
 /*
+ * edma_rx_checksum_verify()
+ *	Update hw checksum status into skb
+ */
+static void edma_rx_checksum_verify(struct edma_rxdesc_desc *rxdesc_desc,
+							struct sk_buff* skb)
+{
+	uint8_t pid = EDMA_RXDESC_PID_GET(rxdesc_desc);
+
+	skb_checksum_none_assert(skb);
+
+	if (likely(EDMA_RX_PID_IS_IPV4(pid))) {
+		if (likely(EDMA_RXDESC_L3CSUM_STATUS_GET(rxdesc_desc))
+			&& likely(EDMA_RXDESC_L4CSUM_STATUS_GET(rxdesc_desc))) {
+			skb->ip_summed = CHECKSUM_UNNECESSARY;
+		}
+	} else if (likely(EDMA_RX_PID_IS_IPV6(pid))) {
+		if (likely(EDMA_RXDESC_L4CSUM_STATUS_GET(rxdesc_desc))) {
+			skb->ip_summed = CHECKSUM_UNNECESSARY;
+		}
+	}
+}
+
+/*
  * edma_rx_reap()
  *	Reap Rx descriptors
  */
@@ -244,16 +267,11 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 		skb_put(skb, pkt_length);
 		skb->protocol = eth_type_trans(skb, ndev);
 
-		skb_checksum_none_assert(skb);
-
 		/*
 		 * Check Rx checksum offload status.
 		 */
 		if (likely(ndev->features & NETIF_F_RXCSUM)) {
-			if (likely(EDMA_RXDESC_L3CSUM_STATUS_GET(rxdesc_desc))
-			&& likely(EDMA_RXDESC_L4CSUM_STATUS_GET(rxdesc_desc))) {
-				skb->ip_summed = CHECKSUM_UNNECESSARY;
-			}
+			edma_rx_checksum_verify(rxdesc_desc, skb);
 		}
 
 #ifdef CONFIG_NET_SWITCHDEV
