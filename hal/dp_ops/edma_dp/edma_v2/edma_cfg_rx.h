@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -18,6 +20,7 @@
 #define __EDMA_CFG_RX_H__
 
 #define EDMA_RX_NAPI_WORK		32
+#define EDMA_RX_DEFAULT_QUEUE_PRI	0
 
 void edma_cfg_rx_rings(struct edma_gbl_ctx *egc);
 int32_t edma_cfg_rx_rings_alloc(struct edma_gbl_ctx *egc);
@@ -29,6 +32,5 @@ void edma_cfg_rx_napi_add(struct edma_gbl_ctx *egc, struct net_device *netdev);
 void edma_cfg_rx_mapping(struct edma_gbl_ctx *egc);
 void edma_cfg_rx_rings_enable(struct edma_gbl_ctx *egc);
 void edma_cfg_rx_rings_disable(struct edma_gbl_ctx *egc);
-int edma_cfg_rx_desc_rings_reset_queue_mapping(void);
 
 #endif	/* __EDMA_CFG_RX_H__ */

@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -763,15 +765,6 @@ static int edma_hw_init(struct edma_gbl_ctx *egc)
 	ret = (int)edma_cfg_sc_bypass(egc);
 	if (ret) {
 		edma_err("Error in configuring service code: %d\n", ret);
-		return ret;
-	}
-
-	/*
-	 * Unmap Rxdesc ring to PPE queue mapping to reset its backpressure configuration
-	 */
-	ret = edma_cfg_rx_desc_rings_reset_queue_mapping();
-	if (ret) {
-		edma_err("Error in resetting Rx descriptor ring to PPE queue mapping\n");
 		return ret;
 	}
 

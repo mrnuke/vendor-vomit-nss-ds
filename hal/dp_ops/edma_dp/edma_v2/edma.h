@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -50,6 +52,15 @@
 					| NETIF_F_TSO6;
 
 #define EDMA_SWITCH_DEV_ID	0
+#define EDMA_PPE_QUEUE_LEVEL	0
+#define EDMA_BITS_IN_WORD	32
+
+/*
+ * Bitmap for ring to PPE queue's mapping.
+ *
+ * A bitmap for 300 PPE queues requires 10 32bit integers
+ */
+#define EDMA_RING_MAPPED_QUEUE_BM_WORD_COUNT	10
 
 /*
  * EDMA common clocks
@@ -158,6 +169,8 @@ struct edma_gbl_ctx {
 			/* Rx Fill ring per-core mapping from device tree */
 	uint32_t rxdesc_ring_map[EDMA_RXDESC_RING_PER_CORE_MAX][NR_CPUS];
 			/* Rx Descriptor ring per-core mapping from device tree */
+	uint32_t (*rxdesc_ring_to_queue_bm)[EDMA_RING_MAPPED_QUEUE_BM_WORD_COUNT];
+			/* Bitmap of mapped PPE queue ids of the Rx descriptor rings */
 	int32_t tx_to_txcmpl_map[EDMA_MAX_TXDESC_RINGS];
 			/* Tx ring to Tx complete ring mapping */
 	int32_t tx_map[EDMA_TX_RING_PER_CORE_MAX][NR_CPUS];
