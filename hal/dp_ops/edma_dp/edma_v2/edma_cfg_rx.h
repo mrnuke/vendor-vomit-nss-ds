@@ -29,5 +29,6 @@ void edma_cfg_rx_napi_add(struct edma_gbl_ctx *egc, struct net_device *netdev);
 void edma_cfg_rx_mapping(struct edma_gbl_ctx *egc);
 void edma_cfg_rx_rings_enable(struct edma_gbl_ctx *egc);
 void edma_cfg_rx_rings_disable(struct edma_gbl_ctx *egc);
+int edma_cfg_rx_desc_rings_reset_queue_mapping(void);
 
 #endif	/* __EDMA_CFG_RX_H__ */

@@ -766,6 +766,15 @@ static int edma_hw_init(struct edma_gbl_ctx *egc)
 		return ret;
 	}
 
+	/*
+	 * Unmap Rxdesc ring to PPE queue mapping to reset its backpressure configuration
+	 */
+	ret = edma_cfg_rx_desc_rings_reset_queue_mapping();
+	if (ret) {
+		edma_err("Error in resetting Rx descriptor ring to PPE queue mapping\n");
+		return ret;
+	}
+
 	ret = edma_alloc_rings(egc);
 	if (ret) {
 		edma_err("Error in initializaing the rings. ret: %d\n", ret);

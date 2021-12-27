@@ -49,6 +49,8 @@
 					| NETIF_F_TSO \
 					| NETIF_F_TSO6;
 
+#define EDMA_SWITCH_DEV_ID	0
+
 /*
  * EDMA common clocks
  */
