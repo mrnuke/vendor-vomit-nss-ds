@@ -101,7 +101,7 @@ static inline struct dma_desc_tx *syn_dp_tx_process_nr_frags(struct syn_dp_info_
 		length = skb_frag_size(frag);
 		dma_addr = (dma_addr_t)virt_to_phys(frag_addr);
 
-		dmac_clean_range(frag_addr, frag_addr + length);
+		dmac_clean_range_no_dsb(frag_addr, frag_addr + length);
 
 		*total_length += length;
 		tx_desc = syn_dp_tx_set_desc_sg(tx_info, dma_addr, length, DESC_OWN_BY_DMA);
@@ -145,7 +145,7 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	 * Flush the dma for non-paged skb data
 	 */
 	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
-	dmac_clean_range((void *)skb->data, (void *)(skb->data + length));
+	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + length));
 
 	total_len = length;
 
@@ -252,7 +252,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	/*
 	 * Flush the data area of the head skb
 	 */
-	dmac_clean_range((void *)skb->data, (void *)(skb->data + length));
+	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + length));
 
 	total_len = length;
 
@@ -283,7 +283,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 		length = skb_headlen(iter_skb);
 		dma_addr = (dma_addr_t)virt_to_phys(iter_skb->data);
 
-		dmac_clean_range((void *)iter_skb->data, (void *)(iter_skb->data + length));
+		dmac_clean_range_no_dsb((void *)iter_skb->data, (void *)(iter_skb->data + length));
 
 		total_len += length;
 
@@ -397,10 +397,8 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	struct sk_buff *skb;
 	uint32_t tx_skb_index, len;
 	uint32_t tx_packets = 0, total_len = 0;
-	uint32_t skb_free_start_idx;
-	uint32_t skb_free_end_idx = SYN_DP_TX_INVALID_DESC_INDEX;
-	uint32_t skb_free_abs_end_idx = 0;
 	uint32_t num_desc = 0;
+	uint32_t count = 0;
 
 	busy = desc_cnt = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
 
@@ -417,7 +415,6 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 		busy = desc_cnt = budget;
 	}
 
-	skb_free_start_idx = syn_dp_tx_comp_index_get(tx_info);
 	do {
 		desc = syn_dp_tx_comp_desc_get(tx_info);
 		status = desc->status;
@@ -437,8 +434,11 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 		 * the fragments in order to free it.
 		 */
 		num_desc = tx_info->tx_buf_pool[tx_skb_index].desc_count;
-		skb = tx_info->tx_buf_pool[tx_skb_index].skb;
+
+		skb = tx_info->skb_free_list[count++] = tx_info->tx_buf_pool[tx_skb_index].skb;
 		len = tx_info->tx_buf_pool[tx_skb_index].len;
+
+		syn_dp_tx_clear_buf_entry(tx_info, tx_skb_index);
 
 		if (likely(status & DESC_TX_LAST)) {
 			if (likely(!(status & DESC_TX_ERROR))) {
@@ -446,19 +446,19 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 				BUG_ON(!skb);
 #endif
 				/*
-				 * No error, recored tx pkts/bytes and collision.
+				 * No error, record tx pkts/bytes and collision.
 				 */
 				tx_packets++;
 				total_len += len;
 			} else {
 
 				/*
-				 * Some error happen, collect error statistics.
+				 * Some error happened, collect error statistics.
 				 */
 				syn_dp_tx_error_cnt(tx_info, status);
 			}
 		}
-		skb_free_end_idx = tx_info->tx_comp_idx;
+
 		tx_info->tx_comp_idx = syn_dp_tx_inc_index(tx_info->tx_comp_idx, num_desc);
 
 		/*
@@ -472,40 +472,13 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	} while (likely(busy && desc_cnt));
 
 	/*
-	 * Descriptors still held by DMA. We are done.
+	 * Batch free the skb's
 	 */
-	if (unlikely(skb_free_end_idx == SYN_DP_TX_INVALID_DESC_INDEX)) {
-		goto done;
+	while (count) {
+		dev_kfree_skb_any(tx_info->skb_free_list[--count]);
+		tx_info->skb_free_list[count] = NULL;
 	}
 
-	if (skb_free_end_idx < skb_free_start_idx) {
-
-		/*
-		 * If the ring is wrapped around, get the absolute end index.
-		 */
-		skb_free_abs_end_idx = skb_free_end_idx;
-		skb_free_end_idx = SYN_DP_TX_DESC_MAX_INDEX;
-	}
-
-	while (skb_free_end_idx >= skb_free_start_idx) {
-		if (likely(tx_info->tx_buf_pool[skb_free_start_idx].skb)) {
-			dev_kfree_skb_any(tx_info->tx_buf_pool[skb_free_start_idx].skb);
-			syn_dp_tx_clear_buf_entry(tx_info, skb_free_start_idx);
-		}
-		skb_free_start_idx++;
-	}
-
-	if (skb_free_abs_end_idx) {
-		skb_free_start_idx = 0;
-		while (skb_free_start_idx <= skb_free_abs_end_idx) {
-			if (likely(tx_info->tx_buf_pool[skb_free_start_idx].skb)) {
-				dev_kfree_skb_any(tx_info->tx_buf_pool[skb_free_start_idx].skb);
-				syn_dp_tx_clear_buf_entry(tx_info, skb_free_start_idx);
-			}
-			skb_free_start_idx++;
-		}
-	}
-done:
 	atomic64_add(tx_packets, (atomic64_t *)&tx_info->tx_stats.tx_packets);
 	atomic64_add(total_len, (atomic64_t *)&tx_info->tx_stats.tx_bytes);
 
@@ -572,7 +545,7 @@ int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 
 	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
 
-	dmac_clean_range((void *)skb->data, (void *)(skb->data + skb->len));
+	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + skb->len));
 
 	/*
 	 * Queue packet to the GMAC rings
