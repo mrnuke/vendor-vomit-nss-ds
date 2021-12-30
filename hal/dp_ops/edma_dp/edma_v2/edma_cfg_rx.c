@@ -23,6 +23,7 @@
 #include <linux/of_platform.h>
 #include <linux/reset.h>
 #include <fal/fal_qos.h>
+#include <fal/fal_qm.h>
 #include "edma.h"
 #include "edma_cfg_rx.h"
 #include "edma_regs.h"
@@ -379,6 +380,90 @@ static void edma_cfg_rx_desc_ring_flow_control(uint32_t threshold_xoff, uint32_t
 		rxdesc_ring = &edma_gbl_ctx.rxdesc_rings[i];
 		edma_reg_write(EDMA_REG_RXDESC_FC_THRE(rxdesc_ring->ring_id), data);
 	}
+}
+
+/*
+ * edma_cfg_rx_mapped_queue_ac_fc_configure()
+ *	API to configure Rx descriptor mapped queue's AC FC threshold
+ *
+ * This will enable queue tail drop on the PPE queues mapped to Rx rings.
+ */
+static int32_t edma_cfg_rx_mapped_queue_ac_fc_configure(uint16_t threshold,
+				uint32_t enable)
+{
+	uint32_t i, j, cur_queue_word, bit_set, queue_id;
+	fal_ac_dynamic_threshold_t cfg;
+	fal_ac_obj_t obj;
+	fal_ac_ctrl_t ac_ctrl;
+	bool is_enable = (enable ? true: false);
+
+	for (i = 0; i < edma_gbl_ctx.num_rxdesc_rings; i++) {
+		struct edma_rxdesc_ring *rxdesc_ring;
+
+		rxdesc_ring = &edma_gbl_ctx.rxdesc_rings[i];
+
+		for (j = 0; j < EDMA_RING_MAPPED_QUEUE_BM_WORD_COUNT; j++) {
+			cur_queue_word = edma_gbl_ctx.rxdesc_ring_to_queue_bm[i][j];
+			if (cur_queue_word == 0) {
+				continue;
+			}
+
+			do {
+				bit_set = ffs((uint32_t)cur_queue_word);
+				queue_id = (((j * EDMA_BITS_IN_WORD) + bit_set) - 1);
+
+				/*
+				 * Configure the mapped queues AC FC configuration threshold
+				 */
+				memset(&cfg, 0, sizeof(fal_ac_dynamic_threshold_t));
+				if (fal_ac_dynamic_threshold_get(EDMA_SWITCH_DEV_ID,
+					queue_id, &cfg) != SW_OK) {
+					edma_err("Error in getting %d queue's AC FC threshold\n",
+							queue_id);
+					return -1;
+				}
+
+				/*
+				 * TODO:
+				 * Check if the threshold configuration can be done
+				 * once the time of initialization and then later the AC
+				 * FC configuration can be enabled/disabled from this API
+				 * or not.
+				 */
+				cfg.ceiling = threshold;
+				if (fal_ac_dynamic_threshold_set(EDMA_SWITCH_DEV_ID,
+						queue_id, &cfg) != SW_OK) {
+					edma_err("Error in configuring queue(%d) threshold"
+							" value:%d\n", queue_id, threshold);
+					return -1;
+				}
+
+				/*
+				 * Enable/disable the state of mapped queues AC FC configuration
+				 */
+				memset(&obj, 0, sizeof(fal_ac_obj_t));
+				memset(&ac_ctrl, 0, sizeof(fal_ac_ctrl_t));
+				obj.type = FAL_AC_QUEUE;
+				obj.obj_id = queue_id;
+				if (fal_ac_ctrl_get(EDMA_SWITCH_DEV_ID, &obj, &ac_ctrl) != SW_OK) {
+					edma_err("Error in getting %d queue's AC configuration\n",
+							obj.obj_id);
+					return -1;
+				}
+
+				ac_ctrl.ac_fc_en = is_enable;
+				if (fal_ac_ctrl_set(EDMA_SWITCH_DEV_ID, &obj, &ac_ctrl) != SW_OK) {
+					edma_err("Error in changing queue's ac_fc state:%d"
+							" for queue:%d", is_enable, obj.obj_id);
+					return -1;
+				}
+
+				cur_queue_word &= ~(1 << (bit_set - 1));
+			} while (cur_queue_word);
+		}
+	}
+
+	return 0;
 }
 
 /*
@@ -953,6 +1038,24 @@ int edma_cfg_rx_fc_enable_handler(struct ctl_table *table, int write,
 		edma_cfg_rx_desc_ring_flow_control(nss_dp_rx_fc_xoff, nss_dp_rx_fc_xon);
 		edma_cfg_rx_fill_ring_flow_control(nss_dp_rx_fc_xoff, nss_dp_rx_fc_xon);
 		edma_cfg_rx_desc_ring_to_queue_mapping(edma_cfg_rx_fc_enable);
+
+		/*
+		 * Validate queue's AC FC threshold configuration value
+		 */
+		if ((nss_dp_rx_ac_fc_threshold < EDMA_RX_AC_FC_THRE_MIN) ||
+				(nss_dp_rx_ac_fc_threshold > EDMA_RX_AC_FC_THRE_MAX)) {
+			edma_err("Incorrect AC FC threshold value: %d. Setting"
+					" it to default value: %d", nss_dp_rx_ac_fc_threshold,
+					NSS_DP_RX_AC_FC_THRES_DEF);
+			nss_dp_rx_ac_fc_threshold = NSS_DP_RX_AC_FC_THRES_DEF;
+		}
+
+		/*
+		 * Configure queue tail drop by enabling and configuring the
+		 * AC FC threshold for mapped PPE queues of the Rx descriptor rings
+		 */
+		edma_cfg_rx_mapped_queue_ac_fc_configure(nss_dp_rx_ac_fc_threshold,
+					edma_cfg_rx_fc_enable);
 	} else {
 		/*
 		 * De-configure Rx flow control configurations:
@@ -965,6 +1068,15 @@ int edma_cfg_rx_fc_enable_handler(struct ctl_table *table, int write,
 		edma_cfg_rx_desc_ring_flow_control(0, 0);
 		edma_cfg_rx_fill_ring_flow_control(0, 0);
 		edma_cfg_rx_desc_ring_to_queue_mapping(edma_cfg_rx_fc_enable);
+
+		/*
+		 * De-configure mapped queues queue tail drop configurations:
+		 *
+		 * Reset the threshold configuration and disable the Rx descriptor's
+		 * mapped queues AC FC configurataion.
+		 */
+		edma_cfg_rx_mapped_queue_ac_fc_configure(EDMA_RX_AC_FC_THRE_ORIG,
+					edma_cfg_rx_fc_enable);
 	}
 
 	return ret;

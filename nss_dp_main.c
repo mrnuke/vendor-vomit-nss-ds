@@ -72,6 +72,10 @@ MODULE_PARM_DESC(nss_dp_rx_fc_xoff, "Rx ring's flow control XOFF threshold value
 int nss_dp_rx_fc_xon = NSS_DP_RX_FC_XON_DEF;
 module_param(nss_dp_rx_fc_xon, int, S_IRUGO);
 MODULE_PARM_DESC(nss_dp_rx_fc_xon, "Rx ring's flow control XON threshold value");
+
+int nss_dp_rx_ac_fc_threshold = NSS_DP_RX_AC_FC_THRES_DEF;
+module_param(nss_dp_rx_ac_fc_threshold, int, S_IRUGO);
+MODULE_PARM_DESC(nss_dp_rx_ac_fc_threshold, "Rx ring's mapped PPE queue's FC threshold value");
 #endif
 
 /*

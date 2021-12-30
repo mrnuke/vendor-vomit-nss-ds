@@ -24,6 +24,10 @@
 #define EDMA_RX_FC_ENABLE		0	/* RX flow control default state */
 #define EDMA_RX_FC_XOFF_THRE_MIN	0	/* Rx flow control minimum X-OFF value */
 #define EDMA_RX_FC_XON_THRE_MIN		0	/* Rx flow control mininum X-ON value */
+#define EDMA_RX_AC_FC_THRE_ORIG		0x190	/* Rx AC flow control original threshold */
+#define EDMA_RX_AC_FC_THRE_MIN		0	/* Rx AC flow control minimum threshold */
+#define EDMA_RX_AC_FC_THRE_MAX		0x7ff	/* Rx AC flow control maximum threshold.
+						   AC FC threshold value is 11 bits long */
 
 extern uint32_t edma_cfg_rx_fc_enable;
 

@@ -52,6 +52,18 @@
  */
 #define NSS_DP_RX_FC_XOFF_DEF		16
 #define NSS_DP_RX_FC_XON_DEF		32
+
+/*
+ * Rx ring's mapped AC FC threshold value.
+ *
+ * This value is picked by running four uni-UDPv4 traffic which are mapped
+ * to 4 different rings (and hence processed by 4 different cores) and then
+ * increase one flow's rate to more than what the core can process and observe
+ * whether this congestion in one flow is influencing other flows or not.
+ * Below is the maximum threshold value which is invoking the congestion's queue
+ * tail drop and hence not trigerring the Rx port's back-pressure.
+ */
+#define NSS_DP_RX_AC_FC_THRES_DEF	0x104
 #endif
 
 struct nss_dp_global_ctx;
@@ -119,6 +131,7 @@ extern struct nss_dp_data_plane_ctx dp_global_data_plane_ctx[NSS_DP_HAL_MAX_PORT
 #if defined(NSS_DP_IPQ95XX)
 extern int nss_dp_rx_fc_xon;
 extern int nss_dp_rx_fc_xoff;
+extern int nss_dp_rx_ac_fc_threshold;
 #endif
 
 /*
