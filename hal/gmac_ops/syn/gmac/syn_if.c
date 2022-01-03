@@ -450,63 +450,6 @@ static int32_t syn_set_max_frame_size(struct nss_gmac_hal_dev *nghd,
 }
 
 /*
- * syn_set_mac_speed()
- */
-static int32_t syn_set_mac_speed(struct nss_gmac_hal_dev *nghd,
-							uint32_t mac_speed)
-{
-	struct net_device *netdev;
-	BUG_ON(nghd == NULL);
-
-	netdev = nghd->netdev;
-
-	netdev_warn(netdev, "API deprecated\n");
-	return 0;
-}
-
-/*
- * syn_get_mac_speed()
- */
-static uint32_t syn_get_mac_speed(struct nss_gmac_hal_dev *nghd)
-{
-	struct net_device *netdev;
-	BUG_ON(nghd == NULL);
-
-	netdev = nghd->netdev;
-
-	netdev_warn(netdev, "API deprecated\n");
-	return 0;
-}
-
-/*
- * syn_set_duplex_mode()
- */
-static void syn_set_duplex_mode(struct nss_gmac_hal_dev *nghd,
-							uint8_t duplex_mode)
-{
-	struct net_device *netdev;
-	BUG_ON(nghd == NULL);
-
-	netdev = nghd->netdev;
-
-	netdev_warn(netdev, "API deprecated\n");
-}
-
-/*
- * syn_get_duplex_mode()
- */
-static uint8_t syn_get_duplex_mode(struct nss_gmac_hal_dev *nghd)
-{
-	struct net_device *netdev;
-	BUG_ON(nghd == NULL);
-
-	netdev = nghd->netdev;
-
-	netdev_warn(netdev, "API deprecated\n");
-	return 0;
-}
-
-/*
  * syn_get_mib_stats()
  */
 int syn_get_mib_stats(struct nss_gmac_hal_dev *nghd, fal_mib_counter_t *stats)
@@ -935,10 +878,6 @@ struct nss_gmac_hal_ops syn_gmac_ops = {
 	.getmacaddr = &syn_get_mac_address,
 	.rxflowcontrol = &syn_rx_flow_control,
 	.txflowcontrol = &syn_tx_flow_control,
-	.setspeed = &syn_set_mac_speed,
-	.getspeed = &syn_get_mac_speed,
-	.setduplex = &syn_set_duplex_mode,
-	.getduplex = &syn_get_duplex_mode,
 	.setmaxframe = &syn_set_max_frame_size,
 	.getmaxframe = &syn_get_max_frame_size,
 	.getndostats = &syn_get_netdev_stats,
