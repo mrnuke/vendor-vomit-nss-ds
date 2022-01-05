@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -215,7 +217,6 @@ static void syn_clear_tx_flow_ctrl(struct nss_gmac_hal_dev *nghd)
 static void syn_rx_enable(struct nss_gmac_hal_dev *nghd)
 {
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_CONFIGURATION, SYN_MAC_RX);
-	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_FILTER_OFF);
 }
 
 /*
@@ -376,7 +377,6 @@ static void syn_multicast_enable(struct nss_gmac_hal_dev *nghd)
  */
 static void syn_promisc_enable(struct nss_gmac_hal_dev *nghd)
 {
-	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER, SYN_MAC_FILTER_OFF);
 	hal_set_reg_bits(nghd->mac_base, SYN_MAC_FRAME_FILTER,
 				SYN_MAC_PROMISCUOUS_MODE_ON);
 }
