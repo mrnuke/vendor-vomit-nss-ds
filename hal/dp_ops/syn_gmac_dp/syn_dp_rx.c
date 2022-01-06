@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -113,7 +113,7 @@ void syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info)
 
 		skb_fill_page_desc(skb, 0, pg, 0, PAGE_SIZE);
 
-		dmac_inv_range(page_addr, (page_addr + PAGE_SIZE));
+		dmac_inv_range_no_dsb(page_addr, (page_addr + PAGE_SIZE));
 		rx_refill_idx = rx_info->rx_refill_idx;
 		rx_desc = rx_info->rx_desc + rx_refill_idx;
 
@@ -132,12 +132,13 @@ void syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info)
 	 * Batched flush and invalidation of the rx descriptors
 	 */
 	if (end > start) {
-		dmac_flush_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
+		dmac_flush_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
 	} else {
-		dmac_flush_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
-		dmac_flush_range((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
+		dmac_flush_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
+		dmac_flush_range_no_dsb((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
 	}
 
+	dsb(st);
 	syn_resume_dma_rx(rx_info->mac_base);
 }
 
@@ -171,7 +172,7 @@ void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
 		skb_reserve(skb, SYN_DP_SKB_HEADROOM + NET_IP_ALIGN);
 
 		dma_addr = (dma_addr_t)virt_to_phys(skb->data);
-		dmac_inv_range((void *)skb->data, (void *)(skb->data + inval_len));
+		dmac_inv_range_no_dsb((void *)skb->data, (void *)(skb->data + inval_len));
 		rx_refill_idx = rx_info->rx_refill_idx;
 		rx_desc = rx_info->rx_desc + rx_refill_idx;
 
@@ -190,12 +191,13 @@ void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
 	 * Batched flush and invalidation of the rx descriptors
 	 */
 	if (end > start) {
-		dmac_flush_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
+		dmac_flush_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
 	} else {
-		dmac_flush_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
-		dmac_flush_range((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
+		dmac_flush_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
+		dmac_flush_range_no_dsb((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
 	}
 
+	dsb(st);
 	syn_resume_dma_rx(rx_info->mac_base);
 }
 
@@ -364,12 +366,13 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 	 */
 	end = syn_dp_rx_inc_index(rx_info->rx_idx, busy);
 	if (end > start) {
-		dmac_inv_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
+		dmac_inv_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
 	} else {
-		dmac_inv_range((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
-		dmac_inv_range((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
+		dmac_inv_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
+		dmac_inv_range_no_dsb((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
 	}
 
+	dsb(st);
 	do {
 		status = rx_desc->status;
 		if (syn_dp_gmac_is_rx_desc_owned_by_dma(status)) {
