@@ -21,6 +21,7 @@
 
 #define EDMA_RX_NAPI_WORK_MIN		16
 #define EDMA_RX_NAPI_WORK_MAX		512
+#define EDMA_RX_PAGE_MODE_SKB_SIZE	256	/* SKB payload size used in page mode */
 #define EDMA_RX_DEFAULT_QUEUE_PRI	0
 #define EDMA_RX_FC_ENABLE		0	/* RX flow control default state */
 #define EDMA_RX_FC_XOFF_THRE_MIN	0	/* Rx flow control minimum X-OFF value */
@@ -44,4 +45,5 @@ void edma_cfg_rx_rings_enable(struct edma_gbl_ctx *egc);
 void edma_cfg_rx_rings_disable(struct edma_gbl_ctx *egc);
 int edma_cfg_rx_fc_enable_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp, loff_t *ppos);
+void edma_cfg_rx_page_mode_and_jumbo(struct edma_gbl_ctx *egc);
 #endif	/* __EDMA_CFG_RX_H__ */

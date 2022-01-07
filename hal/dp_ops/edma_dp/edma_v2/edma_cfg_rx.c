@@ -701,7 +701,23 @@ void edma_cfg_rx_mapping(struct edma_gbl_ctx *egc)
 static int edma_cfg_rx_rings_setup(struct edma_gbl_ctx *egc)
 {
 	uint32_t queue_id = EDMA_PORT_QUEUE_START;
-	int32_t i;
+	int32_t i, alloc_size, buf_len;
+
+	/*
+	 * Set buffer allocation size
+	 */
+	if (egc->rx_jumbo_mru) {
+		alloc_size = egc->rx_jumbo_mru + EDMA_RX_SKB_HEADROOM + NET_IP_ALIGN;
+		buf_len = alloc_size - EDMA_RX_SKB_HEADROOM - NET_IP_ALIGN;
+	} else if (egc->rx_page_mode) {
+		alloc_size = EDMA_RX_PAGE_MODE_SKB_SIZE + EDMA_RX_SKB_HEADROOM + NET_IP_ALIGN;
+		buf_len = PAGE_SIZE;
+	} else {
+		alloc_size = dp_global_ctx.rx_buf_size;
+		buf_len = alloc_size - EDMA_RX_SKB_HEADROOM - NET_IP_ALIGN;
+	}
+
+	edma_debug("EDMA ctx:%px rx_ring alloc_size=%d, buf_len=%d\n", egc, alloc_size, buf_len);
 
 	/*
 	 * Allocate Rx fill ring descriptors
@@ -713,7 +729,9 @@ static int edma_cfg_rx_rings_setup(struct edma_gbl_ctx *egc)
 		rxfill_ring = &egc->rxfill_rings[i];
 		rxfill_ring->count = EDMA_RX_RING_SIZE;
 		rxfill_ring->ring_id = egc->rxfill_ring_start + i;
-		rxfill_ring->alloc_size = dp_global_ctx.rx_buf_size;
+		rxfill_ring->alloc_size = alloc_size;
+		rxfill_ring->buf_len = buf_len;
+		rxfill_ring->page_mode = egc->rx_page_mode;
 
 		ret = edma_cfg_rx_fill_ring_setup(rxfill_ring);
 		if (ret != 0) {
@@ -792,6 +810,27 @@ rxdesc_mem_alloc_fail:
 	}
 
 	return -ENOMEM;
+}
+
+/*
+ * edma_cfg_rx_page_mode_and_jumbo()
+ *	Configure EDMA Rx rings page mode and jumbo MRU
+ */
+void edma_cfg_rx_page_mode_and_jumbo(struct edma_gbl_ctx *egc)
+{
+	/*
+	 * Over-ride EDMA global page mode if specified in module param
+	 */
+	if (dp_global_ctx.overwrite_mode) {
+		edma_debug("Page mode is overwritten: %d\n", dp_global_ctx.page_mode);
+		egc->rx_page_mode = dp_global_ctx.page_mode;
+	}
+
+	if (dp_global_ctx.jumbo_mru) {
+		egc->rx_page_mode = false;
+		egc->rx_jumbo_mru = dp_global_ctx.jumbo_mru;
+		edma_debug("Jumbo mru is enabled: %d\n", egc->rx_jumbo_mru);
+	}
 }
 
 /*

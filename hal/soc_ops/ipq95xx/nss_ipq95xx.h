@@ -42,6 +42,10 @@ struct nss_dp_hal_gmac_stats {
 	uint64_t rx_packets;		/**< Number of RX packets */
 	uint64_t rx_bytes;		/**< Number of RX bytes */
 	uint64_t rx_dropped;		/**< Number of RX dropped packets */
+	uint64_t rx_fraglist_packets;	/**< Number of RX fraglist packets */
+	uint64_t rx_nr_frag_packets;	/**< Number of RX nr fragment packets */
+	uint64_t rx_nr_frag_headroom_err;
+			/**< Number of RX nr fragment packets with headroom error */
 	uint64_t tx_packets;		/**< Number of TX packets */
 	uint64_t tx_bytes;		/**< Number of TX bytes */
 	uint64_t tx_dropped;		/**< Number of TX dropped packets */
