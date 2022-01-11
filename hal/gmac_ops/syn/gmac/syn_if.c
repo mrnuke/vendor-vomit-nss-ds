@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -79,6 +79,8 @@ static const struct syn_ethtool_stats syn_gstrings_stats[] = {
 	{"tx_dropped", SYN_STAT(tx_stats.tx_dropped)},
 	{"tx_ts_create_errors", SYN_STAT(tx_stats.tx_ts_create_errors)},
 	{"tx_desc_not_avail", SYN_STAT(tx_stats.tx_desc_not_avail)},
+	{"tx_nr_frags_pkts", SYN_STAT(tx_stats.tx_nr_frags_pkts)},
+	{"tx_fraglist_pkts", SYN_STAT(tx_stats.tx_fraglist_pkts)},
 	{"pmt_interrupts", SYN_STAT(hw_errs[0])},
 	{"mmc_interrupts", SYN_STAT(hw_errs[0]) + (1 * HW_ERR_SIZE)},
 	{"line_interface_interrupts", SYN_STAT(hw_errs[0]) + (2 * HW_ERR_SIZE)},
