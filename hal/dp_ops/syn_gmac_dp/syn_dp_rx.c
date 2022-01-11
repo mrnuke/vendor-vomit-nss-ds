@@ -374,10 +374,6 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 
 	dsb(st);
 
-	/*
-	 * Prefetch a cacheline (64B) of packet header data for the current SKB.
-	 */
-	prefetch((void *)rx_info->rx_buf_pool[rx_info->rx_idx].map_addr_virt);
 	do {
 		status = rx_desc->status;
 		if (syn_dp_gmac_is_rx_desc_owned_by_dma(status)) {
@@ -387,18 +383,17 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 			 * Before we return, invalidation needs to be done
 			 * for prefetch of next data.
 			 */
-			dmac_inv_range((void *)rx_info->rx_buf_pool[rx_info->rx_idx].map_addr_virt,
-					(void *)rx_info->rx_buf_pool[rx_info->rx_idx].map_addr_virt
-					+ SYN_DP_RX_SKB_CACHE_LINE1);
 			break;
 		}
-		rx_idx = rx_info->rx_idx;
 
 		/*
-		 * Prefetch a cacheline (64B) of packet header data for the next SKB.
+		 * Prefetch a cacheline (64B) packet header data of current SKB.
 		 */
+		rx_idx = rx_info->rx_idx;
+		rx_buf = &rx_info->rx_buf_pool[rx_idx];
+		prefetch((void *)rx_buf->map_addr_virt);
+
 		rx_next_idx = syn_dp_rx_inc_index(rx_idx, 1);
-		prefetch((void *)rx_info->rx_buf_pool[rx_next_idx].map_addr_virt);
 		rx_desc_next = rx_info->rx_desc + rx_next_idx;
 
 		/*
@@ -406,7 +401,6 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 		 * for us to read.
 		 */
 		prefetch(rx_desc_next);
-		rx_buf = &rx_info->rx_buf_pool[rx_idx];
 
 		rx_skb = rx_buf->skb;
 		next_skb_ptr = (uint8_t *)rx_info->rx_buf_pool[rx_next_idx].skb;

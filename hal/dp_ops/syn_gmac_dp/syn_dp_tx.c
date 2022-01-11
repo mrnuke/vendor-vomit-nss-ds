@@ -48,6 +48,7 @@ static inline void syn_dp_tx_clear_buf_entry(struct syn_dp_info_tx *tx_info, uin
 	tx_info->tx_buf_pool[tx_skb_index].len = 0;
 	tx_info->tx_buf_pool[tx_skb_index].skb = NULL;
 	tx_info->tx_buf_pool[tx_skb_index].desc_count = 0;
+	tx_info->tx_buf_pool[tx_skb_index].shinfo_addr_virt = 0;
 }
 
 /*
@@ -174,6 +175,7 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	tx_info->tx_buf_pool[first_idx].desc_count = desc_needed;
 	tx_info->tx_buf_pool[first_idx].skb = skb;
 	tx_info->tx_buf_pool[first_idx].len = total_len;
+	tx_info->tx_buf_pool[first_idx].shinfo_addr_virt = (size_t)skb->end;
 
 	/*
 	 * For the last fragment, Enable the interrupt and set LS bit
@@ -317,6 +319,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	tx_info->tx_buf_pool[first_idx].desc_count = desc_needed;
 	tx_info->tx_buf_pool[first_idx].skb = skb;
 	tx_info->tx_buf_pool[first_idx].len = total_len;
+	tx_info->tx_buf_pool[first_idx].shinfo_addr_virt = (size_t)skb->end;
 
 	/*
 	 * For the last fragment, Enable the interrupt and set LS bit
@@ -379,6 +382,7 @@ static inline void syn_dp_tx_set_desc(struct syn_dp_info_tx *tx_info,
 	tx_info->tx_buf_pool[tx_idx].skb = skb;
 	tx_info->tx_buf_pool[tx_idx].len = length;
 	tx_info->tx_buf_pool[tx_idx].desc_count = 1;
+	tx_info->tx_buf_pool[tx_idx].shinfo_addr_virt = (size_t)skb->end;
 
 	/*
 	 * Ensure all write completed before setting own by dma bit so when gmac
@@ -405,6 +409,8 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	uint32_t tx_packets = 0, total_len = 0;
 	uint32_t num_desc = 0;
 	uint32_t count = 0;
+	uint32_t free_idx;
+	struct syn_dp_tx_buf *tx_buf;
 
 	busy = desc_cnt = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
 
@@ -421,6 +427,8 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 		busy = desc_cnt = budget;
 	}
 
+	tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
+	prefetch((void *)tx_info->tx_buf_pool[tx_skb_index].shinfo_addr_virt);
 	do {
 		desc = syn_dp_tx_comp_desc_get(tx_info);
 		status = desc->status;
@@ -439,10 +447,12 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 		 * calculate the number of descriptors used by
 		 * the fragments in order to free it.
 		 */
-		num_desc = tx_info->tx_buf_pool[tx_skb_index].desc_count;
+		tx_buf = &tx_info->tx_buf_pool[tx_skb_index];
+		num_desc = tx_buf->desc_count;
 
-		skb = tx_info->skb_free_list[count++] = tx_info->tx_buf_pool[tx_skb_index].skb;
-		len = tx_info->tx_buf_pool[tx_skb_index].len;
+		skb = tx_info->skb_free_list[count] = tx_buf->skb;
+		tx_info->shinfo_addr_virt[count++] = tx_buf->shinfo_addr_virt;
+		len = tx_buf->len;
 
 		syn_dp_tx_clear_buf_entry(tx_info, tx_skb_index);
 
@@ -478,11 +488,17 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	} while (likely(busy && desc_cnt));
 
 	/*
-	 * Batch free the skb's
+	 * Prefetching the shinfo area before releasing to skb recycler gives benefit
+	 * in performance.
+	 * All the completed skb's shinfo are prefetched and skb's are freed in batch.
 	 */
-	while (count) {
-		dev_kfree_skb_any(tx_info->skb_free_list[--count]);
-		tx_info->skb_free_list[count] = NULL;
+	for (free_idx = 0; free_idx < count; free_idx++) {
+		if (likely((free_idx + 1) < count)) {
+			prefetch((void *)tx_info->shinfo_addr_virt[free_idx+1]);
+		}
+		dev_kfree_skb_any(tx_info->skb_free_list[free_idx]);
+		tx_info->skb_free_list[free_idx] = NULL;
+		tx_info->shinfo_addr_virt[free_idx] = 0;
 	}
 
 	atomic64_add(tx_packets, (atomic64_t *)&tx_info->tx_stats.tx_packets);
