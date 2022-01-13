@@ -51,6 +51,16 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 		dma_addr_t buff_addr;
 
 		/*
+		 * Get RXFILL descriptor
+		 */
+		rxfill_desc = EDMA_RXFILL_DESC(rxfill_ring, prod_idx);
+
+		/*
+		 * Prefetch the current rxfill descriptor.
+		 */
+		prefetch(rxfill_desc);
+
+		/*
 		 * Allocate buffer
 		 */
 		skb = dev_alloc_skb(rx_alloc_size);
@@ -90,11 +100,6 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 			skb_fill_page_desc(skb, 0, pg, 0, PAGE_SIZE);
 			dmac_inv_range_no_dsb(page_addr, (page_addr + PAGE_SIZE));
 		}
-
-		/*
-		 * Get RXFILL descriptor
-		 */
-		rxfill_desc = EDMA_RXFILL_DESC(rxfill_ring, prod_idx);
 
 		EDMA_RXFILL_BUFFER_ADDR_SET(rxfill_desc, buff_addr);
 
@@ -450,7 +455,7 @@ send_to_stack:
 static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 				struct edma_rxdesc_ring *rxdesc_ring)
 {
-	struct edma_rxdesc_desc *rxdesc_desc;
+	struct edma_rxdesc_desc *rxdesc_desc, *next_rxdesc_desc;
 	struct edma_rx_desc_stats *rxdesc_stats = &rxdesc_ring->rx_desc_stats;
 	uint32_t work_to_do, work_done = 0;
 	uint32_t work_leftover;
@@ -479,19 +484,19 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 
 	end_idx = (cons_idx + work_to_do) & EDMA_RX_RING_SIZE_MASK;
 
-	rxdesc_desc = EDMA_RXDESC_PRI_DESC(rxdesc_ring, cons_idx);
+	next_rxdesc_desc = EDMA_RXDESC_PRI_DESC(rxdesc_ring, cons_idx);
 
 	/*
 	 * Invalidate all the cached descriptors
 	 * that'll be processed.
 	 */
 	if (end_idx > cons_idx) {
-		dmac_inv_range_no_dsb((void *)rxdesc_desc,
-			(void *)(rxdesc_desc + work_to_do));
+		dmac_inv_range_no_dsb((void *)next_rxdesc_desc,
+			(void *)(next_rxdesc_desc + work_to_do));
 	} else {
 		dmac_inv_range_no_dsb((void *)rxdesc_ring->pdesc,
 			(void *)(rxdesc_ring->pdesc + end_idx));
-		dmac_inv_range_no_dsb((void *)rxdesc_desc,
+		dmac_inv_range_no_dsb((void *)next_rxdesc_desc,
 			(void *)(rxdesc_ring->pdesc + EDMA_RX_RING_SIZE));
 	}
 
@@ -503,10 +508,23 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 		struct sk_buff *skb;
 		uint32_t src_port_num;
 
+		rxdesc_desc = next_rxdesc_desc;
+
 		/*
 		 * Get opaque from RXDESC
 		 */
 		skb = (struct sk_buff *)EDMA_RXDESC_OPAQUE_GET(rxdesc_desc);
+
+		/*
+		 * Update consumer index
+		 */
+		cons_idx = (cons_idx + 1) & EDMA_RX_RING_SIZE_MASK;
+
+		/*
+		 * Prefetch the next Rx descriptor.
+		 */
+		next_rxdesc_desc = EDMA_RXDESC_PRI_DESC(rxdesc_ring, cons_idx);
+		prefetch(next_rxdesc_desc);
 
 		/*
 		 * Handle linear packets or initial segments first
@@ -603,13 +621,6 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 
 next_rx_desc:
 		/*
-		 * Update consumer index
-		 */
-		cons_idx = (cons_idx + 1) & EDMA_RX_RING_SIZE_MASK;
-
-		rxdesc_desc = EDMA_RXDESC_PRI_DESC(rxdesc_ring, cons_idx);
-
-		/*
 		 * Update work done
 		 */
 		work_done++;
@@ -619,8 +630,7 @@ next_rx_desc:
 		 * if yes, refill and update index before continuing.
 		 */
 		if (unlikely(!(work_done & (EDMA_RX_MAX_PROCESS - 1)))) {
-			edma_reg_write(
-					EDMA_REG_RXDESC_CONS_IDX(rxdesc_ring->ring_id),
+			edma_reg_write(EDMA_REG_RXDESC_CONS_IDX(rxdesc_ring->ring_id),
 					cons_idx);
 			rxdesc_ring->cons_idx = cons_idx;
 			edma_rx_alloc_buffer(rxdesc_ring->rxfill,
