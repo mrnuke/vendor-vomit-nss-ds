@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -26,15 +26,22 @@
  */
 static int syn_dp_napi_poll_rx(struct napi_struct *napi, int budget)
 {
-	int work_done;
+	int work_done, pending_refill;
 	struct syn_dp_info_rx *rx_info = (struct syn_dp_info_rx *)napi;
 	void __iomem *mac_base = rx_info->mac_base;
 
 	work_done = syn_dp_rx(rx_info, budget);
 	if (likely(!rx_info->page_mode)) {
-		syn_dp_rx_refill(rx_info);
+		pending_refill = syn_dp_rx_refill(rx_info);
 	} else {
-		syn_dp_rx_refill_page_mode(rx_info);
+		pending_refill = syn_dp_rx_refill_page_mode(rx_info);
+	}
+
+	/*
+	 * Schedule the rx napi again if refill is not completely done
+	 */
+	if(unlikely(pending_refill)) {
+		work_done = budget;
 	}
 
 	if (unlikely(work_done < budget)) {
