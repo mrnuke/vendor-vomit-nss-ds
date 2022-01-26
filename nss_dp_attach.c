@@ -1,6 +1,7 @@
 /*
  **************************************************************************
  * Copyright (c) 2016-2017, 2019-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -105,7 +106,7 @@ int nss_dp_override_data_plane(struct net_device *netdev,
 	 */
 	if (dp_dev->drv_flags & NSS_DP_PRIV_FLAG(INIT_DONE)) {
 		if (dp_dev->data_plane_ops->deinit(dpc)) {
-			netdev_dbg(netdev, "Data plane init failed\n");
+			netdev_dbg(netdev, "Data plane de-init failed\n");
 			return -ENOMEM;
 		}
 
@@ -118,6 +119,15 @@ int nss_dp_override_data_plane(struct net_device *netdev,
 	dp_dev->drv_flags |= NSS_DP_PRIV_FLAG(INIT_OVERRIDE);
 	dp_dev->dpc = dpc;
 	dp_dev->data_plane_ops = dp_ops;
+
+	/*
+	 * Initialize the updated data plane
+	 */
+	if (dp_dev->data_plane_ops->init(dpc)) {
+		netdev_dbg(netdev, "Data Plane init failed\n");
+		return -EFAULT;
+	}
+	dp_dev->drv_flags |= NSS_DP_PRIV_FLAG(INIT_DONE);
 
 	return NSS_DP_SUCCESS;
 }
