@@ -339,7 +339,12 @@ process_last_scatter:
 	/*
 	 * Send packet up the stack
 	 */
+#if defined(NSS_DP_ENABLE_NAPI_GRO)
+	napi_gro_receive(&rxdesc_ring->napi, rxdesc_ring_head);
+#else
 	netif_receive_skb(rxdesc_ring_head);
+#endif
+
 	rxdesc_ring->head = NULL;
 	rxdesc_ring->last = NULL;
 }
@@ -429,7 +434,11 @@ send_to_stack:
 	/*
 	 * Send packet upto network stack
 	 */
+#if defined(NSS_DP_ENABLE_NAPI_GRO)
+	napi_gro_receive(&rxdesc_ring->napi, skb);
+#else
 	netif_receive_skb(skb);
+#endif
 
 	return true;
 }
