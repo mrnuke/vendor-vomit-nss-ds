@@ -486,11 +486,45 @@ static void edma_cfg_rx_desc_ring_configure(struct edma_rxdesc_ring *rxdesc_ring
 	edma_reg_write(EDMA_REG_RXDESC_RING_SIZE(rxdesc_ring->ring_id), data);
 
 	/*
-	 * Configure the default timer mitigation value
+	 * Validate mitigation timer value
 	 */
-	data = (EDMA_RX_MOD_TIMER_INIT & EDMA_RX_MOD_TIMER_INIT_MASK)
-			<< EDMA_RX_MOD_TIMER_INIT_SHIFT;
+	if ((nss_dp_rx_mitigation_timer < EDMA_RX_MITIGATION_TIMER_MIN) ||
+			(nss_dp_rx_mitigation_timer > EDMA_RX_MITIGATION_TIMER_MAX)) {
+		edma_err("Invalid Rx mitigation timer configured:%d for ring:%d."
+				" Using the default timer value:%d\n",
+				nss_dp_rx_mitigation_timer, rxdesc_ring->ring_id,
+				NSS_DP_RX_MITIGATION_TIMER_DEF);
+		nss_dp_rx_mitigation_timer = NSS_DP_RX_MITIGATION_TIMER_DEF;
+	}
+
+	/*
+	 * Validate mitigation packet count value
+	 */
+	if ((nss_dp_rx_mitigation_pkt_cnt < EDMA_RX_MITIGATION_PKT_CNT_MIN) ||
+			(nss_dp_rx_mitigation_pkt_cnt > EDMA_RX_MITIGATION_PKT_CNT_MAX)) {
+		edma_err("Invalid Rx mitigation packet count configured:%d for ring:%d."
+				" Using the default packet counter value:%d\n",
+				nss_dp_rx_mitigation_timer, rxdesc_ring->ring_id,
+				NSS_DP_RX_MITIGATION_PKT_CNT_DEF);
+		nss_dp_rx_mitigation_pkt_cnt = NSS_DP_RX_MITIGATION_PKT_CNT_DEF;
+	}
+
+	/*
+	 * Configure the Mitigation timer
+	 */
+	data = MICROSEC_TO_TIMER_UNIT(nss_dp_rx_mitigation_timer);
+	data = ((data & EDMA_RX_MOD_TIMER_INIT_MASK)
+			<< EDMA_RX_MOD_TIMER_INIT_SHIFT);
+	edma_info("EDMA Rx mitigation timer value: %d\n", data);
 	edma_reg_write(EDMA_REG_RX_MOD_TIMER(rxdesc_ring->ring_id), data);
+
+	/*
+	 * Configure the Mitigation packet count
+	 */
+	data = (nss_dp_rx_mitigation_pkt_cnt & EDMA_RXDESC_LOW_THRE_MASK)
+			<< EDMA_RXDESC_LOW_THRE_SHIFT;
+	edma_info("EDMA Rx mitigation packet count value: %d\n", data);
+	edma_reg_write(EDMA_REG_RXDESC_UGT_THRE(rxdesc_ring->ring_id), data);
 
 	/*
 	 * Enable ring. Set ret mode to 'opaque'.

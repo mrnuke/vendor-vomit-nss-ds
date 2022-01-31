@@ -32,6 +32,7 @@
 #include "edma_cfg_rx.h"
 #include "edma_regs.h"
 #include "edma_debug.h"
+#include "edma_debugfs.h"
 
 /*
  * EDMA hardware instance
@@ -150,7 +151,7 @@ void edma_cleanup(bool is_dp_override)
 	}
 
 	if (edma_gbl_ctx.ctl_table_hdr) {
-		unregister_net_sysctl_table(edma_gbl_ctx.ctl_table_hdr);
+		unregister_sysctl_table(edma_gbl_ctx.ctl_table_hdr);
 		edma_gbl_ctx.ctl_table_hdr = NULL;
 	}
 
@@ -216,6 +217,11 @@ void edma_cleanup(bool is_dp_override)
 	iounmap(edma_gbl_ctx.reg_base);
 	release_mem_region((edma_gbl_ctx.reg_resource)->start,
 			resource_size(edma_gbl_ctx.reg_resource));
+
+	/*
+	 * Clean the debugfs entries for the EDMA
+	 */
+	edma_debugfs_exit();
 
 	/*
 	 * Mark initialize false, so that we do not
@@ -1139,6 +1145,8 @@ int edma_init(void)
 				EDMA_DEVICE_NODE_NAME);
 	if (!edma_gbl_ctx.reg_resource) {
 		edma_err("Unable to request EDMA register memory.\n");
+		unregister_sysctl_table(edma_gbl_ctx.ctl_table_hdr);
+		edma_gbl_ctx.ctl_table_hdr = NULL;
 		return -EFAULT;
 	}
 
@@ -1154,13 +1162,23 @@ int edma_init(void)
 	}
 
 	/*
+	 * Initialize EDMA debugfs entry
+	 */
+	ret = edma_debugfs_init();
+	if (ret < 0) {
+		edma_err("Error in EDMA debugfs init API. ret: %d\n", ret);
+		ret = -EINVAL;
+		goto edma_debugfs_init_fail;
+	}
+
+	/*
 	 * Configure the EDMA common clocks
 	 */
 	ret = edma_configure_clocks();
 	if (ret) {
 		edma_err("Error in configuring the common EDMA clocks\n");
 		ret = -EFAULT;
-		goto edma_init_remap_fail;
+		goto edma_hw_init_fail;
 	}
 
 	edma_info("EDMA common clocks are configured\n");
@@ -1168,7 +1186,7 @@ int edma_init(void)
 	if (edma_hw_init(&edma_gbl_ctx) != 0) {
 		edma_err("Error in edma initialization\n");
 		ret = -EFAULT;
-		goto edma_init_hw_init_fail;
+		goto edma_hw_init_fail;
 	}
 
 	/*
@@ -1178,12 +1196,17 @@ int edma_init(void)
 
 	return 0;
 
-edma_init_hw_init_fail:
+edma_hw_init_fail:
+	edma_debugfs_exit();
+
+edma_debugfs_init_fail:
 	iounmap(edma_gbl_ctx.reg_base);
 
 edma_init_remap_fail:
 	release_mem_region((edma_gbl_ctx.reg_resource)->start,
 			resource_size(edma_gbl_ctx.reg_resource));
+	unregister_sysctl_table(edma_gbl_ctx.ctl_table_hdr);
+	edma_gbl_ctx.ctl_table_hdr = NULL;
 	return ret;
 }
 

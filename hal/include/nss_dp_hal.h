@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -40,9 +42,6 @@ static inline void nss_dp_hal_set_gmac_ops(struct nss_gmac_hal_ops *hal_ops, uin
 /*
  * HAL functions implemented by SoC specific source files.
  */
-extern struct rtnl_link_stats64 *nss_dp_hal_get_ndo_stats(
-				struct nss_dp_hal_gmac_stats *gmac_stats,
-				struct rtnl_link_stats64 *ndo_stats);
 extern struct nss_dp_data_plane_ops *nss_dp_hal_get_data_plane_ops(void);
 extern bool nss_dp_hal_init(void);
 extern void nss_dp_hal_cleanup(void);

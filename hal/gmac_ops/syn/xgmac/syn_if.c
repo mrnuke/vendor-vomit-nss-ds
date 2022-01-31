@@ -2,6 +2,8 @@
  **************************************************************************
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all copies.
@@ -15,6 +17,7 @@
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  **************************************************************************
  */
+
 #include <linux/delay.h>
 #include <linux/ethtool.h>
 #include <linux/vmalloc.h>
@@ -23,7 +26,8 @@
 #include <nss_dp_dev.h>
 #include "syn_dev.h"
 
-#define SYN_STAT(m)	offsetof(fal_xgmib_info_t, m)
+#define SYN_STAT(m)		offsetof(struct nss_dp_hal_gmac_stats, m)
+#define SYN_XMIB_STAT(m)	offsetof(fal_xgmib_info_t, m)
 
 struct syn_ethtool_stats {
 	uint8_t stat_string[ETH_GSTRING_LEN];
@@ -31,56 +35,81 @@ struct syn_ethtool_stats {
 };
 
 /*
- * Array of strings describing statistics
+ * Array of strings describing data plane statistics
  */
 static const struct syn_ethtool_stats syn_gstrings_stats[] = {
-	{"rx_frame", SYN_STAT(RxFrame)},
-	{"rx_bytes", SYN_STAT(RxByte)},
-	{"rx_bytes_g", SYN_STAT(RxByteGood)},
-	{"rx_broadcast", SYN_STAT(RxBroadGood)},
-	{"rx_multicast", SYN_STAT(RxMultiGood)},
-	{"rx_crc_err", SYN_STAT(RxFcsErr)},
-	{"rx_runt_err", SYN_STAT(RxRuntErr)},
-	{"rx_jabber_err", SYN_STAT(RxJabberError)},
-	{"rx_undersize", SYN_STAT(RxUndersizeGood)},
-	{"rx_oversize", SYN_STAT(RxOversizeGood)},
-	{"rx_pkt64", SYN_STAT(Rx64Byte)},
-	{"rx_pkt65to127", SYN_STAT(Rx128Byte)},
-	{"rx_pkt128to255", SYN_STAT(Rx256Byte)},
-	{"rx_pkt256to511", SYN_STAT(Rx512Byte)},
-	{"rx_pkt512to1023", SYN_STAT(Rx1024Byte)},
-	{"rx_pkt1024tomax", SYN_STAT(RxMaxByte)},
-	{"rx_unicast", SYN_STAT(RxUnicastGood)},
-	{"rx_len_err", SYN_STAT(RxLengthError)},
-	{"rx_outofrange_err_ctr", SYN_STAT(RxOutOfRangeError)},
-	{"rx_pause", SYN_STAT(RxPause)},
-	{"rx_fifo_overflow", SYN_STAT(RxOverFlow)},
-	{"rx_vlan", SYN_STAT(RxVLANFrameGoodBad)},
-	{"rx_wdog", SYN_STAT(RxWatchDogError)},
-	{"rx_lpi_usec_ctr", SYN_STAT(RxLPIUsec)},
-	{"rx_lpi_tran_ctr", SYN_STAT(RxLPITran)},
-	{"rx_drop_frame_ctr", SYN_STAT(RxDropFrameGoodBad)},
-	{"rx_drop_byte_ctr", SYN_STAT(RxDropByteGoodBad)},
-	{"tx_bytes", SYN_STAT(TxByte)},
-	{"tx_frame", SYN_STAT(TxFrame)},
-	{"tx_broadcast", SYN_STAT(TxBroadGood)},
-	{"tx_broadcast_gb", SYN_STAT(TxBroad)},
-	{"tx_multicast", SYN_STAT(TxMultiGood)},
-	{"tx_multicast_gb", SYN_STAT(TxMulti)},
-	{"tx_pkt64", SYN_STAT(Tx64Byte)},
-	{"tx_pkt65to127", SYN_STAT(Tx128Byte)},
-	{"tx_pkt128to255", SYN_STAT(Tx256Byte)},
-	{"tx_pkt256to511", SYN_STAT(Tx512Byte)},
-	{"tx_pkt512to1023", SYN_STAT(Tx1024Byte)},
-	{"tx_pkt1024tomax", SYN_STAT(TxMaxByte)},
-	{"tx_unicast", SYN_STAT(TxUnicast)},
-	{"tx_underflow_err", SYN_STAT(TxUnderFlowError)},
-	{"tx_bytes_g", SYN_STAT(TxByteGood)},
-	{"tx_frame_g", SYN_STAT(TxFrameGood)},
-	{"tx_pause", SYN_STAT(TxPause)},
-	{"tx_vlan", SYN_STAT(TxVLANFrameGood)},
-	{"tx_lpi_usec_ctr", SYN_STAT(TxLPIUsec)},
-	{"tx_lpi_tran_ctr", SYN_STAT(TxLPITran)},
+#if defined(NSS_DP_IPQ95XX)
+	/*
+	 * Per GMAC DMA driver statistics are
+	 * supported today only for IPQ95xx.
+	 */
+	{"rx_bytes", SYN_STAT(rx_bytes)},
+	{"rx_packets", SYN_STAT(rx_packets)},
+	{"rx_dropped", SYN_STAT(rx_dropped)},
+	{"rx_fraglist_packets", SYN_STAT(rx_fraglist_packets)},
+	{"rx_nr_frag_packets", SYN_STAT(rx_nr_frag_packets)},
+	{"rx_nr_frag_headroom_err", SYN_STAT(rx_nr_frag_headroom_err)},
+	{"tx_bytes", SYN_STAT(tx_bytes)},
+	{"tx_packets", SYN_STAT(tx_packets)},
+	{"tx_dropped", SYN_STAT(tx_dropped)},
+	{"tx_nr_frag_packets", SYN_STAT(tx_nr_frag_packets)},
+	{"tx_fraglist_packets", SYN_STAT(tx_fraglist_packets)},
+	{"tx_fraglist_nr_frags_packets", SYN_STAT(tx_fraglist_with_nr_frags_packets)},
+	{"tx_tso_packets", SYN_STAT(tx_tso_packets)},
+#endif
+};
+
+/*
+ * Array of strings describing xmib statistics
+ */
+static const struct syn_ethtool_stats syn_gstrings_xmib_stats[] = {
+	{"rx_frame", SYN_XMIB_STAT(RxFrame)},
+	{"rx_bytes", SYN_XMIB_STAT(RxByte)},
+	{"rx_bytes_g", SYN_XMIB_STAT(RxByteGood)},
+	{"rx_broadcast", SYN_XMIB_STAT(RxBroadGood)},
+	{"rx_multicast", SYN_XMIB_STAT(RxMultiGood)},
+	{"rx_crc_err", SYN_XMIB_STAT(RxFcsErr)},
+	{"rx_runt_err", SYN_XMIB_STAT(RxRuntErr)},
+	{"rx_jabber_err", SYN_XMIB_STAT(RxJabberError)},
+	{"rx_undersize", SYN_XMIB_STAT(RxUndersizeGood)},
+	{"rx_oversize", SYN_XMIB_STAT(RxOversizeGood)},
+	{"rx_pkt64", SYN_XMIB_STAT(Rx64Byte)},
+	{"rx_pkt65to127", SYN_XMIB_STAT(Rx128Byte)},
+	{"rx_pkt128to255", SYN_XMIB_STAT(Rx256Byte)},
+	{"rx_pkt256to511", SYN_XMIB_STAT(Rx512Byte)},
+	{"rx_pkt512to1023", SYN_XMIB_STAT(Rx1024Byte)},
+	{"rx_pkt1024tomax", SYN_XMIB_STAT(RxMaxByte)},
+	{"rx_unicast", SYN_XMIB_STAT(RxUnicastGood)},
+	{"rx_len_err", SYN_XMIB_STAT(RxLengthError)},
+	{"rx_outofrange_err_ctr", SYN_XMIB_STAT(RxOutOfRangeError)},
+	{"rx_pause", SYN_XMIB_STAT(RxPause)},
+	{"rx_fifo_overflow", SYN_XMIB_STAT(RxOverFlow)},
+	{"rx_vlan", SYN_XMIB_STAT(RxVLANFrameGoodBad)},
+	{"rx_wdog", SYN_XMIB_STAT(RxWatchDogError)},
+	{"rx_lpi_usec_ctr", SYN_XMIB_STAT(RxLPIUsec)},
+	{"rx_lpi_tran_ctr", SYN_XMIB_STAT(RxLPITran)},
+	{"rx_drop_frame_ctr", SYN_XMIB_STAT(RxDropFrameGoodBad)},
+	{"rx_drop_byte_ctr", SYN_XMIB_STAT(RxDropByteGoodBad)},
+	{"tx_bytes", SYN_XMIB_STAT(TxByte)},
+	{"tx_frame", SYN_XMIB_STAT(TxFrame)},
+	{"tx_broadcast", SYN_XMIB_STAT(TxBroadGood)},
+	{"tx_broadcast_gb", SYN_XMIB_STAT(TxBroad)},
+	{"tx_multicast", SYN_XMIB_STAT(TxMultiGood)},
+	{"tx_multicast_gb", SYN_XMIB_STAT(TxMulti)},
+	{"tx_pkt64", SYN_XMIB_STAT(Tx64Byte)},
+	{"tx_pkt65to127", SYN_XMIB_STAT(Tx128Byte)},
+	{"tx_pkt128to255", SYN_XMIB_STAT(Tx256Byte)},
+	{"tx_pkt256to511", SYN_XMIB_STAT(Tx512Byte)},
+	{"tx_pkt512to1023", SYN_XMIB_STAT(Tx1024Byte)},
+	{"tx_pkt1024tomax", SYN_XMIB_STAT(TxMaxByte)},
+	{"tx_unicast", SYN_XMIB_STAT(TxUnicast)},
+	{"tx_underflow_err", SYN_XMIB_STAT(TxUnderFlowError)},
+	{"tx_bytes_g", SYN_XMIB_STAT(TxByteGood)},
+	{"tx_frame_g", SYN_XMIB_STAT(TxFrameGood)},
+	{"tx_pause", SYN_XMIB_STAT(TxPause)},
+	{"tx_vlan", SYN_XMIB_STAT(TxVLANFrameGood)},
+	{"tx_lpi_usec_ctr", SYN_XMIB_STAT(TxLPIUsec)},
+	{"tx_lpi_tran_ctr", SYN_XMIB_STAT(TxLPITran)},
 };
 
 /*
@@ -90,7 +119,8 @@ static const char *const syn_strings_priv_flags[] = {
 	"test",
 };
 
-#define SYN_STATS_LEN	ARRAY_SIZE(syn_gstrings_stats)
+#define SYN_STATS_LEN		ARRAY_SIZE(syn_gstrings_stats)
+#define SYN_MIB_STATS_LEN	ARRAY_SIZE(syn_gstrings_xmib_stats)
 #define SYN_PRIV_FLAGS_LEN	ARRAY_SIZE(syn_strings_priv_flags)
 
 /*
@@ -206,18 +236,33 @@ static int32_t syn_get_eth_stats(struct nss_gmac_hal_dev *nghd,
 {
 	fal_xgmib_info_t mib_stats;
 	uint8_t *p = NULL;
-	int i;
+	int i, i_mib;
 
 	BUG_ON(nghd == NULL);
 
+	/*
+	 * Populate data plane statistics.
+	 */
+	for (i = 0; i < SYN_STATS_LEN; i++) {
+		p = ((uint8_t *)(stats) + syn_gstrings_stats[i].stat_offset);
+		data[i] = *(uint64_t *)p;
+	}
+
+	/*
+	 * Get MIB statistics
+	 */
 	memset(&mib_stats, 0, sizeof(fal_xgmib_info_t));
 	if (syn_get_xmib_stats(nghd, &mib_stats)) {
 		return -1;
 	}
 
-	for (i = 0; i < SYN_STATS_LEN; i++) {
+	/*
+	 * Populate MIB statistics
+	 */
+	for (i_mib = 0; i_mib < SYN_MIB_STATS_LEN; i_mib++) {
 		p = ((uint8_t *)(&mib_stats) +
-				syn_gstrings_stats[i].stat_offset);
+			syn_gstrings_xmib_stats[i_mib].stat_offset);
+		i = SYN_STATS_LEN + i_mib;
 		data[i] = *(uint32_t *)p;
 	}
 
@@ -238,7 +283,7 @@ static int32_t syn_get_strset_count(struct nss_gmac_hal_dev *nghd,
 
 	switch (sset) {
 	case ETH_SS_STATS:
-		return SYN_STATS_LEN;
+		return (SYN_STATS_LEN + SYN_MIB_STATS_LEN);
 
 	case ETH_SS_PRIV_FLAGS:
 		return SYN_PRIV_FLAGS_LEN;
@@ -268,6 +313,13 @@ static int32_t syn_get_strings(struct nss_gmac_hal_dev *nghd,
 				strlen(syn_gstrings_stats[i].stat_string));
 			data += ETH_GSTRING_LEN;
 		}
+
+		for (i = 0; i < SYN_MIB_STATS_LEN; i++) {
+			memcpy(data, syn_gstrings_xmib_stats[i].stat_string,
+				strlen(syn_gstrings_xmib_stats[i].stat_string));
+			data += ETH_GSTRING_LEN;
+		}
+
 		break;
 
 	case ETH_SS_PRIV_FLAGS:
@@ -278,6 +330,7 @@ static int32_t syn_get_strings(struct nss_gmac_hal_dev *nghd,
 		}
 
 		break;
+
 	default:
 		netdev_dbg(netdev, "%s: Invalid string set\n", __func__);
 		return -EPERM;

@@ -86,6 +86,9 @@
 #define EDMA_TXCMPL_MORE_BIT_MASK		0x40000000
 #define EDMA_TXCMPL_MORE_BIT_GET(desc)		((desc)->word2 & EDMA_TXCMPL_MORE_BIT_MASK)
 
+#define EDMA_TXCOMP_RING_ERROR_MASK	0x7fffff
+#define EDMA_TXCOMP_RING_ERROR_GET(x)	((x) & EDMA_TXCOMP_RING_ERROR_MASK)
+
 /*
  * edma_tx
  *	List of return values of the TX API.
@@ -104,12 +107,32 @@ struct edma_tx_stats {
 	uint64_t tx_pkts;
 	uint64_t tx_bytes;
 	uint64_t tx_drops;
-	uint64_t tx_no_desc_avail;
 	uint64_t tx_nr_frag_pkts;
 	uint64_t tx_fraglist_pkts;
 	uint64_t tx_fraglist_with_nr_frags_pkts;
 	uint64_t tx_tso_pkts;
 	struct u64_stats_sync syncp;
+};
+
+/*
+ * edma_tx_cmpl_stats
+ *	EDMA TX complete ring statistics structure
+ */
+struct edma_tx_cmpl_stats {
+	uint64_t invalid_buffer;		/* Invalid buffer address received */
+	uint64_t errors;			/* Other Tx complete descriptor errors indicated by the hardware */
+	uint64_t desc_with_more_bit;		/* Packet's segment transmit count */
+	uint64_t no_pending_desc;		/* No descriptor is pending for processing */
+	struct u64_stats_sync syncp;		/* Synchronization pointer */
+};
+
+/*
+ * edma_tx_desc_stats
+ * 	EDMA Tx descriptor ring statistics structure
+ */
+struct edma_tx_desc_stats {
+	uint64_t no_desc_avail;			/* No descriptor available to transmit */
+	struct u64_stats_sync syncp;		/* Synchronization pointer */
 };
 
 /*
@@ -164,6 +187,8 @@ struct edma_txdesc_ring {
 	struct edma_pri_txdesc *pdesc;	/* Primary descriptor ring virtual address */
 	dma_addr_t pdma;		/* Primary descriptor ring physical address */
 	struct edma_sec_txdesc *sdesc;	/* Secondary descriptor ring virtual address */
+	struct edma_tx_desc_stats tx_desc_stats;
+					/* Tx descriptor ring statistics */
 	dma_addr_t sdma;		/* Secondary descriptor ring physical address */
 	uint32_t count;			/* Number of descriptors */
 	uint8_t fc_grp_id;		/* Flow control group ID */
@@ -179,6 +204,8 @@ struct edma_txcmpl_ring {
 	uint32_t avail_pkt;		/* Number of available packets to process */
 	struct edma_txcmpl_desc *desc;	/* Descriptor ring virtual address */
 	uint32_t id;			/* TXCMPL ring number */
+	struct edma_tx_cmpl_stats tx_cmpl_stats;
+					/* Tx complete ring statistics */
 	dma_addr_t dma;			/* Descriptor ring physical address */
 	uint32_t count;			/* Number of descriptors in the ring */
 	bool napi_added;		/* Flag to indicate NAPI add status */

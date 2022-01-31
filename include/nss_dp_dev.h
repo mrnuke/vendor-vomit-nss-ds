@@ -64,6 +64,25 @@
  * tail drop and hence not trigerring the Rx port's back-pressure.
  */
 #define NSS_DP_RX_AC_FC_THRES_DEF	0x104
+
+/*
+ * Tx/Rx Mitigation values
+ *
+ * Packet count indicates number of packets received or transmitted after which
+ * the interrupt is triggered. Stale timer (in microseconds) indicates time after
+ * which interrupt is triggered in case number of packets have not been accumulated.
+ *
+ * These values are picked by running the single large packet uni-UDPv4 traffic
+ * at moderate speed and observing the CPU utilization for the flow's processing
+ * core.
+ * Below values gave the best combination of the idle CPU percentage left for the
+ * above mentioned scenario and the minimum impact of the single and multi core
+ * small packet's PPS numbers.
+ */
+#define NSS_DP_TX_MITIGATION_TIMER_DEF		250
+#define NSS_DP_TX_MITIGATION_PKT_CNT_DEF	16
+#define NSS_DP_RX_MITIGATION_TIMER_DEF		250
+#define NSS_DP_RX_MITIGATION_PKT_CNT_DEF	16
 #endif
 
 struct nss_dp_global_ctx;
@@ -138,6 +157,10 @@ extern int nss_dp_tx_napi_budget;
 extern int nss_dp_rx_fc_xon;
 extern int nss_dp_rx_fc_xoff;
 extern int nss_dp_rx_ac_fc_threshold;
+extern int nss_dp_tx_mitigation_timer;
+extern int nss_dp_tx_mitigation_pkt_cnt;
+extern int nss_dp_rx_mitigation_timer;
+extern int nss_dp_rx_mitigation_pkt_cnt;
 #endif
 
 /*
