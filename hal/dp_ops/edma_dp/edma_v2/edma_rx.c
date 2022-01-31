@@ -34,6 +34,8 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 	uint16_t prod_idx, start_idx;
 	uint16_t num_alloc = 0;
 	uint32_t rx_alloc_size = rxfill_ring->alloc_size;
+	uint32_t buf_len = rxfill_ring->buf_len;
+	bool page_mode = rxfill_ring->page_mode;
 
 	/*
 	 * Get RXFILL ring producer index
@@ -42,6 +44,8 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 	start_idx = prod_idx;
 
 	while (likely(alloc_count--)) {
+		void *page_addr = NULL;
+		struct page *pg;
 		struct sk_buff *skb;
 		dma_addr_t buff_addr;
 
@@ -59,14 +63,32 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 		skb_reserve(skb, EDMA_RX_SKB_HEADROOM + NET_IP_ALIGN);
 
 		/*
+		 * Map Rx buffer for DMA
+		 */
+		if (likely(!page_mode)) {
+			buff_addr = (dma_addr_t)virt_to_phys(skb->data);
+		} else {
+			pg = alloc_page(GFP_ATOMIC);
+			if (unlikely(!pg)) {
+				dev_kfree_skb_any(skb);
+				edma_debug("edma_gbl_ctx:%px Unable to allocate page", &edma_gbl_ctx);
+				break;
+			}
+
+			/*
+			 * Get virtual address of allocated page
+			 */
+			page_addr = page_address(pg);
+			buff_addr = (dma_addr_t)virt_to_phys(page_addr);
+			skb_fill_page_desc(skb, 0, pg, 0, PAGE_SIZE);
+			dmac_inv_range_no_dsb(page_addr, (page_addr + PAGE_SIZE));
+		}
+
+		/*
 		 * Get RXFILL descriptor
 		 */
 		rxfill_desc = EDMA_RXFILL_DESC(rxfill_ring, prod_idx);
 
-		/*
-		 * Map Rx buffer for DMA
-		 */
-		buff_addr = (dma_addr_t)virt_to_phys(skb->data);
 		EDMA_RXFILL_BUFFER_ADDR_SET(rxfill_desc, buff_addr);
 
 		/*
@@ -83,7 +105,7 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
 		EDMA_RXFILL_PACKET_LEN_SET(
 			rxfill_desc,
 			cpu_to_le32((uint32_t)
-			(rx_alloc_size - EDMA_RX_SKB_HEADROOM - NET_IP_ALIGN)
+			(buf_len)
 			& EDMA_RXFILL_BUF_SIZE_MASK));
 
 		/*
@@ -136,7 +158,7 @@ int edma_rx_alloc_buffer(struct edma_rxfill_ring *rxfill_ring, int alloc_count)
  * edma_rx_checksum_verify()
  *	Update hw checksum status into skb
  */
-static void edma_rx_checksum_verify(struct edma_rxdesc_desc *rxdesc_desc,
+static inline void edma_rx_checksum_verify(struct edma_rxdesc_desc *rxdesc_desc,
 							struct sk_buff* skb)
 {
 	uint8_t pid = EDMA_RXDESC_PID_GET(rxdesc_desc);
@@ -153,6 +175,256 @@ static void edma_rx_checksum_verify(struct edma_rxdesc_desc *rxdesc_desc,
 			skb->ip_summed = CHECKSUM_UNNECESSARY;
 		}
 	}
+}
+
+/*
+ * edma_rx_handle_scatter_frames()
+ *	Handle scattered packets in Rx direction
+ *
+ * This function should free the SKB in case of failure.
+ */
+static void edma_rx_handle_scatter_frames(struct edma_gbl_ctx *egc,
+		struct edma_rxdesc_ring *rxdesc_ring,
+		struct edma_rxdesc_desc *rxdesc_desc,
+		struct sk_buff *skb)
+{
+	struct nss_dp_dev *dp_dev;
+	struct edma_pcpu_stats *pcpu_stats;
+	struct edma_rx_stats *rx_stats;
+	struct sk_buff *rxdesc_ring_head;
+	struct net_device *dev;
+	uint32_t pkt_length;
+	skb_frag_t *frag = NULL;
+	bool page_mode = rxdesc_ring->rxfill->page_mode;
+
+	/*
+	 * Get packet length
+	 */
+	pkt_length = EDMA_RXDESC_PACKET_LEN_GET(rxdesc_desc);
+	edma_debug("edma_gbl_ctx:%px skb:%px fragment pkt_length:%u\n", egc, skb, pkt_length);
+
+	/*
+	 * For fraglist case
+	 */
+	if (likely(!page_mode)) {
+
+		/*
+		 * Invalidate the buffer received from the HW
+		 */
+		dmac_inv_range((void *)skb->data,
+				(void *)(skb->data + pkt_length));
+
+		if (!(rxdesc_ring->head)) {
+			skb_put(skb, pkt_length);
+			rxdesc_ring->head = skb;
+			rxdesc_ring->last = NULL;
+			return;
+		}
+
+		/*
+		 * If head is present and got next desc.
+		 * Append it to the fraglist of head if this is second frame
+		 * If not second frame append to tail
+		 */
+		skb_put(skb, pkt_length);
+		if (!skb_has_frag_list(rxdesc_ring->head)) {
+			skb_shinfo(rxdesc_ring->head)->frag_list = skb;
+		} else {
+			rxdesc_ring->last->next = skb;
+		}
+
+		rxdesc_ring->last = skb;
+		rxdesc_ring->last->next = NULL;
+		rxdesc_ring->head->len += pkt_length;
+		rxdesc_ring->head->data_len += pkt_length;
+		rxdesc_ring->head->truesize += skb->truesize;
+
+		goto process_last_scatter;
+	}
+
+	/*
+	 * Manage fragments for page mode
+	 */
+	frag = &skb_shinfo(skb)->frags[0];
+	dmac_inv_range((void *)skb_frag_page(frag), (void *)(skb_frag_page(frag) + pkt_length));
+
+	if (!(rxdesc_ring->head)) {
+		skb->len = pkt_length;
+		skb->data_len = pkt_length;
+		skb->truesize = SKB_TRUESIZE(PAGE_SIZE);
+		rxdesc_ring->head = skb;
+		rxdesc_ring->last = NULL;
+		return;
+	}
+
+	/*
+	 * Append current frag at correct index as nr_frag of parent
+	 */
+	skb_add_rx_frag(rxdesc_ring->head, skb_shinfo(rxdesc_ring->head)->nr_frags,
+			skb_frag_page(frag), 0, pkt_length, PAGE_SIZE);
+	skb_shinfo(skb)->nr_frags = 0;
+
+	/*
+	 * Free the SKB after we have appended its frag page to the head skb
+	 */
+	dev_kfree_skb_any(skb);
+
+process_last_scatter:
+
+	/*
+	 * If there are more segments for this packet,
+	 * then we have nothing to do. Otherwise process
+	 * last segment and send packet to stack
+	 */
+	rxdesc_ring_head = rxdesc_ring->head;
+	dev = rxdesc_ring_head->dev;
+
+	if (EDMA_RXDESC_MORE_BIT_GET(rxdesc_desc)) {
+		return;
+	}
+
+	/*
+	 * Check Rx checksum offload status.
+	 */
+	if (likely(dev->features & NETIF_F_RXCSUM)) {
+		edma_rx_checksum_verify(rxdesc_desc, rxdesc_ring_head);
+	}
+
+	/*
+	 * Get stats for the netdevice
+	 */
+	dp_dev = netdev_priv(dev);
+	pcpu_stats = &dp_dev->dp_info.pcpu_stats;
+	rx_stats = this_cpu_ptr(pcpu_stats->rx_stats);
+
+	if (unlikely(page_mode)) {
+		if (unlikely(!pskb_may_pull(rxdesc_ring_head, ETH_HLEN))) {
+			/*
+			 * Discard the SKB that we have been building,
+			 * in addition to the SKB linked to current descriptor.
+			 */
+			dev_kfree_skb_any(rxdesc_ring_head);
+			rxdesc_ring->head = NULL;
+			rxdesc_ring->last = NULL;
+
+			u64_stats_update_begin(&rx_stats->syncp);
+			rx_stats->rx_nr_frag_headroom_err++;
+			u64_stats_update_end(&rx_stats->syncp);
+
+			return;
+		}
+	}
+
+	/*
+	 * TODO: Do a batched update of the stats per netdevice.
+	 */
+	u64_stats_update_begin(&rx_stats->syncp);
+	rx_stats->rx_pkts++;
+	rx_stats->rx_bytes += rxdesc_ring_head->len;
+	rx_stats->rx_nr_frag_pkts += (uint64_t)page_mode;
+	rx_stats->rx_fraglist_pkts += (uint64_t)(!page_mode);
+	u64_stats_update_end(&rx_stats->syncp);
+
+	rxdesc_ring_head->protocol = eth_type_trans(rxdesc_ring_head, dev);
+
+	edma_debug("edma_gbl_ctx:%px skb:%px Jumbo pkt_length:%u\n", egc, rxdesc_ring_head, rxdesc_ring_head->len);
+
+	/*
+	 * Send packet up the stack
+	 */
+	netif_receive_skb(rxdesc_ring_head);
+	rxdesc_ring->head = NULL;
+	rxdesc_ring->last = NULL;
+}
+
+/*
+ * edma_rx_handle_linear_packets()
+ *	Handle linear packets
+ */
+static inline bool edma_rx_handle_linear_packets(struct edma_gbl_ctx *egc,
+		struct edma_rxdesc_ring *rxdesc_ring,
+		struct edma_rxdesc_desc *rxdesc_desc,
+		struct sk_buff *skb)
+{
+	struct nss_dp_dev *dp_dev;
+	struct edma_pcpu_stats *pcpu_stats;
+	struct edma_rx_stats *rx_stats;
+	uint32_t pkt_length;
+	skb_frag_t *frag = NULL;
+	bool page_mode = rxdesc_ring->rxfill->page_mode;
+
+	/*
+	 * Get stats for the netdevice
+	 */
+	dp_dev = netdev_priv(skb->dev);
+	pcpu_stats = &dp_dev->dp_info.pcpu_stats;
+	rx_stats = this_cpu_ptr(pcpu_stats->rx_stats);
+
+	/*
+	 * Check Rx checksum offload status.
+	 */
+	if (likely(skb->dev->features & NETIF_F_RXCSUM)) {
+		edma_rx_checksum_verify(rxdesc_desc, skb);
+	}
+
+	/*
+	 * Get packet length
+	 */
+	pkt_length = EDMA_RXDESC_PACKET_LEN_GET(rxdesc_desc);
+
+	if (likely(!page_mode)) {
+
+		/*
+		 * Invalidate the buffer received from the HW
+		 */
+		dmac_inv_range((void *)skb->data,
+				(void *)(skb->data + pkt_length));
+
+		skb_put(skb, pkt_length);
+		skb->protocol = eth_type_trans(skb, skb->dev);
+		goto send_to_stack;
+	}
+
+	/*
+	 * Handle linear packet in page mode
+	 */
+	frag = &skb_shinfo(skb)->frags[0];
+	dmac_inv_range((void *)skb_frag_page(frag),
+			(void *)(skb_frag_page(frag) + pkt_length));
+	skb_add_rx_frag(skb, 0, skb_frag_page(frag), 0, pkt_length, PAGE_SIZE);
+
+	/*
+	 * Pull ethernet header into SKB data area for header processing
+	 */
+	if (unlikely(!pskb_may_pull(skb, ETH_HLEN))) {
+		u64_stats_update_begin(&rx_stats->syncp);
+		rx_stats->rx_nr_frag_headroom_err++;
+		u64_stats_update_end(&rx_stats->syncp);
+		return false;
+	}
+
+	skb->protocol = eth_type_trans(skb, skb->dev);
+
+send_to_stack:
+
+	/*
+	 * TODO: Do a batched update of the stats per netdevice.
+	 */
+	u64_stats_update_begin(&rx_stats->syncp);
+	rx_stats->rx_pkts++;
+	rx_stats->rx_bytes += pkt_length;
+	rx_stats->rx_nr_frag_pkts += (uint64_t)page_mode;
+	u64_stats_update_end(&rx_stats->syncp);
+
+	edma_debug("edma_gbl_ctx:%px, skb:%px pkt_length:%u\n",
+			egc, skb, skb->len);
+
+	/*
+	 * Send packet upto network stack
+	 */
+	netif_receive_skb(skb);
+
+	return true;
 }
 
 /*
@@ -176,8 +448,8 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 		work_to_do = rxdesc_ring->work_leftover;
 	} else {
 		prod_idx =
-		edma_reg_read(EDMA_REG_RXDESC_PROD_IDX(rxdesc_ring->ring_id)) &
-				EDMA_RXDESC_PROD_IDX_MASK;
+			edma_reg_read(EDMA_REG_RXDESC_PROD_IDX(rxdesc_ring->ring_id)) &
+			EDMA_RXDESC_PROD_IDX_MASK;
 		work_to_do = EDMA_DESC_AVAIL_COUNT(prod_idx,
 				cons_idx, EDMA_RX_RING_SIZE);
 		rxdesc_ring->work_leftover = work_to_do;
@@ -212,11 +484,7 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 	while (likely(work_to_do--)) {
 		struct net_device *ndev;
 		struct sk_buff *skb;
-		struct nss_dp_dev *dp_dev;
-		struct edma_pcpu_stats *pcpu_stats;
-		struct edma_rx_stats *rx_stats;
 		uint32_t src_port_num;
-		uint32_t pkt_length;
 
 		/*
 		 * Get opaque from RXDESC
@@ -224,99 +492,88 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 		skb = (struct sk_buff *)EDMA_RXDESC_OPAQUE_GET(rxdesc_desc);
 
 		/*
-		 * Check src_info
+		 * Handle linear packets or initial segments first
 		 */
-		src_port_num = EDMA_RXDESC_SRC_INFO_GET(rxdesc_desc);
-		if (likely((src_port_num & EDMA_RXDESC_SRCINFO_TYPE_MASK) ==
-					EDMA_RXDESC_SRCINFO_TYPE_PORTID)) {
-			src_port_num &= EDMA_RXDESC_PORTNUM_BITS;
-		} else {
-			edma_warn("Src_info_type:0x%x. Drop skb:%px\n",
-			  (src_port_num & EDMA_RXDESC_SRCINFO_TYPE_MASK), skb);
-			dev_kfree_skb_any(skb);
-			goto next_rx_desc;
-		}
+		if (likely(!(rxdesc_ring->head))) {
+			/*
+			 * Check src_info
+			 */
+			src_port_num = EDMA_RXDESC_SRC_INFO_GET(rxdesc_desc);
+			if (likely((src_port_num & EDMA_RXDESC_SRCINFO_TYPE_MASK)
+					== EDMA_RXDESC_SRCINFO_TYPE_PORTID)) {
+				src_port_num &= EDMA_RXDESC_PORTNUM_BITS;
+			} else {
+				edma_warn("Src_info_type:0x%x. Drop skb:%px\n",
+						(src_port_num &
+						EDMA_RXDESC_SRCINFO_TYPE_MASK),
+						skb);
+				dev_kfree_skb_any(skb);
+				goto next_rx_desc;
+			}
 
-		if (unlikely((src_port_num < NSS_DP_START_IFNUM)  ||
-			(src_port_num > NSS_DP_HAL_MAX_PORTS))) {
-			edma_warn("Port number error :%d. Drop skb:%px\n",
-					src_port_num, skb);
-			dev_kfree_skb_any(skb);
-			goto next_rx_desc;
-		}
+			if (unlikely((src_port_num < NSS_DP_START_IFNUM) ||
+					(src_port_num > NSS_DP_HAL_MAX_PORTS))) {
+				edma_warn("Port number error :%d. \
+						Drop skb:%px\n",
+						src_port_num, skb);
+				dev_kfree_skb_any(skb);
+				goto next_rx_desc;
+			}
 
-		/*
-		 * Get netdev for this port using the source port
-		 * number as index into the netdev array. We need to
-		 * subtract one since the indices start form '0' and
-		 * port numbers start from '1'.
-		 */
-		ndev = egc->netdev_arr[src_port_num - 1];
-		if (unlikely(!ndev)) {
-			edma_warn("Netdev Null src_info_type:0x%x. \
-					Drop skb:%px\n", src_port_num, skb);
-			dev_kfree_skb_any(skb);
-			goto next_rx_desc;
-		}
+			/*
+			 * Get netdev for this port using the source port
+			 * number as index into the netdev array. We need to
+			 * subtract one since the indices start form '0' and
+			 * port numbers start from '1'.
+			 */
+			ndev = egc->netdev_arr[src_port_num - 1];
+			if (unlikely(!ndev)) {
+				edma_warn("Netdev Null src_info_type:0x%x. \
+						Drop skb:%px\n",
+						src_port_num, skb);
+				dev_kfree_skb_any(skb);
+				goto next_rx_desc;
+			}
 
-		/*
-		 * Get packet length
-		 */
-		pkt_length = EDMA_RXDESC_PACKET_LEN_GET(rxdesc_desc);
-
-		/*
-		 * Invalidate the buffer received from the HW
-		 */
-		dmac_inv_range((void *)skb->data,
-			(void *)(skb->data + pkt_length));
-
-		/*
-		 * Update skb fields and indicate packet to stack
-		 */
-		skb->skb_iif = ndev->ifindex;
-		skb_put(skb, pkt_length);
-		skb->protocol = eth_type_trans(skb, ndev);
-
-		/*
-		 * Check Rx checksum offload status.
-		 */
-		if (likely(ndev->features & NETIF_F_RXCSUM)) {
-			edma_rx_checksum_verify(rxdesc_desc, skb);
-		}
+			/*
+			 * Update skb fields for head skb
+			 */
+			skb->dev = ndev;
+			skb->skb_iif = ndev->ifindex;
 
 #ifdef CONFIG_NET_SWITCHDEV
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-		skb->offload_fwd_mark = ndev->offload_fwd_mark;
+			skb->offload_fwd_mark = ndev->offload_fwd_mark;
 #else
-		/*
-		 * TODO: Implement ndo_get_devlink_port()
-		 */
-		skb->offload_fwd_mark = 0;
+			/*
+			 * TODO: Implement ndo_get_devlink_port()
+			 */
+			skb->offload_fwd_mark = 0;
 #endif
-		edma_debug("skb:%px ring_idx:%u pktlen:%d proto:0x%x mark:%u\n",
-			   skb, cons_idx, pkt_length, skb->protocol,
-			   skb->offload_fwd_mark);
+			edma_debug("edma_gbl_ctx:%px skb:%px ring_idx:%u proto:0x%x mark:%u\n",
+					egc, skb, cons_idx, skb->protocol,
+					skb->offload_fwd_mark);
 #else
-		edma_debug("skb:%px ring_idx:%u pktlen:%d proto:0x%x\n",
-			   skb, cons_idx, pkt_length, skb->protocol);
+			edma_debug("edma_gbl_ctx:%px skb:%px ring_idx:%u proto:0x%x\n",
+					egc, skb, cons_idx,  skb->protocol);
 #endif
 
-		dp_dev = netdev_priv(ndev);
-		pcpu_stats = &dp_dev->dp_info.pcpu_stats;
-		rx_stats = this_cpu_ptr(pcpu_stats->rx_stats);
+			/*
+			 * Handle linear packets
+			 */
+			if (likely(!EDMA_RXDESC_MORE_BIT_GET(rxdesc_desc))) {
+				if (unlikely(!edma_rx_handle_linear_packets(egc, rxdesc_ring, rxdesc_desc, skb))) {
+					dev_kfree_skb_any(skb);
+				}
+
+				goto next_rx_desc;
+			}
+		}
 
 		/*
-		 * TODO: Do a batched update of the stats per netdevice.
+		 * Handle scatter frame processing for first/middle/last segments
 		 */
-		u64_stats_update_begin(&rx_stats->syncp);
-		rx_stats->rx_pkts++;
-		rx_stats->rx_bytes += pkt_length;
-		u64_stats_update_end(&rx_stats->syncp);
-
-		/*
-		 * Send packet upto network stack
-		 */
-		netif_receive_skb(skb);
+		edma_rx_handle_scatter_frames(egc, rxdesc_ring, rxdesc_desc, skb);
 
 next_rx_desc:
 		/*
@@ -337,11 +594,11 @@ next_rx_desc:
 		 */
 		if (unlikely(!(work_done & (EDMA_RX_MAX_PROCESS - 1)))) {
 			edma_reg_write(
-				EDMA_REG_RXDESC_CONS_IDX(rxdesc_ring->ring_id),
-				cons_idx);
+					EDMA_REG_RXDESC_CONS_IDX(rxdesc_ring->ring_id),
+					cons_idx);
 			rxdesc_ring->cons_idx = cons_idx;
 			edma_rx_alloc_buffer(rxdesc_ring->rxfill,
-				EDMA_RX_MAX_PROCESS);
+					EDMA_RX_MAX_PROCESS);
 		}
 	}
 
@@ -351,7 +608,7 @@ next_rx_desc:
 	 */
 	if (unlikely(work_leftover)) {
 		edma_reg_write(EDMA_REG_RXDESC_CONS_IDX(rxdesc_ring->ring_id),
-					cons_idx);
+				cons_idx);
 		rxdesc_ring->cons_idx = cons_idx;
 		edma_rx_alloc_buffer(rxdesc_ring->rxfill, work_leftover);
 	}

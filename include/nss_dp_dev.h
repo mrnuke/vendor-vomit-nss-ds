@@ -123,6 +123,9 @@ struct nss_dp_global_ctx {
 	bool common_init_done;		/* Flag to hold common init state */
 	uint8_t slowproto_acl_bm;	/* Port bitmap to allow slow protocol packets */
 	uint32_t rx_buf_size;		/* Buffer size to allocate */
+	uint32_t jumbo_mru;			/* Jumbo mru value for Rx processing */
+	bool overwrite_mode;		/* Overwrite mode for Rx processing */
+	bool page_mode;				/* Page mode for Rx processing */
 };
 
 /* Global data */

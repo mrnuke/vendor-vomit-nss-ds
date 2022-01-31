@@ -465,6 +465,15 @@ static int edma_of_get_pdata(struct resource *edma_res)
 			edma_gbl_ctx.num_rxfill_rings, edma_gbl_ctx.rxfill_ring_end);
 
 	/*
+	 * Get page_mode of RXFILL rings
+	 * TODO: Move this setting to DP common node
+	 */
+#if !defined(NSS_DP_MEM_PROFILE_LOW) && !defined(NSS_DP_MEM_PROFILE_MEDIUM)
+	of_property_read_u32(edma_gbl_ctx.device_node, "qcom,rx-page-mode",
+					&edma_gbl_ctx.rx_page_mode);
+#endif
+
+	/*
 	 * Get id of first RXDESC ring
 	 */
 	if (of_property_read_u32(edma_gbl_ctx.device_node, "qcom,rxdesc-ring-start",
@@ -788,6 +797,11 @@ static int edma_hw_init(struct edma_gbl_ctx *egc)
 		edma_err("Error in configuring service code: %d\n", ret);
 		return ret;
 	}
+
+	/*
+	 * Set EDMA global page mode and jumbo MRU
+	 */
+	edma_cfg_rx_page_mode_and_jumbo(egc);
 
 	ret = edma_alloc_rings(egc);
 	if (ret) {

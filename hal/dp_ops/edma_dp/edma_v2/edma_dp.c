@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -209,6 +211,9 @@ static void edma_dp_get_ndo_stats(struct nss_dp_data_plane_ctx *dpc,
 		stats->stats.rx_packets += rxp.rx_pkts;
 		stats->stats.rx_bytes += rxp.rx_bytes;
 		stats->stats.rx_dropped += rxp.rx_drops;
+		stats->stats.rx_nr_frag_packets += rxp.rx_nr_frag_pkts;
+		stats->stats.rx_fraglist_packets += rxp.rx_fraglist_pkts;
+		stats->stats.rx_nr_frag_headroom_err += rxp.rx_nr_frag_headroom_err;
 
 		pcpu_tx_stats = per_cpu_ptr(dp_info->pcpu_stats.tx_stats, i);
 

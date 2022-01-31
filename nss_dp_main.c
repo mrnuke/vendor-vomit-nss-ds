@@ -976,6 +976,20 @@ int __init nss_dp_init(void)
 	dp_global_ctx.rx_buf_size = NSS_DP_RX_BUFFER_SIZE;
 
 	/*
+	 * Get the module params.
+	 * We do not support page_mode or jumbo_mru on low memory profiles.
+	 */
+#if !defined(NSS_DP_MEM_PROFILE_LOW) && !defined(NSS_DP_MEM_PROFILE_MEDIUM)
+	dp_global_ctx.overwrite_mode = overwrite_mode;
+	dp_global_ctx.page_mode = page_mode;
+	dp_global_ctx.jumbo_mru = jumbo_mru;
+#else
+	if ((overwrite_mode && page_mode) || jumbo_mru) {
+		pr_err("Low memory profiles does not support page mode/jumbo mru\n");
+	}
+#endif
+
+	/*
 	 * Check platform compatibility and
 	 * set GMAC and data_plane ops.
 	 */

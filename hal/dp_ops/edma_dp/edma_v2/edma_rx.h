@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -56,6 +57,9 @@
 #define EDMA_RXDESC_PACKET_LEN_MASK		0x3FFFF
 #define EDMA_RXDESC_PACKET_LEN_GET(desc)	(((desc)->word5) & \
 						EDMA_RXDESC_PACKET_LEN_MASK)
+#define EDMA_RXDESC_MORE_BIT_MASK		0x40000000
+#define EDMA_RXDESC_MORE_BIT_GET(desc)		(((desc)->word1) & \
+						EDMA_RXDESC_MORE_BIT_MASK)
 #define EDMA_RXDESC_SRC_INFO_GET(desc)		(((desc)->word4) & 0xFFFF)
 #define EDMA_RXDESC_L3CSUM_STATUS_GET(desc)	(((desc)->word6) & \
 						EDMA_RXDESC_L3CSUM_STATUS_MASK)
@@ -83,6 +87,9 @@ struct edma_rx_stats {
 	uint64_t rx_pkts;
 	uint64_t rx_bytes;
 	uint64_t rx_drops;
+	uint64_t rx_nr_frag_pkts;
+	uint64_t rx_fraglist_pkts;
+	uint64_t rx_nr_frag_headroom_err;
 	struct u64_stats_sync syncp;
 };
 
@@ -134,6 +141,8 @@ struct edma_rxfill_ring {
 	uint32_t alloc_size;		/* Buffer size to allocate */
 	struct edma_rxfill_desc *desc;	/* descriptor ring virtual address */
 	dma_addr_t dma;			/* descriptor ring physical address */
+	uint32_t buf_len;		/* Buffer length for rxfill descriptor */
+	bool page_mode;			/* Page mode for Rx processing */
 };
 
 /*
@@ -154,6 +163,8 @@ struct edma_rxdesc_ring {
 	bool napi_added;		/* Flag to indicate NAPI add status */
 	dma_addr_t pdma;		/* Primary descriptor ring physical address */
 	dma_addr_t sdma;		/* Secondary descriptor ring physical address */
+	struct sk_buff *head;		/* Head of the skb list in case of scatter-gather frame */
+	struct sk_buff *last;		/* Last skb of the skb list in case of scatter-gather frame */
 };
 
 irqreturn_t edma_rx_handle_irq(int irq, void *ctx);

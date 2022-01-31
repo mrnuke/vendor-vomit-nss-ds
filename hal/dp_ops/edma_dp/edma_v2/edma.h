@@ -230,6 +230,10 @@ struct edma_gbl_ctx {
 			/* Misc interrupt interrupt mask */
 	uint32_t dp_override_cnt;
 			/* Number of interfaces overriden */
+	uint32_t rx_page_mode;
+			/* Page mode enabled or disabled */
+	uint32_t rx_jumbo_mru;
+			/* Jumbo MRU value */
 	bool edma_initialized;
 			/* Flag to check initialization status */
 };
