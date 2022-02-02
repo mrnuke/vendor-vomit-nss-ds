@@ -433,6 +433,14 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 		 */
 		rx_idx = rx_info->rx_idx;
 		rx_buf = &rx_info->rx_buf_pool[rx_idx];
+
+		/*
+		 * Re-Invalidate the buffer before read since
+		 * speculative prefetch by CPU may have occurred.
+		 */
+		frame_length = syn_dp_gmac_get_rx_desc_frame_length(status);
+		dmac_inv_range((void *)rx_buf->map_addr_virt,
+			(void *)(((uint8_t *)rx_buf->map_addr_virt) + frame_length));
 		prefetch((void *)rx_buf->map_addr_virt);
 
 		rx_next_idx = syn_dp_rx_inc_index(rx_idx, 1);
@@ -455,7 +463,6 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 			/*
 			 * We have a pkt to process get the frame length
 			 */
-			frame_length = syn_dp_gmac_get_rx_desc_frame_length(status);
 			if (likely(!rx_info->page_mode)) {
 				/*
 				 * Valid packet, collect stats
