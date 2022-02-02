@@ -79,6 +79,7 @@ static const struct syn_ethtool_stats syn_gstrings_stats[] = {
 	{"tx_dropped", SYN_STAT(tx_stats.tx_dropped)},
 	{"tx_ts_create_errors", SYN_STAT(tx_stats.tx_ts_create_errors)},
 	{"tx_desc_not_avail", SYN_STAT(tx_stats.tx_desc_not_avail)},
+	{"tx_pkts_requeued", SYN_STAT(tx_stats.tx_packets_requeued)},
 	{"tx_nr_frags_pkts", SYN_STAT(tx_stats.tx_nr_frags_pkts)},
 	{"tx_fraglist_pkts", SYN_STAT(tx_stats.tx_fraglist_pkts)},
 	{"pmt_interrupts", SYN_STAT(hw_errs[0])},

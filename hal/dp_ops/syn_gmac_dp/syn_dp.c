@@ -40,7 +40,7 @@ static int syn_dp_napi_poll_rx(struct napi_struct *napi, int budget)
 	/*
 	 * Schedule the rx napi again if refill is not completely done
 	 */
-	if(unlikely(pending_refill)) {
+	if (unlikely(pending_refill)) {
 		work_done = budget;
 	}
 
@@ -328,14 +328,34 @@ static netdev_tx_t syn_dp_if_xmit(struct nss_dp_data_plane_ctx *dpc, struct sk_b
 	struct net_device *netdev = dpc->dev;
 	struct nss_dp_dev *gmac_dev = (struct nss_dp_dev *)netdev_priv(netdev);
 	struct syn_dp_info_tx *tx_info = &gmac_dev->dp_info.syn_info.dp_info_tx;
+	uint16_t ret;
 
-	if (likely(!syn_dp_tx(tx_info, skb))) {
+	ret = syn_dp_tx(tx_info, skb);
+	if (likely(!ret)) {
 		return NETDEV_TX_OK;
 	}
 
-	dev_kfree_skb_any(skb);
-	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_dropped);
+	/*
+	 * Handle the scenario when descriptors are not enough.
+	 * Only one DMA channel is supported to assume queue 0.
+	 */
+	if (likely(ret == NETDEV_TX_BUSY)) {
+		/*
+		 * Stop the queue if the queue stop is not disabled and return
+		 * NETDEV_TX_BUSY. Packet will be requeued or dropped by the caller.
+		 * Queue will be re-enabled from Tx Complete.
+		 */
+		if (likely(!dp_global_ctx.tx_requeue_stop)) {
+			netdev_dbg(netdev, "Stopping tx queue due to lack of tx descriptors");
+			atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_packets_requeued);
+			netif_stop_queue(netdev);
+			return NETDEV_TX_BUSY;
+		}
+	}
 
+	netdev_dbg(netdev, "Drop packet due to no Tx descriptor or invalid pkt");
+	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_dropped);
+	dev_kfree_skb_any(skb);
 	return NETDEV_TX_OK;
 }
 

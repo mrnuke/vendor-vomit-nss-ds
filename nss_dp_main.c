@@ -64,6 +64,10 @@ int jumbo_mru;
 module_param(jumbo_mru, int, 0);
 MODULE_PARM_DESC(jumbo_mru, "jumbo mode");
 
+int tx_requeue_stop;
+module_param(tx_requeue_stop, int, 0);
+MODULE_PARM_DESC(tx_requeue_stop, "disable tx requeue function");
+
 int nss_dp_rx_napi_budget = NSS_DP_HAL_RX_NAPI_BUDGET;
 module_param(nss_dp_rx_napi_budget, int, S_IRUGO);
 MODULE_PARM_DESC(nss_dp_rx_napi_budget, "Rx NAPI budget");
@@ -625,6 +629,7 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 		return -EFAULT;
 	}
 #endif
+
 	return 0;
 }
 
@@ -995,6 +1000,10 @@ int __init nss_dp_init(void)
 	 * Get the module params.
 	 * We do not support page_mode or jumbo_mru on low memory profiles.
 	 */
+	dp_global_ctx.tx_requeue_stop = false;
+	if (tx_requeue_stop != 0) {
+		dp_global_ctx.tx_requeue_stop = true;
+	}
 #if !defined(NSS_DP_MEM_PROFILE_LOW) && !defined(NSS_DP_MEM_PROFILE_MEDIUM)
 	dp_global_ctx.overwrite_mode = overwrite_mode;
 	dp_global_ctx.page_mode = page_mode;

@@ -39,6 +39,7 @@
 #define SYN_DP_SKB_ALLOC_SIZE		(SYN_DP_MINI_JUMBO_FRAME_MTU + NET_IP_ALIGN)
 #define SYN_DP_SKB_HEADROOM		128
 #define SYN_DP_PAGE_MODE_SKB_SIZE	256	/* SKB head buffer size for page mode */
+#define SYN_DP_QUEUE_INDEX		0	/* Only one Tx DMA channel 0 enabled */
 
 /*
  * syn_dp_info

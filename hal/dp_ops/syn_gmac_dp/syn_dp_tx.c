@@ -100,6 +100,11 @@ static inline struct dma_desc_tx *syn_dp_tx_process_nr_frags(struct syn_dp_info_
 		const skb_frag_t *frag = &skb_shinfo(skb)->frags[i++];
 		void *frag_addr = skb_frag_address(frag);
 		length = skb_frag_size(frag);
+
+#ifdef SYN_DP_DEBUG
+		BUG_ON(!length);
+#endif
+
 		dma_addr = (dma_addr_t)virt_to_phys(frag_addr);
 
 		dmac_clean_range_no_dsb(frag_addr, frag_addr + length);
@@ -126,6 +131,7 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 
 #ifdef SYN_DP_DEBUG
 	BUG_ON(nr_frags > MAX_SKB_FRAGS);
+	BUG_ON(!length);
 #endif
 
 	/*
@@ -139,7 +145,7 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	if (unlikely((SYN_DP_TX_DESC_SIZE - atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt)) < desc_needed)) {
 		atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_desc_not_avail);
 		netdev_dbg(tx_info->netdev, "Not enough descriptors available %d", desc_needed);
-		return -1;
+		return NETDEV_TX_BUSY;
 	}
 
 	/*
@@ -225,6 +231,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	if (unlikely(nr_frags)) {
 #ifdef SYN_DP_DEBUG
 		BUG_ON(nr_frags > MAX_SKB_FRAGS);
+		BUG_ON(!length);
 #endif
 		desc_needed += nr_frags;
 	}
@@ -249,7 +256,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	if (unlikely((SYN_DP_TX_DESC_SIZE - atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt)) < desc_needed)) {
 		atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_desc_not_avail);
 		netdev_dbg(tx_info->netdev, "Not enough descriptors available %d", desc_needed);
-		return -1;
+		return NETDEV_TX_BUSY;
 	}
 
 	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
@@ -286,6 +293,11 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	 */
 	skb_walk_frags(skb, iter_skb) {
 		length = skb_headlen(iter_skb);
+
+#ifdef SYN_DP_DEBUG
+		BUG_ON(!length);
+#endif
+
 		dma_addr = (dma_addr_t)virt_to_phys(iter_skb->data);
 
 		dmac_clean_range_no_dsb((void *)iter_skb->data, (void *)(iter_skb->data + length));
@@ -411,6 +423,7 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	uint32_t count = 0;
 	uint32_t free_idx;
 	struct syn_dp_tx_buf *tx_buf;
+	struct netdev_queue *nq;
 
 	busy = desc_cnt = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
 
@@ -504,6 +517,15 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	atomic64_add(tx_packets, (atomic64_t *)&tx_info->tx_stats.tx_packets);
 	atomic64_add(total_len, (atomic64_t *)&tx_info->tx_stats.tx_bytes);
 
+	nq = netdev_get_tx_queue(tx_info->netdev, SYN_DP_QUEUE_INDEX);
+
+	/*
+	 * Wake up queue if stopped earlier due to lack of descriptors
+	 */
+	if (unlikely(netif_tx_queue_stopped(nq)) && netif_carrier_ok(tx_info->netdev)) {
+		netif_wake_queue(tx_info->netdev);
+	}
+
 	return budget - busy;
 }
 
@@ -562,7 +584,7 @@ int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	if (unlikely((SYN_DP_TX_DESC_SIZE - atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt)) < 1)) {
 		atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_desc_not_avail);
 		netdev_dbg(netdev, "Not enough descriptors available");
-		return -1;
+		return NETDEV_TX_BUSY;
 	}
 
 	dma_addr = (dma_addr_t)virt_to_phys(skb->data);

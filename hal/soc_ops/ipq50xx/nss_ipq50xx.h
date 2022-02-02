@@ -106,6 +106,7 @@ struct nss_dp_hal_gmac_stats_tx {
 	uint64_t tx_desc_not_avail;	/**< TX descriptor unavailable */
 	uint64_t tx_nr_frags_pkts;	/**< Number of Tx scatter packets with nr_frags */
 	uint64_t tx_fraglist_pkts;	/**< Number of Tx scatter packets with frag_list */
+	uint64_t tx_packets_requeued;	/**< Number of Tx packets requeued */
 };
 
 /**

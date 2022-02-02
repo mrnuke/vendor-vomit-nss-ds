@@ -145,6 +145,7 @@ struct nss_dp_global_ctx {
 	uint32_t jumbo_mru;			/* Jumbo mru value for Rx processing */
 	bool overwrite_mode;		/* Overwrite mode for Rx processing */
 	bool page_mode;				/* Page mode for Rx processing */
+	bool tx_requeue_stop;		/* Disable queue stop for Tx processing */
 };
 
 /* Global data */
