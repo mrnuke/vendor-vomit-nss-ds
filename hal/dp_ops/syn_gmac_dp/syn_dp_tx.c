@@ -47,7 +47,6 @@ static inline void syn_dp_tx_clear_buf_entry(struct syn_dp_info_tx *tx_info, uin
 {
 	tx_info->tx_buf_pool[tx_skb_index].len = 0;
 	tx_info->tx_buf_pool[tx_skb_index].skb = NULL;
-	tx_info->tx_buf_pool[tx_skb_index].desc_count = 0;
 	tx_info->tx_buf_pool[tx_skb_index].shinfo_addr_virt = 0;
 }
 
@@ -127,7 +126,7 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	struct dma_desc_tx *first_desc, *tx_desc;
 	unsigned int desc_needed = 0, total_len = 0;
 	unsigned int nr_frags = skb_shinfo(skb)->nr_frags;
-	uint32_t first_idx;
+	uint32_t last_idx;
 
 #ifdef SYN_DP_DEBUG
 	BUG_ON(nr_frags > MAX_SKB_FRAGS);
@@ -157,11 +156,6 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	total_len = length;
 
 	/*
-	 * Save the tx index of the first descriptor of the segment
-	 */
-	first_idx = tx_info->tx_idx;
-
-	/*
 	 * Fill the non paged data (skb->data) in the first descriptor.
 	 * We defer setting the desc_own_by_dma for first fragment until
 	 * all the descriptors for this frame are ready.
@@ -175,13 +169,18 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	tx_desc = syn_dp_tx_process_nr_frags(tx_info, skb, &total_len, nr_frags);
 
 	/*
-	 * Fill the buffer pool in the first segment of the fragment only
+	 * Save the tx index of the last descriptor of the segment
+	 */
+	last_idx = ((tx_info->tx_idx - 1) & SYN_DP_TX_DESC_MAX_INDEX);
+
+
+	/*
+	 * Fill the buffer pool in the last segment of the fragment only
 	 * instead of filling in all the descriptors for the fragments
 	 */
-	tx_info->tx_buf_pool[first_idx].desc_count = desc_needed;
-	tx_info->tx_buf_pool[first_idx].skb = skb;
-	tx_info->tx_buf_pool[first_idx].len = total_len;
-	tx_info->tx_buf_pool[first_idx].shinfo_addr_virt = (size_t)skb->end;
+	tx_info->tx_buf_pool[last_idx].skb = skb;
+	tx_info->tx_buf_pool[last_idx].len = total_len;
+	tx_info->tx_buf_pool[last_idx].shinfo_addr_virt = (size_t)skb->end;
 
 	/*
 	 * For the last fragment, Enable the interrupt and set LS bit
@@ -202,9 +201,7 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	 */
 	first_desc->status |= (DESC_OWN_BY_DMA | ((skb->ip_summed == CHECKSUM_PARTIAL) ? DESC_TX_CIS_TCP_PSEUDO_CS : 0));
 
-	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_packets);
 	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_nr_frags_pkts);
-	atomic64_add(total_len, (atomic64_t *)&tx_info->tx_stats.tx_bytes);
 	atomic_add(desc_needed, (atomic_t *)&tx_info->busy_tx_desc_cnt);
 	syn_resume_dma_tx(tx_info->mac_base);
 
@@ -223,7 +220,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	unsigned int length = skb_headlen(skb);
 	unsigned int desc_needed = 1, total_len = 0;
 	unsigned int nr_frags = skb_shinfo(skb)->nr_frags, fraglist_nr_frags = 0;
-	uint32_t first_idx;
+	uint32_t last_idx;
 
 	/*
 	 * When skb is fragmented, count the number of descriptors needed
@@ -267,11 +264,6 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + length));
 
 	total_len = length;
-
-	/*
-	 * Save the tx index of the first descriptor of the segment
-	 */
-	first_idx = tx_info->tx_idx;
 
 	/*
 	 * Fill the first skb of the frag list chain in the first descriptor
@@ -325,13 +317,18 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	}
 
 	/*
-	 * Fill the buffer pool in the first segment of the fragment only
+	 * Save the tx index of the last descriptor of the segment
+	 */
+	last_idx = ((tx_info->tx_idx - 1) & SYN_DP_TX_DESC_MAX_INDEX);
+
+
+	/*
+	 * Fill the buffer pool in the last segment of the fragment only
 	 * instead of filling in all the descriptors for the fragments
 	 */
-	tx_info->tx_buf_pool[first_idx].desc_count = desc_needed;
-	tx_info->tx_buf_pool[first_idx].skb = skb;
-	tx_info->tx_buf_pool[first_idx].len = total_len;
-	tx_info->tx_buf_pool[first_idx].shinfo_addr_virt = (size_t)skb->end;
+	tx_info->tx_buf_pool[last_idx].skb = skb;
+	tx_info->tx_buf_pool[last_idx].len = total_len;
+	tx_info->tx_buf_pool[last_idx].shinfo_addr_virt = (size_t)skb->end;
 
 	/*
 	 * For the last fragment, Enable the interrupt and set LS bit
@@ -352,9 +349,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
 	 */
 	first_desc->status |= (DESC_OWN_BY_DMA | ((skb->ip_summed == CHECKSUM_PARTIAL) ? DESC_TX_CIS_TCP_PSEUDO_CS : 0));
 
-	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_packets);
 	atomic64_inc((atomic64_t *)&tx_info->tx_stats.tx_fraglist_pkts);
-	atomic64_add(total_len, (atomic64_t *)&tx_info->tx_stats.tx_bytes);
 	atomic_add(desc_needed, (atomic_t *)&tx_info->busy_tx_desc_cnt);
 	syn_resume_dma_tx(tx_info->mac_base);
 
@@ -393,7 +388,6 @@ static inline void syn_dp_tx_set_desc(struct syn_dp_info_tx *tx_info,
 
 	tx_info->tx_buf_pool[tx_idx].skb = skb;
 	tx_info->tx_buf_pool[tx_idx].len = length;
-	tx_info->tx_buf_pool[tx_idx].desc_count = 1;
 	tx_info->tx_buf_pool[tx_idx].shinfo_addr_virt = (size_t)skb->end;
 
 	/*
@@ -413,19 +407,18 @@ static inline void syn_dp_tx_set_desc(struct syn_dp_info_tx *tx_info,
  */
 int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 {
-	int busy, desc_cnt;
+	int busy;
 	uint32_t status;
 	struct dma_desc_tx *desc = NULL;
 	struct sk_buff *skb;
 	uint32_t tx_skb_index, len;
 	uint32_t tx_packets = 0, total_len = 0;
-	uint32_t num_desc = 0;
 	uint32_t count = 0;
 	uint32_t free_idx;
 	struct syn_dp_tx_buf *tx_buf;
 	struct netdev_queue *nq;
 
-	busy = desc_cnt = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
+	busy = atomic_read((atomic_t *)&tx_info->busy_tx_desc_cnt);
 
 	if (unlikely(!busy)) {
 
@@ -437,11 +430,10 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 	}
 
 	if (likely(busy > budget)) {
-		busy = desc_cnt = budget;
+		busy = budget;
 	}
 
 	tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
-	prefetch((void *)tx_info->tx_buf_pool[tx_skb_index].shinfo_addr_virt);
 	do {
 		desc = syn_dp_tx_comp_desc_get(tx_info);
 		status = desc->status;
@@ -453,52 +445,44 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
 			break;
 		}
 
-		tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
-
-                /*
-		 * If fragments were transmitted in descriptor,
-		 * calculate the number of descriptors used by
-		 * the fragments in order to free it.
-		 */
-		tx_buf = &tx_info->tx_buf_pool[tx_skb_index];
-		num_desc = tx_buf->desc_count;
-
-		skb = tx_info->skb_free_list[count] = tx_buf->skb;
-		tx_info->shinfo_addr_virt[count++] = tx_buf->shinfo_addr_virt;
-		len = tx_buf->len;
-
-		syn_dp_tx_clear_buf_entry(tx_info, tx_skb_index);
 
 		if (likely(status & DESC_TX_LAST)) {
-			if (likely(!(status & DESC_TX_ERROR))) {
+			tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
+			tx_buf = &tx_info->tx_buf_pool[tx_skb_index];
+			skb = tx_info->skb_free_list[count] = tx_buf->skb;
+			len = tx_buf->len;
+
 #ifdef SYN_DP_DEBUG
-				BUG_ON(!skb);
+			BUG_ON(!skb);
 #endif
+
+			tx_info->shinfo_addr_virt[count++] = tx_buf->shinfo_addr_virt;
+			syn_dp_tx_clear_buf_entry(tx_info, tx_skb_index);
+
+			if (likely(!(status & DESC_TX_ERROR))) {
+
 				/*
 				 * No error, record tx pkts/bytes and collision.
 				 */
 				tx_packets++;
 				total_len += len;
-			} else {
-
-				/*
-				 * Some error happened, collect error statistics.
-				 */
-				syn_dp_tx_error_cnt(tx_info, status);
 			}
 		}
 
-		tx_info->tx_comp_idx = syn_dp_tx_inc_index(tx_info->tx_comp_idx, num_desc);
+		if (unlikely(status & DESC_TX_ERROR)) {
+			/*
+			 * Some error happened, collect error statistics.
+			 */
+			syn_dp_tx_error_cnt(tx_info, status);
+		}
+
+		tx_info->tx_comp_idx = syn_dp_tx_inc_index(tx_info->tx_comp_idx, 1);
 
 		/*
 		 * Busy is used to count the workdone with assigned budget.
-		 * desc_cnt is used to count the number of descriptors available for completion in given budget.
-		 * Note: In sg case the descriptors count may be greater than one for single skb.
 		 */
-		atomic_sub(num_desc, ( atomic_t *)&tx_info->busy_tx_desc_cnt);
-		desc_cnt -= num_desc;
-		--busy;
-	} while (likely(busy && desc_cnt));
+		atomic_dec((atomic_t *)&tx_info->busy_tx_desc_cnt);
+	} while (--busy);
 
 	/*
 	 * Prefetching the shinfo area before releasing to skb recycler gives benefit

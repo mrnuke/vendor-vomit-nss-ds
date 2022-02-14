@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -31,7 +31,6 @@ struct syn_dp_tx_buf {
 	uint32_t len;		/* Length of the buffer provided to descriptor */
 	size_t shinfo_addr_virt;	/* Buffer address to prefetch the shinfo
 						during Tx complete*/
-	uint32_t desc_count;	/* Number of descriptors used by the skb */
 };
 
 /*
