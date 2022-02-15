@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -62,8 +62,8 @@ int syn_dp_cfg_tx_setup_rings(struct syn_dp_info *dev_info);
 void syn_dp_cfg_tx_cleanup_rings(struct syn_dp_info *dev_info);
 
 int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget);
-void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info);
-void syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info);
+int syn_dp_rx_refill(struct syn_dp_info_rx *rx_info);
+int syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info);
 int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb);
 int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget);
 

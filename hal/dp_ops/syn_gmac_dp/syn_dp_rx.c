@@ -90,10 +90,9 @@ static inline void syn_dp_rx_inval_and_flush(struct syn_dp_info_rx *rx_info, uin
  * syn_dp_rx_refill_page_mode()
  *	Refill the RX descrptor for page mode
  */
-void syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info)
+int syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info)
 {
-	int empty_count = SYN_DP_RX_DESC_SIZE - atomic_read((atomic_t *)&rx_info->busy_rx_desc_cnt);
-
+	int refill_cnt, empty_count;
 	struct net_device *netdev = rx_info->netdev;
 	int i;
 	dma_addr_t dma_addr;
@@ -103,6 +102,7 @@ void syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info)
 	uint32_t start, end;
 	struct page *pg;
 	void *page_addr;
+	empty_count = refill_cnt =  SYN_DP_RX_DESC_SIZE - atomic_read((atomic_t *)&rx_info->busy_rx_desc_cnt);
 	start = rx_info->rx_refill_idx;
 	end = syn_dp_rx_inc_index(start, empty_count);
 
@@ -149,16 +149,16 @@ void syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info)
 
 	syn_dp_rx_inval_and_flush(rx_info, start, end);
 	syn_resume_dma_rx(rx_info->mac_base);
+	return refill_cnt - i;
 }
 
 /*
  * syn_dp_rx_refill()
  *	Refill the RX descrptor
  */
-void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
+int syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
 {
-	int empty_count = SYN_DP_RX_DESC_SIZE - atomic_read((atomic_t *)&rx_info->busy_rx_desc_cnt);
-
+	int refill_cnt, empty_count;
 	struct net_device *netdev = rx_info->netdev;
 	int i;
 	dma_addr_t dma_addr;
@@ -166,6 +166,7 @@ void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
 	struct sk_buff *skb;
 	uint32_t rx_refill_idx;
 	uint32_t start, end, inval_len;
+	empty_count = refill_cnt = SYN_DP_RX_DESC_SIZE - atomic_read((atomic_t *)&rx_info->busy_rx_desc_cnt);
 	start = rx_info->rx_refill_idx;
 	end = syn_dp_rx_inc_index(start, empty_count);
 	inval_len = rx_info->alloc_buf_len - SYN_DP_SKB_HEADROOM - NET_IP_ALIGN;
@@ -198,6 +199,7 @@ void syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
 
 	syn_dp_rx_inval_and_flush(rx_info, start, end);
 	syn_resume_dma_rx(rx_info->mac_base);
+	return refill_cnt - i;
 }
 
 /*
@@ -416,7 +418,7 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
 
 	do {
 		status = rx_desc->status;
-		if (syn_dp_gmac_is_rx_desc_owned_by_dma(status)) {
+		if (unlikely(syn_dp_gmac_is_rx_desc_owned_by_dma(status))) {
 
 			/*
 			 * Rx descriptor still hold by GMAC DMA, so we are done.
