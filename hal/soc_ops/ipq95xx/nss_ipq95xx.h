@@ -31,8 +31,8 @@
 /*
  * TX/RX NAPI budget
  */
-#define NSS_DP_HAL_RX_NAPI_BUDGET	32
-#define NSS_DP_HAL_TX_NAPI_BUDGET	64
+#define NSS_DP_HAL_RX_NAPI_BUDGET	128
+#define NSS_DP_HAL_TX_NAPI_BUDGET	128
 
 /**
  * nss_dp_hal_gmac_stats

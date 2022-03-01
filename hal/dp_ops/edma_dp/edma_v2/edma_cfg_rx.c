@@ -31,6 +31,7 @@
 #include "nss_dp_dev.h"
 
 uint32_t edma_cfg_rx_fc_enable = EDMA_RX_FC_ENABLE;
+uint32_t edma_cfg_rx_queue_tail_drop_enable = EDMA_RX_QUEUE_TAIL_DROP_ENABLE;
 
 /*
  * edma_cfg_rx_fill_ring_cleanup()
@@ -836,6 +837,8 @@ static int edma_cfg_rx_rings_setup(struct edma_gbl_ctx *egc)
 		}
 	}
 
+	edma_info("Rx descriptor count for Rx desc and Rx fill rings : %d\n", EDMA_RX_RING_SIZE);
+
 	return 0;
 
 rxdesc_mem_alloc_fail:
@@ -982,6 +985,35 @@ void edma_cfg_rx_rings(struct edma_gbl_ctx *egc)
 	for (i = 0; i < egc->num_rxdesc_rings; i++) {
 		edma_cfg_rx_desc_ring_configure(&egc->rxdesc_rings[i]);
 	}
+
+	if (edma_cfg_rx_fc_enable) {
+		/*
+		 * Validate flow control X-OFF and X-ON configurations
+		 */
+		if ((nss_dp_rx_fc_xoff < EDMA_RX_FC_XOFF_THRE_MIN) ||
+				(nss_dp_rx_fc_xoff > EDMA_RX_RING_SIZE)) {
+			edma_err("Incorrect Rx Xoff flow control value: %d. Setting\n"
+					" it to default value: %d", nss_dp_rx_fc_xoff,
+					NSS_DP_RX_FC_XOFF_DEF);
+			nss_dp_rx_fc_xoff = NSS_DP_RX_FC_XOFF_DEF;
+		}
+
+		if ((nss_dp_rx_fc_xon < EDMA_RX_FC_XON_THRE_MIN) ||
+				(nss_dp_rx_fc_xon > EDMA_RX_RING_SIZE) ||
+				(nss_dp_rx_fc_xon < nss_dp_rx_fc_xoff)) {
+			edma_err("Incorrect Rx Xon flow control value: %d. Setting\n"
+					" it to default value: %d", nss_dp_rx_fc_xon,
+					NSS_DP_RX_FC_XON_DEF);
+			nss_dp_rx_fc_xon = NSS_DP_RX_FC_XON_DEF;
+		}
+
+		/*
+		 * Configure Rx flow control configurations
+		 */
+		edma_cfg_rx_desc_ring_flow_control(nss_dp_rx_fc_xoff, nss_dp_rx_fc_xon);
+		edma_cfg_rx_fill_ring_flow_control(nss_dp_rx_fc_xoff, nss_dp_rx_fc_xon);
+		edma_cfg_rx_desc_ring_to_queue_mapping(edma_cfg_rx_fc_enable);
+	}
 }
 
 /*
@@ -1069,6 +1101,7 @@ void edma_cfg_rx_napi_add(struct edma_gbl_ctx *egc, struct net_device *netdev)
 				edma_rx_napi_poll, nss_dp_rx_napi_budget);
 		rxdesc_ring->napi_added = true;
 	}
+	edma_info("%s: Rx NAPI budget: %d\n", netdev->name, nss_dp_rx_napi_budget);
 }
 
 /*
@@ -1118,7 +1151,39 @@ int edma_cfg_rx_fc_enable_handler(struct ctl_table *table, int write,
 		edma_cfg_rx_desc_ring_flow_control(nss_dp_rx_fc_xoff, nss_dp_rx_fc_xon);
 		edma_cfg_rx_fill_ring_flow_control(nss_dp_rx_fc_xoff, nss_dp_rx_fc_xon);
 		edma_cfg_rx_desc_ring_to_queue_mapping(edma_cfg_rx_fc_enable);
+	} else {
+		/*
+		 * De-configure Rx flow control configurations:
+		 *
+		 * 1. Reset  the Rx descriptor and Rx fill rings flow control
+		 * configurations with original X-OFF and X-ON threshold values.
+		 * 2. Reset the backpressure configuration by un-mapping the Rx
+		 * descriptor rings with any mapped PPE queues
+		 */
+		edma_cfg_rx_desc_ring_flow_control(0, 0);
+		edma_cfg_rx_fill_ring_flow_control(0, 0);
+		edma_cfg_rx_desc_ring_to_queue_mapping(edma_cfg_rx_fc_enable);
+	}
 
+	return ret;
+}
+
+/*
+ * edma_cfg_rx_queue_tail_drop_handler()
+ *	API to enable/disable queue tail drop configuration
+ */
+int edma_cfg_rx_queue_tail_drop_handler(struct ctl_table *table, int write,
+		void __user *buffer, size_t *lenp, loff_t *ppos)
+{
+	int ret;
+
+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
+
+	if (!write) {
+		return ret;
+	}
+
+	if (edma_cfg_rx_queue_tail_drop_enable) {
 		/*
 		 * Validate queue's AC FC threshold configuration value
 		 */
@@ -1135,20 +1200,8 @@ int edma_cfg_rx_fc_enable_handler(struct ctl_table *table, int write,
 		 * AC FC threshold for mapped PPE queues of the Rx descriptor rings
 		 */
 		edma_cfg_rx_mapped_queue_ac_fc_configure(nss_dp_rx_ac_fc_threshold,
-					edma_cfg_rx_fc_enable);
+					edma_cfg_rx_queue_tail_drop_enable);
 	} else {
-		/*
-		 * De-configure Rx flow control configurations:
-		 *
-		 * 1. Reset  the Rx descriptor and Rx fill rings flow control
-		 * configurations with original X-OFF and X-ON threshold values.
-		 * 2. Reset the backpressure configuration by un-mapping the Rx
-		 * descriptor rings with any mapped PPE queues
-		 */
-		edma_cfg_rx_desc_ring_flow_control(0, 0);
-		edma_cfg_rx_fill_ring_flow_control(0, 0);
-		edma_cfg_rx_desc_ring_to_queue_mapping(edma_cfg_rx_fc_enable);
-
 		/*
 		 * De-configure mapped queues queue tail drop configurations:
 		 *
@@ -1156,7 +1209,7 @@ int edma_cfg_rx_fc_enable_handler(struct ctl_table *table, int write,
 		 * mapped queues AC FC configurataion.
 		 */
 		edma_cfg_rx_mapped_queue_ac_fc_configure(EDMA_RX_AC_FC_THRE_ORIG,
-					edma_cfg_rx_fc_enable);
+					edma_cfg_rx_queue_tail_drop_enable);
 	}
 
 	return ret;

@@ -23,7 +23,8 @@
 #define EDMA_RX_NAPI_WORK_MAX		512
 #define EDMA_RX_PAGE_MODE_SKB_SIZE	256	/* SKB payload size used in page mode */
 #define EDMA_RX_DEFAULT_QUEUE_PRI	0
-#define EDMA_RX_FC_ENABLE		0	/* RX flow control default state */
+#define EDMA_RX_FC_ENABLE		1	/* RX flow control default state */
+#define EDMA_RX_QUEUE_TAIL_DROP_ENABLE	0	/* RX queue tail drop configuration default state */
 #define EDMA_RX_FC_XOFF_THRE_MIN	0	/* Rx flow control minimum X-OFF value */
 #define EDMA_RX_FC_XON_THRE_MIN		0	/* Rx flow control mininum X-ON value */
 #define EDMA_RX_AC_FC_THRE_ORIG		0x190	/* Rx AC flow control original threshold */
@@ -37,6 +38,7 @@
 #define EDMA_RX_MITIGATION_PKT_CNT_MAX	256	/* Rx mitigation packet count's maximum value */
 
 extern uint32_t edma_cfg_rx_fc_enable;
+extern uint32_t edma_cfg_rx_queue_tail_drop_enable;
 
 void edma_cfg_rx_rings(struct edma_gbl_ctx *egc);
 int32_t edma_cfg_rx_rings_alloc(struct edma_gbl_ctx *egc);
@@ -51,4 +53,6 @@ void edma_cfg_rx_rings_disable(struct edma_gbl_ctx *egc);
 int edma_cfg_rx_fc_enable_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp, loff_t *ppos);
 void edma_cfg_rx_page_mode_and_jumbo(struct edma_gbl_ctx *egc);
+int edma_cfg_rx_queue_tail_drop_handler(struct ctl_table *table, int write,
+		void __user *buffer, size_t *lenp, loff_t *ppos);
 #endif	/* __EDMA_CFG_RX_H__ */

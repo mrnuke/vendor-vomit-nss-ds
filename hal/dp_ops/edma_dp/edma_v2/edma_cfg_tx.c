@@ -481,6 +481,7 @@ static int edma_cfg_tx_rings_setup(struct edma_gbl_ctx *egc)
 		}
 	}
 
+	edma_info("Tx descriptor count for Tx desc and Tx complete rings: %d\n", EDMA_TX_RING_SIZE);
 	edma_cfg_tx_cmpl_mapping_fill(egc);
 
 	return 0;
@@ -675,4 +676,5 @@ void edma_cfg_tx_napi_add(struct edma_gbl_ctx *egc, struct net_device *netdev)
 				edma_tx_napi_poll, nss_dp_tx_napi_budget);
 		txcmpl_ring->napi_added = true;
 	}
+	edma_info("Tx NAPI budget: %d\n", nss_dp_tx_napi_budget);
 }

@@ -1070,6 +1070,13 @@ static struct ctl_table edma_rx_flow_control_table[] = {
 		.mode		=	0644,
 		.proc_handler	=	edma_cfg_rx_fc_enable_handler
 	},
+	{
+		.procname	=	"rx_queue_tail_drop_enable",
+		.data		=	&edma_cfg_rx_queue_tail_drop_enable,
+		.maxlen		=	sizeof(int),
+		.mode		=	0644,
+		.proc_handler	=	edma_cfg_rx_queue_tail_drop_handler
+	},
 	{}
 };
 

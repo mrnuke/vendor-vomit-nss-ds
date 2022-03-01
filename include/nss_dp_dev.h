@@ -50,8 +50,8 @@
  * Similarly, whenever the free Rx ring descriptor count crosses the X-ON value,
  * the ring level flow control will be disabled.
  */
-#define NSS_DP_RX_FC_XOFF_DEF		16
-#define NSS_DP_RX_FC_XON_DEF		32
+#define NSS_DP_RX_FC_XOFF_DEF		32
+#define NSS_DP_RX_FC_XON_DEF		64
 
 /*
  * Rx ring's mapped AC FC threshold value.
