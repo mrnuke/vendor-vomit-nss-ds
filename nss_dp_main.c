@@ -532,7 +532,11 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 	.ndo_set_mac_address = nss_dp_set_mac_address,
 	.ndo_validate_addr = eth_validate_addr,
 	.ndo_change_mtu = nss_dp_change_mtu,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
 	.ndo_do_ioctl = nss_dp_do_ioctl,
+#else
+	.ndo_eth_ioctl = nss_dp_do_ioctl,
+#endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
 	.ndo_bridge_setlink = switchdev_port_bridge_setlink,
