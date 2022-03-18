@@ -24,6 +24,9 @@
 #include <linux/platform_device.h>
 #include <linux/phy.h>
 #include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
+#include <net/switchdev.h>
+#endif
 
 #include "nss_dp_api_if.h"
 #include "nss_dp_hal_if.h"
@@ -126,7 +129,11 @@ struct nss_dp_dev {
 	/* switchdev related attributes */
 #ifdef CONFIG_NET_SWITCHDEV
 	u8 stp_state;			/* STP state of this physical port */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0))
 	unsigned long brport_flags;	/* bridge port flags */
+#else
+	struct switchdev_brport_flags brport_flags;	/* bridge port flags */
+#endif
 #endif
 	uint32_t rx_page_mode;		/* page mode for Rx processing */
 	uint32_t rx_jumbo_mru;		/* Jumbo mru value for Rx processing */

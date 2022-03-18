@@ -296,7 +296,7 @@ static int nss_dp_port_attr_set(struct net_device *dev,
 	switch (attr->id) {
 	case SWITCHDEV_ATTR_ID_PORT_BRIDGE_FLAGS:
 		dp_priv->brport_flags = attr->u.brport_flags;
-		netdev_dbg(dev, "set brport_flags %lu\n", attr->u.brport_flags);
+		netdev_dbg(dev, "set brport_flags %lu\n", attr->u.brport_flags.val);
 		return 0;
 	case SWITCHDEV_ATTR_ID_PORT_STP_STATE:
 		return nss_dp_stp_state_set(dp_priv, attr->u.stp_state);
