@@ -24,6 +24,8 @@
 #include "nss_dp_dev.h"
 #include "fal/fal_stp.h"
 #include "fal/fal_ctrlpkt.h"
+#include "fal/fal_fdb.h"
+#include "ref/ref_vsi.h"
 
 #define NSS_DP_SWITCH_ID		0
 #define NSS_DP_SW_ETHTYPE_PID		0 /* PPE ethtype profile ID for slow protocols */
@@ -348,8 +350,62 @@ static int nss_dp_switchdev_event(struct notifier_block *unused,
 	return NOTIFY_DONE;
 }
 
+static int nss_dp_switchdev_fdb_del_event(struct net_device *netdev,
+					  struct switchdev_notifier_fdb_info *fdb_info)
+{
+	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
+	fal_fdb_entry_t entry;
+	a_uint32_t vsi_id;
+	sw_error_t rv;
+
+	netdev_dbg(netdev, "FDB DEL %pM port %d\n", fdb_info->addr, dp_priv->macid);
+
+	rv = ppe_port_vsi_get(NSS_DP_SWITCH_ID, dp_priv->macid, &vsi_id);
+	if (rv) {
+		netdev_err(netdev, "cannot get VSI ID for port %d\n", dp_priv->macid);
+		return notifier_from_errno(rv);
+	}
+
+	memset(&entry, 0, sizeof(entry));
+	memcpy(&entry.addr, fdb_info->addr, ETH_ALEN);
+	entry.fid = vsi_id;
+
+	rv = fal_fdb_entry_del_bymac(NSS_DP_SWITCH_ID, &entry);
+	if (rv) {
+		netdev_err(netdev, "FDB entry delete failed with MAC %pM and fid %d\n",
+			   &entry.addr, entry.fid);
+		return notifier_from_errno(rv);
+	}
+
+	return notifier_from_errno(rv);
+}
+
+static int nss_dp_fdb_switchdev_event(struct notifier_block *nb,
+				      unsigned long event, void *ptr)
+{
+	struct net_device *dev = switchdev_notifier_info_to_dev(ptr);
+
+	/*
+	 * Handle switchdev event only for physical devices
+	 */
+	if (!nss_dp_is_phy_dev(dev)) {
+		return NOTIFY_DONE;
+	}
+
+	switch (event) {
+	case SWITCHDEV_FDB_DEL_TO_DEVICE:
+		return nss_dp_switchdev_fdb_del_event(dev, ptr);
+	}
+
+	return NOTIFY_DONE;
+}
+
 static struct notifier_block nss_dp_switchdev_notifier = {
 	.notifier_call = nss_dp_switchdev_event,
+};
+
+static struct notifier_block nss_dp_switchdev_fdb_notifier = {
+	.notifier_call = nss_dp_fdb_switchdev_event,
 };
 
 static bool switch_init_done;
@@ -364,6 +420,11 @@ void nss_dp_switchdev_setup(struct net_device *dev)
 
 	if (switch_init_done) {
 		return;
+	}
+
+	err = register_switchdev_notifier(&nss_dp_switchdev_fdb_notifier);
+	if (err) {
+		netdev_dbg(dev, "%px:Failed to register switchdev FDB notifier\n", dev);
 	}
 
 	err = register_switchdev_blocking_notifier(&nss_dp_switchdev_notifier);
