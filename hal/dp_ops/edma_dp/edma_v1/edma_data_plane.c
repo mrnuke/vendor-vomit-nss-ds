@@ -822,8 +822,8 @@ static int edma_register_netdevice(struct net_device *netdev, uint32_t macid)
 		return -EINVAL;
 	}
 
-	netdev_info(netdev, "nss_dp_edma: Registering netdev %s(qcom-id:%d) with EDMA\n",
-		netdev->name, macid);
+	netdev_dbg(netdev, "nss_dp_edma: Registering netdev %s(qcom-id:%d) with EDMA\n",
+		   netdev->name, macid);
 
 	/*
 	 * We expect 'macid' to correspond to ports numbers on

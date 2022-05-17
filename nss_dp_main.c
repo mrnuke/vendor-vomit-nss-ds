@@ -875,6 +875,9 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		goto phy_setup_fail;
 	}
 
+	netdev_info(netdev, "Registered netdev %s(qcom-id:%d)\n",
+		    netdev->name, port_id);
+
 	dp_global_ctx.nss_dp[dp_priv->macid - 1] = dp_priv;
 	dp_global_ctx.slowproto_acl_bm = 0;
 
