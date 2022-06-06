@@ -552,6 +552,25 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 #endif
 };
 
+static int get_phy_legacy(struct nss_dp_dev *dp, struct device_node *np)
+{
+	int ret;
+
+	dp->link_poll = of_property_read_bool(np, "qcom,link-poll");
+	of_property_read_u32(np, "qcom,forced-speed", &dp->forced_speed);
+	of_property_read_u32(np, "qcom,forced-duplex", &dp->forced_duplex);
+
+	ret = of_property_read_u32(np, "qcom,phy-mdio-addr", &dp->phy_mdio_addr);
+	if (ret && dp->link_poll) {
+		pr_err("%s: mdio addr required if link polling is enabled\n",
+		       np->name);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+
 /*
  * nss_dp_of_get_pdata()
  */
@@ -576,6 +595,10 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 		return -EFAULT;
 	}
 
+	dp_priv->phy_node = of_parse_phandle(np, "phy-handle", 0);
+	if (dp_priv->phy_node)
+		dp_priv->link_poll = 1;
+
 	if (of_property_read_u32(np, "qcom,mactype", &hal_pdata->mactype)) {
 		pr_err("%s: error reading mactype\n", np->name);
 		return -EFAULT;
@@ -583,6 +606,14 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 
 	if (of_address_to_resource(np, 0, &memres_devtree) != 0)
 		return -EFAULT;
+
+	if (!dp_priv->phy_node) {
+		pr_err("%s: No phy-handle. Trying 'qcom,' properties\n",
+		       np->name);
+		ret = get_phy_legacy(dp_priv, np);
+		if (ret)
+			return ret;
+	}
 
 	netdev->base_addr = memres_devtree.start;
 	hal_pdata->reg_len = resource_size(&memres_devtree);
@@ -594,16 +625,6 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 #else
 	of_get_phy_mode(np, &dp_priv->phy_mii_type);
 #endif
-	dp_priv->link_poll = of_property_read_bool(np, "qcom,link-poll");
-	if (of_property_read_u32(np, "qcom,phy-mdio-addr",
-		&dp_priv->phy_mdio_addr) && dp_priv->link_poll) {
-		pr_err("%s: mdio addr required if link polling is enabled\n",
-				np->name);
-		return -EFAULT;
-	}
-
-	of_property_read_u32(np, "qcom,forced-speed", &dp_priv->forced_speed);
-	of_property_read_u32(np, "qcom,forced-duplex", &dp_priv->forced_duplex);
 
 	ret = of_get_mac_address(np, maddr);
 	if (!ret && is_valid_ether_addr(maddr)) {
@@ -813,7 +834,19 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 
 	dp_priv->drv_flags |= NSS_DP_PRIV_FLAG(INIT_DONE);
 
-	if (dp_priv->link_poll) {
+	if (dp_priv->phy_node) {
+		SET_NETDEV_DEV(netdev, &pdev->dev);
+		dp_priv->phydev = of_phy_connect(netdev, dp_priv->phy_node,
+						 &nss_dp_adjust_link, 0,
+						 dp_priv->phy_mii_type);
+		if (IS_ERR(dp_priv->phydev)) {
+			pr_err("Could not attach to PHY\n");
+			goto phy_setup_fail;
+		}
+
+		phy_attached_info(dp_priv->phydev);
+	} else if (dp_priv->link_poll) {
+		pr_warn("Using deprecated phy-mdio-addr property\n");
 		dp_priv->miibus = nss_dp_mdio_attach(pdev);
 		if (!dp_priv->miibus) {
 			netdev_dbg(netdev, "failed to find miibus\n");
