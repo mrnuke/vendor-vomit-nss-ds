@@ -2,6 +2,28 @@
 # Makefile for the NSS data plane driver
 ###################################################
 
+KDIR:=/home/mrnuke/src/openwrt-wax218/build_dir/target-aarch64_cortex-a53_musl/linux-ipq807x_generic/linux-5.15.40/
+CC:=/home/mrnuke/src/openwrt-wax218/staging_dir/toolchain-aarch64_cortex-a53_gcc-11.2.0_musl/bin/aarch64-openwrt-linux-musl-gcc
+CPP=/home/mrnuke/src/openwrt-wax218/staging_dir/toolchain-aarch64_cortex-a53_gcc-11.2.0_musl/bin/aarch64-openwrt-linux-musl-gcc
+LD:=/home/mrnuke/src/openwrt-wax218/staging_dir/toolchain-aarch64_cortex-a53_gcc-11.2.0_musl/bin/aarch64-openwrt-linux-musl-ld
+STAGING_DIR:= /home/mrnuke/src/openwrt-wax218/staging_dir/
+SoC:=ipq807x
+KBUILD_EXTRA_SYMBOLS:=/home/mrnuke/src/openwrt-wax218/build_dir/target-aarch64_cortex-a53_musl/linux-ipq807x_generic/symvers/qca-ssdk.symvers
+
+ccflags-y+=-I/home/mrnuke/src/qca-nss-dp/qca-ssdk/include
+ccflags-y+=-I/home/mrnuke/src/qca-nss-dp/qca-ssdk/include/common
+ccflags-y+=-I/home/mrnuke/src/qca-nss-dp/qca-ssdk/include/sal/os
+ccflags-y+=-I/home/mrnuke/src/qca-nss-dp/qca-ssdk/include/sal/os/linux
+
+all:
+	ARCH=arm64 make -C $(KDIR) M=$(PWD) modules
+
+clean:
+	make -C $(KDIR) M=$(PWD) clean
+
+install:
+	scp -O qca-nss-dp.ko root@192.168.1.156:/tmp
+
 obj ?= .
 
 obj-m += qca-nss-dp.o
