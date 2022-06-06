@@ -218,7 +218,7 @@ next_txcmpl_desc:
  * nss_phy_tstamp_rx_buf()
  *	Receive timestamp packet
  */
-void nss_phy_tstamp_rx_buf(__attribute__((unused))void *app_data, struct sk_buff *skb)
+static void nss_phy_tstamp_rx_buf(struct sk_buff *skb)
 {
 	struct net_device *ndev = skb->dev;
 
@@ -240,13 +240,12 @@ void nss_phy_tstamp_rx_buf(__attribute__((unused))void *app_data, struct sk_buff
 
 	netif_receive_skb(skb);
 }
-EXPORT_SYMBOL(nss_phy_tstamp_rx_buf);
 
 /*
  * nss_phy_tstamp_tx_buf()
  *	Transmit timestamp packet
  */
-void nss_phy_tstamp_tx_buf(struct net_device *ndev, struct sk_buff *skb)
+static void nss_phy_tstamp_tx_buf(struct net_device *ndev, struct sk_buff *skb)
 {
 	/*
 	 * Function drv->txtstamp will create a clone of skb if necessary,
@@ -263,7 +262,6 @@ void nss_phy_tstamp_tx_buf(struct net_device *ndev, struct sk_buff *skb)
 		phy_rxtstamp(ndev->phydev, skb, 0);
 #endif
 }
-EXPORT_SYMBOL(nss_phy_tstamp_tx_buf);
 
 /*
  * edma_clean_rx()
@@ -409,7 +407,7 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 		 */
 		if (unlikely(EDMA_RXPH_SERVICE_CODE_GET(rxph) ==
 					NSS_PTP_EVENT_SERVICE_CODE))
-			nss_phy_tstamp_rx_buf(ndev, skb);
+			nss_phy_tstamp_rx_buf(skb);
 		else
 			netif_receive_skb(skb);
 

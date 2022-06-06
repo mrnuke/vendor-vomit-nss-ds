@@ -98,31 +98,6 @@ struct nss_dp_data_plane_ops {
 };
 
 /**
- * nss_phy_tstamp_rx_buf
- *	Receive timestamp packet.
- *
- * @datatypes
- * sk_buff
- *
- * @param[in] app_data Pointer to the application context of the message.
- * @param[in] skb Pointer to the packet.
- */
-void nss_phy_tstamp_rx_buf(void *app_data, struct sk_buff *skb);
-
-/**
- * nss_phy_tstamp_tx_buf
- *	Transmit timestamp packet
- *
- * @datatypes
- * net_device
- * sk_buff
- *
- * @param[in] net_device Pointer to netdev structure.
- * @param[in] skb Pointer to the packet.
- */
-void nss_phy_tstamp_tx_buf(struct net_device *ndev, struct sk_buff *skb);
-
-/**
  *@}
  */
 
