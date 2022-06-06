@@ -69,38 +69,6 @@ static void nss_dp_get_strings(struct net_device *netdev, uint32_t stringset,
 					  data);
 }
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-/*
- * nss_dp_get_settings()
- */
-static int32_t nss_dp_get_settings(struct net_device *netdev,
-				   struct ethtool_cmd *cmd)
-{
-	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-
-	/*
-	 * If there is a PHY attached, get the status from Kernel helper
-	 */
-	if (dp_priv->phydev)
-		return phy_ethtool_gset(dp_priv->phydev, cmd);
-
-	return -EIO;
-}
-
-/*
- * nss_dp_set_settings()
- */
-static int32_t nss_dp_set_settings(struct net_device *netdev,
-				  struct ethtool_cmd *cmd)
-{
-	struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-
-	if (!dp_priv->phydev)
-		return -EIO;
-
-	return phy_ethtool_sset(dp_priv->phydev, cmd);
-}
-#endif
 
 /*
  * nss_dp_get_pauseparam()
@@ -118,39 +86,6 @@ static void nss_dp_get_pauseparam(struct net_device *netdev,
 /*
  * nss_dp_set_pauseparam()
  */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-static int32_t nss_dp_set_pauseparam(struct net_device *netdev,
-				     struct ethtool_pauseparam *pause)
-{
-         struct nss_dp_dev *dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-
-         /* set flow control settings */
-         dp_priv->pause = 0;
-         if (pause->rx_pause)
-                 dp_priv->pause |= FLOW_CTRL_RX;
-
-         if (pause->tx_pause)
-                 dp_priv->pause |= FLOW_CTRL_TX;
-
-         if (!dp_priv->phydev)
-                 return 0;
-
-         /* Update flow control advertisment */
-         dp_priv->phydev->advertising &=
-                                 ~(ADVERTISED_Pause | ADVERTISED_Asym_Pause);
-
-         if (pause->rx_pause)
-                 dp_priv->phydev->advertising |=
-                                 (ADVERTISED_Pause | ADVERTISED_Asym_Pause);
-
-         if (pause->tx_pause)
-                 dp_priv->phydev->advertising |= ADVERTISED_Asym_Pause;
-
-         genphy_config_aneg(dp_priv->phydev);
-
-         return 0;
-}
-#else
 static int32_t nss_dp_set_pauseparam(struct net_device *netdev,
 				     struct ethtool_pauseparam *pause)
 {
@@ -187,7 +122,6 @@ static int32_t nss_dp_set_pauseparam(struct net_device *netdev,
 
 	return 0;
 }
-#endif
 
 /*
  * nss_dp_fal_to_ethtool_linkmode_xlate()
@@ -368,13 +302,8 @@ static const struct ethtool_ops nss_dp_ethtool_ops = {
 	.get_sset_count = &nss_dp_get_strset_count,
 	.get_ethtool_stats = &nss_dp_get_ethtool_stats,
 	.get_link = &ethtool_op_get_link,
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-	.get_settings = &nss_dp_get_settings,
-	.set_settings = &nss_dp_set_settings,
-#else
 	.get_link_ksettings = phy_ethtool_get_link_ksettings,
 	.set_link_ksettings = phy_ethtool_set_link_ksettings,
-#endif
 	.get_pauseparam = &nss_dp_get_pauseparam,
 	.set_pauseparam = &nss_dp_set_pauseparam,
 	.get_eee = &nss_dp_get_eee,

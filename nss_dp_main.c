@@ -215,24 +215,6 @@ static int32_t nss_dp_set_mac_address(struct net_device *netdev, void *macaddr)
 /*
  * nss_dp_get_stats64()
  */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-static struct rtnl_link_stats64 *nss_dp_get_stats64(struct net_device *netdev,
-					     struct rtnl_link_stats64 *stats)
-{
-	struct nss_dp_dev *dp_priv;
-
-	if (!netdev)
-		return stats;
-
-	dp_priv = (struct nss_dp_dev *)netdev_priv(netdev);
-
-	/*
-	 * Get the GMAC MIB statistics
-	 */
-	dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
-	return stats;
-}
-#else
 static void nss_dp_get_stats64(struct net_device *netdev,
 					     struct rtnl_link_stats64 *stats)
 {
@@ -248,7 +230,6 @@ static void nss_dp_get_stats64(struct net_device *netdev,
 	 */
 	dp_priv->gmac_hal_ops->getndostats(dp_priv->gmac_hal_ctx, stats);
 }
-#endif
 
 /*
  * nss_dp_xmit()
@@ -503,13 +484,8 @@ static int nss_dp_rx_flow_steer(struct net_device *netdev, const struct sk_buff 
  * nss_dp_select_queue()
  *	Select tx queue
  */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-static u16 __attribute__((unused)) nss_dp_select_queue(struct net_device *netdev, struct sk_buff *skb,
-				void *accel_priv, select_queue_fallback_t fallback)
-#else
 static u16 __attribute__((unused)) nss_dp_select_queue(struct net_device *netdev, struct sk_buff *skb,
 				struct net_device *sb_dev)
-#endif
 {
 	int cpu = get_cpu();
 	put_cpu();
@@ -532,17 +508,8 @@ static const struct net_device_ops nss_dp_netdev_ops = {
 	.ndo_set_mac_address = nss_dp_set_mac_address,
 	.ndo_validate_addr = eth_validate_addr,
 	.ndo_change_mtu = nss_dp_change_mtu,
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
-	.ndo_do_ioctl = nss_dp_do_ioctl,
-#else
 	.ndo_eth_ioctl = nss_dp_do_ioctl,
-#endif
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-	.ndo_bridge_setlink = switchdev_port_bridge_setlink,
-	.ndo_bridge_getlink = switchdev_port_bridge_getlink,
-	.ndo_bridge_dellink = switchdev_port_bridge_dellink,
-#endif
 #ifndef NSS_DP_IPQ50XX
 	.ndo_select_queue = nss_dp_select_queue,
 #endif
@@ -620,11 +587,7 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
 	hal_pdata->netdev = netdev;
 	hal_pdata->macid = dp_priv->macid;
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0))
-	dp_priv->phy_mii_type = of_get_phy_mode(np);
-#else
 	of_get_phy_mode(np, &dp_priv->phy_mii_type);
-#endif
 
 	ret = of_get_mac_address(np, maddr);
 	if (!ret && is_valid_ether_addr(maddr)) {
@@ -774,10 +737,8 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0))
 	/* max_mtu is set to 1500 in ether_setup() */
 	netdev->max_mtu = ETH_MAX_MTU;
-#endif
 
 	dp_priv = netdev_priv(netdev);
 	memset((void *)dp_priv, 0, sizeof(struct nss_dp_dev));
@@ -865,18 +826,11 @@ static int32_t nss_dp_probe(struct platform_device *pdev)
 			goto phy_setup_fail;
 		}
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-		dp_priv->phydev->advertising |=
-			(ADVERTISED_Pause | ADVERTISED_Asym_Pause);
-		dp_priv->phydev->supported |=
-			(SUPPORTED_Pause | SUPPORTED_Asym_Pause);
-#else
 		linkmode_set_bit(ETHTOOL_LINK_MODE_Pause_BIT, dp_priv->phydev->advertising);
 		linkmode_set_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, dp_priv->phydev->advertising);
 
 		linkmode_set_bit(ETHTOOL_LINK_MODE_Pause_BIT, dp_priv->phydev->supported);
 		linkmode_set_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, dp_priv->phydev->supported);
-#endif
 	}
 
 #if defined(NSS_DP_PPE_SUPPORT)

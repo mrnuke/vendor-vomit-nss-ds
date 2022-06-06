@@ -227,16 +227,9 @@ static void nss_phy_tstamp_rx_buf(struct sk_buff *skb)
 	 * set to the correct PTP class value by calling ptp_classify_raw
 	 * in drv->rxtstamp function.
 	 */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
-	if (ndev && ndev->phydev && ndev->phydev->drv &&
-			ndev->phydev->drv->rxtstamp)
-		if(ndev->phydev->drv->rxtstamp(ndev->phydev, skb, 0))
-			return;
-#else
 	if (ndev && phy_has_rxtstamp(ndev->phydev))
 		if (phy_rxtstamp(ndev->phydev, skb, 0))
 			return;
-#endif
 
 	netif_receive_skb(skb);
 }
@@ -253,14 +246,8 @@ static void nss_phy_tstamp_tx_buf(struct net_device *ndev, struct sk_buff *skb)
 	 * set to the correct PTP class value by calling ptp_classify_raw
 	 * in the drv->txtstamp function.
 	 */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
-	if (ndev && ndev->phydev && ndev->phydev->drv &&
-			ndev->phydev->drv->txtstamp)
-		ndev->phydev->drv->txtstamp(ndev->phydev, skb, 0);
-#else
 	if (ndev && phy_has_txtstamp(ndev->phydev))
 		phy_rxtstamp(ndev->phydev, skb, 0);
-#endif
 }
 
 /*
@@ -387,14 +374,10 @@ static uint32_t edma_clean_rx(struct edma_hw *ehw,
 		skb_put(skb, pkt_length);
 		skb->protocol = eth_type_trans(skb, skb->dev);
 #ifdef CONFIG_NET_SWITCHDEV
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-		skb->offload_fwd_mark = ndev->offload_fwd_mark;
-#else
 		/*
 		 * TODO: Implement ndo_get_devlink_port()
 		 */
 		 skb->offload_fwd_mark = 0;
-#endif
 		pr_debug("skb:%px ring_idx:%u pktlen:%d proto:0x%x mark:%u\n",
 			   skb, cons_idx, pkt_length, skb->protocol,
 			   skb->offload_fwd_mark);

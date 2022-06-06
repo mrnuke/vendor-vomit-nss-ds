@@ -587,14 +587,10 @@ static uint32_t edma_rx_reap(struct edma_gbl_ctx *egc, int budget,
 			skb->skb_iif = ndev->ifindex;
 
 #ifdef CONFIG_NET_SWITCHDEV
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0))
-			skb->offload_fwd_mark = ndev->offload_fwd_mark;
-#else
 			/*
 			 * TODO: Implement ndo_get_devlink_port()
 			 */
 			skb->offload_fwd_mark = 0;
-#endif
 			edma_debug("edma_gbl_ctx:%px skb:%px ring_idx:%u proto:0x%x mark:%u\n",
 					egc, skb, cons_idx, skb->protocol,
 					skb->offload_fwd_mark);
