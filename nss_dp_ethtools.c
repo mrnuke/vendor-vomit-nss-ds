@@ -363,7 +363,7 @@ static int32_t nss_dp_set_eee(struct net_device *netdev, struct ethtool_eee *eee
 /*
  * Ethtool operations
  */
-struct ethtool_ops nss_dp_ethtool_ops = {
+static const struct ethtool_ops nss_dp_ethtool_ops = {
 	.get_strings = &nss_dp_get_strings,
 	.get_sset_count = &nss_dp_get_strset_count,
 	.get_ethtool_stats = &nss_dp_get_ethtool_stats,
