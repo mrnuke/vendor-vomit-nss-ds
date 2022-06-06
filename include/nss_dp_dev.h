@@ -102,10 +102,6 @@ struct nss_dp_dev {
 	struct phy_device *phydev;	/* Phy device */
 	struct mii_bus *miibus;		/* MII bus */
 	phy_interface_t phy_mii_type;	/* RGMII/SGMII/QSGMII */
-	uint32_t phy_mdio_addr;		/* Mdio address */
-	bool link_poll;			/* Link polling enable? */
-	uint32_t forced_speed;		/* Forced speed? */
-	uint32_t forced_duplex;		/* Forced duplex? */
 	uint32_t link_state;		/* Current link state */
 	uint32_t pause;			/* Current flow control settings */
 
