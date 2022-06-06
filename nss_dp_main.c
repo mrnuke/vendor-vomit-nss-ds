@@ -981,47 +981,6 @@ static struct platform_driver nss_dp_drv = {
 };
 
 /*
- * nss_dp_is_netdev_physical()
- *	Check the given net device is in DP
- */
-bool nss_dp_is_netdev_physical(struct net_device *netdev)
-{
-	uint32_t i;
-	struct nss_dp_dev *dp_priv;
-
-	for (i = 0; i < NSS_DP_HAL_MAX_PORTS; i++) {
-		dp_priv = dp_global_ctx.nss_dp[i];
-		if (!dp_priv) {
-			continue;
-		}
-
-		if (dp_priv->netdev == netdev) {
-			return true;
-		}
-	}
-
-	return false;
-}
-EXPORT_SYMBOL(nss_dp_is_netdev_physical);
-
-/*
- * nss_dp_get_port_num()
- *	Return port number for the given netdevice
- */
-int32_t nss_dp_get_port_num(struct net_device *netdev)
-{
-	struct nss_dp_dev *dp_priv;
-
-	if (!nss_dp_is_netdev_physical(netdev)) {
-		return NSS_DP_INVALID_INTERFACE;
-	}
-
-	dp_priv = netdev_priv(netdev);
-	return dp_priv->macid;
-}
-EXPORT_SYMBOL(nss_dp_get_port_num);
-
-/*
  * nss_dp_init()
  */
 int __init nss_dp_init(void)

@@ -98,95 +98,6 @@ struct nss_dp_data_plane_ops {
 };
 
 /**
- * nss_dp_receive
- *	Called by overlay drivers to deliver packets to nss-dp.
- *
- * @datatypes
- * net_device
- * sk_buff
- * napi_struct
- *
- * @param[in] netdev Pointer to netdev structure on which packet is received.
- * @param[in] skb Pointer to the received packet.
- * @param[in] napi Pointer to napi context.
- */
-void nss_dp_receive(struct net_device *netdev, struct sk_buff *skb,
-						struct napi_struct *napi);
-
-/**
- * nss_dp_is_in_open_state
- *	Returns if a data plane is opened or not.
- *
- * @datatypes
- * net_device
- *
- * @param[in] netdev Pointer to netdev structure.
- *
- * @return
- * bool
- */
-bool nss_dp_is_in_open_state(struct net_device *netdev);
-
-/**
- * nss_dp_override_data_palne
- *	API to allow overlay drivers to override the data plane.
- *
- * @datatypes
- * net_device
- * nss_dp_data_plane_ops
- * nss_dp_data_plane_ctx
- *
- * @param[in] netdev Pointer to netdev structure.
- * @param[in] dp_ops Pointer to respective data plane ops structure.
- * @param[in] dpc Pointer to data plane context.
- *
- * @return
- * int
- */
-int nss_dp_override_data_plane(struct net_device *netdev,
-			       struct nss_dp_data_plane_ops *dp_ops,
-			       struct nss_dp_data_plane_ctx *dpc);
-
-/**
- * nss_dp_start_data_plane
- *	Dataplane API to inform netdev when it is ready to start.
- *
- * @datatypes
- * net_device
- * nss_dp_data_plane_ctx
- *
- * @param[in] netdev Pointer to netdev structure.
- * @param[in] dpc Pointer to data plane context.
- */
-void nss_dp_start_data_plane(struct net_device *netdev,
-			     struct nss_dp_data_plane_ctx *dpc);
-
-/**
- * nss_dp_restore_data_plane
- *	Called by overlay drivers to detach itself from nss-dp.
- *
- * @datatypes
- * net_device
- *
- * @param[in] netdev Pointer to netdev structure.
- */
-void nss_dp_restore_data_plane(struct net_device *netdev);
-
-/**
- * nss_dp_get_netdev_by_nss_if_num
- *	Returns the net device of the corresponding id if it exists.
- *
- * @datatypes
- * int
- *
- * @param[in] interface ID of the physical mac port.
- *
- * @return
- * Pointer to netdev structure.
- */
-struct net_device *nss_dp_get_netdev_by_nss_if_num(int if_num);
-
-/**
  * nss_phy_tstamp_rx_buf
  *	Receive timestamp packet.
  *
@@ -210,34 +121,6 @@ void nss_phy_tstamp_rx_buf(void *app_data, struct sk_buff *skb);
  * @param[in] skb Pointer to the packet.
  */
 void nss_phy_tstamp_tx_buf(struct net_device *ndev, struct sk_buff *skb);
-
-/**
- * nss_dp_is_netdev_physical
- *	Returns true if the net device is physical, false otherwise..
- *
- * @datatypes
- * net_device
- *
- * @param[in] net_device pointer to netdev structure.
- *
- * @return
- * true if interface is physical, false otherwise.
- */
-bool nss_dp_is_netdev_physical(struct net_device *netdev);
-
-/**
- * nss_dp_get_port_num
- *	Returns the port number for the physical interface.
- *
- * @datatypes
- * net_device
- *
- * @param[in] net_device pointer to netdev structure.
- *
- * @return
- * port number correspond to this net_device.
- */
-int32_t nss_dp_get_port_num(struct net_device *netdev);
 
 /**
  *@}

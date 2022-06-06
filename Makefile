@@ -6,8 +6,7 @@ obj ?= .
 
 obj-m += qca-nss-dp.o
 
-qca-nss-dp-objs += nss_dp_attach.o \
-		   nss_dp_ethtools.o \
+qca-nss-dp-objs += nss_dp_ethtools.o \
 		   nss_dp_main.o \
 		   hal/soc_ops/$(SoC)/nss_$(SoC).o
 
